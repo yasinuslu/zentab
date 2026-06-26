@@ -36,7 +36,7 @@ struct FocusModelTests {
 
     @Test("Encouragement changes as sessions accumulate", arguments: [
         (0, "Take a breath, then begin."),
-        (1, "Nicely done — keep the rhythm."),
+        (1, "Nicely done, keep the rhythm."),
         (3, "You're in the flow."),
         (6, "Deep focus. Beautiful work."),
     ])

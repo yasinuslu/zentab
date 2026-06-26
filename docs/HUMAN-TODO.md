@@ -1,6 +1,6 @@
 # Human-only TODO
 
-Things the automation can't do for you — each needs an account, a secret, or a
+Things the automation can't do for you, each needs an account, a secret, or a
 personal decision. Nothing here blocks day-to-day development; the app builds,
 runs, tests, and produces (unsigned) releases as-is.
 
@@ -13,12 +13,12 @@ you need an Apple Developer account and a few CI secrets.
 
 **What you need:**
 
-- [ ] **Apple Developer Program** membership — $99/year
+- [ ] **Apple Developer Program** membership, $99/year
       (<https://developer.apple.com/programs/>).
 - [ ] A **"Developer ID Application"** certificate, exported as a `.p12`
       (Keychain Access → export → set a password).
 - [ ] An **App Store Connect API key** for notarization (`.p8` file + Key ID +
-      Issuer ID) — preferred over an app-specific password.
+      Issuer ID), preferred over an app-specific password.
 
 **Add these GitHub repo secrets** (Settings → Secrets and variables → Actions):
 
@@ -49,16 +49,16 @@ Once this is in place, delete the Gatekeeper note from the release body.
 
 ## 2. Decisions baked in as defaults (change if you disagree)
 
-- [ ] **Bundle identifier** `org.nepjua.ZenTab` — change in Xcode (target →
+- [ ] **Bundle identifier** `org.nepjua.ZenTab`, change in Xcode (target →
       Signing & Capabilities) and in `project.yml` if you regenerate.
-- [ ] **Deployment target** macOS 15.0 — raise to macOS 26 for newest-only APIs,
+- [ ] **Deployment target** macOS 15.0, raise to macOS 26 for newest-only APIs,
       or lower for wider reach (Xcode → target → General → Minimum Deployments).
 - [ ] **App Sandbox** is enabled. Add entitlements in `ZenTab.entitlements` when a
       feature needs broader access.
 
 ## 3. Nice-to-have polish
 
-- [ ] **App icon** — there's no custom icon yet (the app uses the system default).
+- [ ] **App icon**, there's no custom icon yet (the app uses the system default).
       Add a 1024×1024 image to `ZenTab/Assets.xcassets` as a new `AppIcon` set,
       then set it under target → General → App Icon.
 

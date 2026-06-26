@@ -24,7 +24,7 @@ final class FocusModel {
     var encouragement: String {
         switch completedSessions {
         case 0: "Take a breath, then begin."
-        case 1..<3: "Nicely done — keep the rhythm."
+        case 1..<3: "Nicely done, keep the rhythm."
         case 3..<6: "You're in the flow."
         default: "Deep focus. Beautiful work."
         }

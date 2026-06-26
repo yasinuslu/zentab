@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// ZenTab — a calm, single-window macOS app starter.
+/// ZenTab: a calm, single-window macOS app starter.
 ///
 /// The entire app is intentionally small: one window, one view, one tiny model.
 /// It is meant as a clean foundation you can grow into a real product.

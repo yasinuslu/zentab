@@ -20,6 +20,11 @@ dist/
 .build/
 .swiftpm/
 
+# SourceKit-LSP / xcode-build-server (machine-specific; regenerate with bin/setup)
+buildServer.json
+.compile
+.bundle/
+
 # Secrets / signing material — never commit these
 *.p12
 *.cer

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# One-time setup for developing ZenTab from your editor (Zed) without the Xcode GUI.
+# Installs dev tools, builds once, and points SourceKit-LSP at the Xcode project.
+source "$(dirname "$0")/lib.sh"
+
+# 1. Dev tools (SwiftLint, xcbeautify, xcode-build-server).
+if command -v brew >/dev/null 2>&1; then
+  brew bundle --file "$ROOT/Brewfile"
+fi
+
+# 2. Build once so the index store exists.
+xcb build \
+  -project "$PROJECT" -scheme "$SCHEME" \
+  -configuration Debug -destination "$DESTINATION" \
+  CODE_SIGNING_ALLOWED=NO
+
+# 3. Write buildServer.json so SourceKit-LSP knows the project's build settings.
+xcode-build-server config -project "$PROJECT" -scheme "$SCHEME"
+
+echo
+echo "Setup complete."
+echo "Open this folder in Zed and install the 'Swift' extension (Cmd+Shift+X)."
+echo "Re-run bin/setup after adding files or changing build settings."

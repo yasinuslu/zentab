@@ -1,0 +1,23 @@
+# A light, calm SwiftLint configuration. It nudges, it doesn't nag.
+# Run with `bin/lint`. Install via `brew bundle`.
+disabled_rules:
+  - todo                 # leaving TODOs is fine
+  - trailing_whitespace  # the formatter handles whitespace
+  - trailing_comma       # trailing commas give cleaner diffs (swift-format adds them)
+
+opt_in_rules:
+  - empty_count
+  - closure_spacing
+  - sorted_imports
+
+included:
+  - ZenTab
+  - ZenTabTests
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_comments: true
+
+identifier_name:
+  min_length: 1   # short names like `id` are fine

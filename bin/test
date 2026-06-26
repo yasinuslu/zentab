@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Run the full test suite (the same command CI runs). In Xcode, press ⌘U.
+source "$(dirname "$0")/lib.sh"
+
+xcb test \
+  -project "$PROJECT" -scheme "$SCHEME" \
+  -destination "$DESTINATION" \
+  CODE_SIGNING_ALLOWED=NO

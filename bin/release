@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Build a Release .app and package it as a .dmg and .zip into dist/.
+#
+# This mirrors what .github/workflows/release.yml does in CI. The build is
+# ad-hoc signed (CODE_SIGN_IDENTITY="-"), which runs locally but is NOT
+# notarized — other Macs will show a Gatekeeper warning. See docs/HUMAN-TODO.md
+# to add real Developer ID signing + notarization later.
+source "$(dirname "$0")/lib.sh"
+
+VERSION="${1:-0.1.0}"
+echo "Packaging ZenTab $VERSION (Release, ad-hoc signed)…"
+
+rm -rf dist
+mkdir -p dist
+ARCHIVE="dist/ZenTab.xcarchive"
+
+xcb archive \
+  -project "$PROJECT" -scheme "$SCHEME" \
+  -configuration Release \
+  -destination 'generic/platform=macOS' \
+  -archivePath "$ARCHIVE" \
+  CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO \
+  MARKETING_VERSION="$VERSION"
+
+APP="$ARCHIVE/Products/Applications/ZenTab.app"
+
+# Build a drag-to-install .dmg using hdiutil (built into macOS — no deps).
+STAGING="dist/dmg"
+mkdir -p "$STAGING"
+cp -R "$APP" "$STAGING/"
+ln -s /Applications "$STAGING/Applications"
+hdiutil create -volname "ZenTab $VERSION" -srcfolder "$STAGING" -ov -format UDZO "dist/ZenTab-$VERSION.dmg"
+rm -rf "$STAGING"
+
+# Also produce a plain .zip of the app.
+( cd "$ARCHIVE/Products/Applications" && zip -r -y -q "$ROOT/dist/ZenTab-$VERSION.zip" ZenTab.app )
+
+echo
+echo "Built:"
+ls -1 dist/*.dmg dist/*.zip

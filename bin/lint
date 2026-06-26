@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Lint the Swift sources with SwiftLint (config: .swiftlint.yml).
+source "$(dirname "$0")/lib.sh"
+
+if ! command -v swiftlint >/dev/null 2>&1; then
+  echo "swiftlint not found. Install tooling with:  brew bundle"
+  exit 1
+fi
+
+swiftlint lint --quiet

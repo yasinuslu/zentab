@@ -1,0 +1,55 @@
+name: Release
+
+# Push a version tag to cut a release:
+#   git tag v0.1.0 && git push origin v0.1.0
+# This builds a Release .app, packages a .dmg + .zip, and publishes a GitHub
+# Release with both attached.
+#
+# NOTE: builds are ad-hoc signed (not notarized), so users see a Gatekeeper
+# warning on first launch. See docs/HUMAN-TODO.md to add Developer ID signing
+# + notarization once you have an Apple Developer account.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # required to create the GitHub Release
+
+jobs:
+  release:
+    name: Build & Publish
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install xcbeautify
+        run: brew list xcbeautify >/dev/null 2>&1 || brew install xcbeautify
+
+      - name: Package app (.dmg + .zip)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          bin/release "$VERSION"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          generate_release_notes: true
+          body: |
+            ### Install
+            ZenTab is not yet notarized, so macOS Gatekeeper warns on first launch.
+
+            1. Download `ZenTab-*.dmg`, open it, and drag **ZenTab** into Applications.
+            2. On first launch either right-click **ZenTab → Open**, or run:
+               ```
+               xattr -dr com.apple.quarantine /Applications/ZenTab.app
+               ```
+               On macOS 15+ you may instead need **System Settings → Privacy & Security → Open Anyway**.
+          files: |
+            dist/*.dmg
+            dist/*.zip

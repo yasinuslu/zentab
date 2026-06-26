@@ -1,0 +1,65 @@
+# XcodeGen spec — used ONCE to scaffold ZenTab.xcodeproj.
+#
+# After generation the committed ZenTab.xcodeproj is the source of truth and
+# you edit settings in Xcode as normal. This file is kept only as readable
+# documentation of how the project was created; regenerate with
+# `xcodegen generate` only if you want to rebuild the project from scratch.
+name: ZenTab
+options:
+  bundleIdPrefix: org.nepjua
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  ZenTab:
+    type: application
+    platform: macOS
+    sources:
+      - path: ZenTab
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.nepjua.ZenTab
+        PRODUCT_NAME: ZenTab
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: ZenTab
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: ZenTab/ZenTab.entitlements
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+
+  ZenTabTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: ZenTabTests
+    dependencies:
+      - target: ZenTab
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.nepjua.ZenTabTests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  ZenTab:
+    build:
+      targets:
+        ZenTab: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - ZenTabTests

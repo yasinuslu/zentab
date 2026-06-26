@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Sandbox is enabled by default for new macOS apps (matches Xcode's
+	     template and is required for the Mac App Store). If your app later
+	     needs file, network, or automation access, add the matching
+	     entitlement here. See docs/HUMAN-TODO.md. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+</dict>
+</plist>

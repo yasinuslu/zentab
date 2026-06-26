@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Debug build of the app. Use bin/run to also launch it, or just press ⌘B in Xcode.
+source "$(dirname "$0")/lib.sh"
+
+xcb build \
+  -project "$PROJECT" -scheme "$SCHEME" \
+  -configuration Debug -destination "$DESTINATION" \
+  CODE_SIGNING_ALLOWED=NO

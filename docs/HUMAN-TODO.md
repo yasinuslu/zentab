@@ -11,6 +11,13 @@ macOS Gatekeeper warns users on first launch (and on macOS 15+ they must go to
 **System Settings → Privacy & Security → Open Anyway**). To remove that friction
 you need an Apple Developer account and a few CI secrets.
 
+> **Status (blocker).** Notarization is the committed end state for ZenTab (see
+> `VISION.md`), but the Apple Developer account is currently stuck: the existing
+> account is an *organization* account that Apple refuses to switch to
+> *individual*, and that org no longer exists (a legal matter to untangle). Likely
+> path is a new Apple ID, possibly under a different domain. Until it is resolved,
+> releases stay ad-hoc signed.
+
 **What you need:**
 
 - [ ] **Apple Developer Program** membership, $99/year

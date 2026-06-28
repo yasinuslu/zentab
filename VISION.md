@@ -69,10 +69,12 @@ keys that trigger it are.
   crashes, so you are never stranded. Shipped default is Cmd+Tab; bindings are
   configurable so a safe key can be used during development.
 - **App Sandbox OFF, no Mac App Store** (the feature set requires private
-  SkyLight/CGS APIs). Distributed as a DMG / GitHub release: **ad-hoc signed for
-  the MVP and early releases** (free, first-launch Gatekeeper warning), upgrading
-  to a paid Apple Developer ID + notarization once it ships beyond the author.
-  Needs Accessibility permission (mandatory) and Screen Recording (for thumbnails).
+  SkyLight/CGS APIs). Distributed as a DMG / GitHub release. **Notarization is the
+  committed end state** (we will ship notarized). Interim: **ad-hoc signed**
+  (first-launch Gatekeeper warning) only because the Apple Developer account is
+  currently blocked (org account stuck, cannot switch to individual; resolution
+  pending, see `docs/HUMAN-TODO.md`). Needs Accessibility permission (mandatory)
+  and Screen Recording (for thumbnails).
 
 ## Status
 

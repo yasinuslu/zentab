@@ -9,29 +9,48 @@ calm, focused, zero lag.
 
 | Shortcut | Shows | Scope |
 | --- | --- | --- |
-| **Cmd+`** (backtick) | windows of the **current app** | the app you are in |
+| **Cmd+`** (backtick) | windows of the **current app** | current monitor + current Space |
 | **Cmd+Tab** | windows of **other apps** | current monitor + current Space, **excluding the current app** |
-| **Option+Tab** | **everything** | all apps, all Spaces, all monitors |
+| **Option+Tab** | **everything** | all apps, all Spaces, all monitors (no exclusions: includes the current app, minimized, hidden) |
 
-Cmd+` and Cmd+Tab are complementary halves: Cmd+` owns your current app's
-windows, so Cmd+Tab drops the current app and shows only other apps nearby.
-Option+Tab is the global escape hatch.
+Cmd+` and Cmd+Tab are complementary halves at the **same locality** (current
+monitor + current Space): Cmd+` shows your current app's windows there, and
+Cmd+Tab shows every *other* app's windows there. Option+Tab is the only global
+shortcut: the escape hatch for reaching anything, anywhere.
 
 ## Interaction
 
-- **Tap (press and release):** instant switch, no overlay, no lag. The fast path
-  is sacred.
+- **Tap (press and release):** instant switch to the single most-recently-used
+  other window, no overlay, no lag. The fast path is sacred.
 - **Hold the modifier:** the thumbnail grid appears with a **stable** window list
   (each window keeps the same position; never reshuffled by recency). MRU past the
   single most-recent window is fiction and disorienting; a stable list builds
   muscle memory. Recency is used in exactly one place: the quick-tap toggle.
 
-This behavior is **not configurable**. It is the opinion ZenTab ships.
+While the overlay is held:
+
+- **Navigate** with Tab (forward) and Shift+Tab (backward), or by **hovering the
+  mouse** over a thumbnail. Keyboard and mouse drive one shared selection; the most
+  recent input wins.
+- **Release the modifier** to focus the selected (hovered) window.
+- **W** closes the selected window. **Q** quits its whole app. Small close/quit
+  buttons also appear on the thumbnail under the mouse, for discoverability.
+- Releasing the key always confirms: if the mouse is over a thumbnail, that one is
+  focused; otherwise the keyboard selection stands. Release is never a cancel.
+
+This *behavior* is **not configurable** (it is the opinion ZenTab ships); only the
+keys that trigger it are.
 
 ## Principles
 
 1. **Performance is the product.** Zero perceptible lag. That is what "Zen" means.
-2. **Opinionated and minimal.** Core switching is one default, not a settings matrix.
+2. **Opinionated and minimal.** The switching *behavior* (the three-mode model,
+   tap-vs-hold, the stable list, W/Q) is the permanent opinion and is **not
+   configurable** in the MVP; if demand ever forces config, it stays the default
+   forever and never changes out of the box. The *key bindings* that trigger each
+   mode **are** configurable from the start (in the TOML file): different keys,
+   same behavior. This feeds the nixify story and keeps development unblocked (bind
+   a non-hijacking key while the native Cmd+Tab override is being hardened).
 3. **Config is a file.** A single TOML file is the source of truth: nixifiable,
    git-trackable, watched at runtime. Strong defaults keep it near-empty.
 4. **Free forever.** No Pro tier, no license, no server, no nag sequence.
@@ -42,16 +61,24 @@ This behavior is **not configurable**. It is the opinion ZenTab ships.
 - Overlay is hand-rolled **AppKit + CALayer** (NSPanel, recycled tiles) for speed.
   SwiftUI only for non-hot UI (menubar, settings).
 - Config in **TOML**.
+- **Cmd+Tab replaces** the native switcher (private symbolic-hotkey API). This
+  override is a **hard requirement: it must be dependable in every app** (alt-tab
+  is flaky here; ZenTab is not). Whatever it takes: deterministic hotkey
+  resolution, HID-level event tap, tap recovery. The native shortcut is
+  **auto-restored** whenever our tap is disabled (sleep, secure input) or the app
+  crashes, so you are never stranded. Shipped default is Cmd+Tab; bindings are
+  configurable so a safe key can be used during development.
 - **App Sandbox OFF, no Mac App Store** (the feature set requires private
-  SkyLight/CGS APIs). Ships as a notarized DMG / GitHub release. Needs
-  Accessibility permission (mandatory) and Screen Recording (for thumbnails).
+  SkyLight/CGS APIs). Distributed as a DMG / GitHub release: **ad-hoc signed for
+  the MVP and early releases** (free, first-launch Gatekeeper warning), upgrading
+  to a paid Apple Developer ID + notarization once it ships beyond the author.
+  Needs Accessibility permission (mandatory) and Screen Recording (for thumbnails).
 
-## Still to decide
+## Status
 
-1. Cmd+` scope: all Spaces/monitors, or just current?
-2. Option+Tab: include current app and minimized/hidden, or exclude some?
-3. Tap toggle target: confirm quick-tap goes to the single most-recent other window.
-4. Cmd+Tab empty case: empty overlay vs fall-through.
-5. Cmd+Tab safety: auto-restore native on tap-death/crash vs hard replace.
-6. Code signing: ad-hoc (Gatekeeper warning) vs paid Developer ID + notarization.
+The product spec is complete. Next session moves to implementation: pivot the
+SwiftUI scaffold, stand up window enumeration (AX + private SkyLight/CGS), build
+the AppKit overlay, and wire the three shortcuts (start on a non-hijacking key,
+harden the native Cmd+Tab override before making it the default). The contributor
+guide (`CLAUDE.md`) and the local alt-tab reference clone hold the API names.
 </content>

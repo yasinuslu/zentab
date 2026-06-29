@@ -48,5 +48,36 @@ func SLPSPostEventRecordTo(
   _ bytes: UnsafeMutablePointer<UInt8>
 ) -> CGError
 
+/// A WindowServer Space id.
+typealias CGSSpaceID = UInt64
+/// A display's UUID string (the "Display Identifier" from CGSCopyManagedDisplaySpaces).
+typealias ScreenUuid = CFString
+
+/// Which Spaces a window-query covers (yabai/CGS mask). `all` = 7.
+enum CGSSpaceMask: Int {
+  case current = 5
+  case other = 6
+  case all = 7
+}
+
+/// The current Space id on a given display.
+@_silgen_name("CGSManagedDisplayGetCurrentSpace")
+func CGSManagedDisplayGetCurrentSpace(_ cid: CGSConnectionID, _ displayUuid: ScreenUuid) -> CGSSpaceID
+
+/// The Space ids a set of windows live on.
+@_silgen_name("CGSCopySpacesForWindows")
+func CGSCopySpacesForWindows(
+  _ cid: CGSConnectionID, _ mask: CGSSpaceMask.RawValue, _ windowIDs: CFArray
+) -> CFArray
+
+/// Sets the front process for ONE Space without touching the global front. Used to
+/// repair the origin Space after a cross-Space focus (so returning there shows the
+/// app that was there before, not the window we just raised — alt-tab #4507).
+@_silgen_name("SLSSpaceSetFrontPSN")
+@discardableResult
+func SLSSpaceSetFrontPSN(
+  _ cid: CGSConnectionID, _ sid: CGSSpaceID, _ psn: ProcessSerialNumber
+) -> CGError
+
 /// The process-wide WindowServer connection, resolved once at first use.
 let cgsConnection: CGSConnectionID = CGSMainConnectionID()

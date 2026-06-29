@@ -12,16 +12,21 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <!-- Version is supplied by build.ps1 (-d Version=...); falls back to 0.1.0 for a bare `wix build`. -->
   <?ifndef Version ?><?define Version = "0.1.0" ?><?endif?>
+  <!-- Small standalone .ico for ARP/shortcut (NOT the exe — that would re-embed ~72 MB). -->
+  <?ifndef IconFile ?><?define IconFile = "..\assets\zentab.ico" ?><?endif?>
   <Package Name="ZenTab"
            Manufacturer="yasinuslu"
            Version="$(var.Version)"
            UpgradeCode="727f441f-5fdc-4a81-a8e5-ad2f0f20758e"
            Scope="perMachine">
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of ZenTab is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of ZenTab is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="none" />
 
-    <!-- No <Icon> from the exe — that would embed the whole 71 MB binary again. -->
+    <!-- A tiny standalone .ico (~12 KB) for Programs &amp; Features and the shortcut. -->
+    <Icon Id="ZenTab.ico" SourceFile="$(var.IconFile)" />
+    <Property Id="ARPPRODUCTICON" Value="ZenTab.ico" />
     <Property Id="ARPHELPLINK" Value="https://github.com/yasinuslu/zentab-windows" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
@@ -46,6 +51,7 @@
                   Name="ZenTab"
                   Description="An opinionated Alt+Tab alternative"
                   Target="[INSTALLFOLDER]ZenTab.exe"
+                  Icon="ZenTab.ico"
                   WorkingDirectory="INSTALLFOLDER" />
         <RemoveFolder Id="CleanupStartMenu" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\yasinuslu\ZenTab" Name="installed" Type="integer" Value="1" KeyPath="yes" />

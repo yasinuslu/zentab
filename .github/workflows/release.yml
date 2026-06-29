@@ -1,0 +1,59 @@
+name: Release
+
+# Tag a release to ship it:
+#   git tag v0.2.0 && git push origin v0.2.0
+# This builds the portable exe + MSI (version derived from the tag), generates checksums,
+# and publishes a GitHub Release with the artifacts attached.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (e.g. 0.2.0), no leading v"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            $v = '${{ inputs.version }}' -replace '^v', ''
+            $tag = "v$v"
+          } else {
+            $v = '${{ github.ref_name }}' -replace '^v', ''
+            $tag = '${{ github.ref_name }}'
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "tag=$tag"   >> $env:GITHUB_OUTPUT
+          Write-Host "Building ZenTab $v (tag $tag)"
+
+      - name: Build artifacts (portable exe + MSI + checksums)
+        shell: pwsh
+        run: ./build.ps1 -Version ${{ steps.version.outputs.version }}
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ZenTab ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/ZenTab-${{ steps.version.outputs.version }}-win-x64-portable.exe
+            dist/ZenTab-${{ steps.version.outputs.version }}-win-x64.msi
+            dist/SHA256SUMS.txt

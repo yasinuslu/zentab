@@ -2,5 +2,8 @@ bin/
 obj/
 *.user
 .vs/
+.idea/
 dist/
 *.wixpdb
+*.wixobj
+*.binlog

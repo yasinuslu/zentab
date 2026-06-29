@@ -44,11 +44,25 @@ public partial class App : System.Windows.Application
 
         _tray = new Forms.NotifyIcon
         {
-            Icon = System.Drawing.SystemIcons.Application,
+            Icon = LoadTrayIcon(),
             Visible = true,
             Text = "ZenTab — " + profile.Description,
             ContextMenuStrip = menu,
         };
+    }
+
+    /// <summary>Load the embedded app icon at tray size; fall back to the system icon.</summary>
+    private static System.Drawing.Icon LoadTrayIcon()
+    {
+        try
+        {
+            var asm = System.Reflection.Assembly.GetExecutingAssembly();
+            using var stream = asm.GetManifestResourceStream("ZenTab.zentab.ico");
+            if (stream is not null)
+                return new System.Drawing.Icon(stream, Forms.SystemInformation.SmallIconSize);
+        }
+        catch { /* fall through to the system icon */ }
+        return System.Drawing.SystemIcons.Application;
     }
 
     protected override void OnExit(ExitEventArgs e)

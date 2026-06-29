@@ -11,6 +11,13 @@ Win32/DWM interop layer.
 ZenTab is resident in the tray (no main window) and **replaces the native switching
 gestures** with a low-level keyboard hook.
 
+> **ZenTab is a cross-platform vision, not a single app.** The product — the *feel*, the
+> *focus*, the brand — is shared across platforms; each platform gets a native
+> implementation that does whatever is best *there*. This repository is the **Windows**
+> edition (C#/WPF). The **macOS** edition is a separate, fully native Swift app. Same
+> philosophy ([VISION.md](VISION.md)), same branding, different native guts. The product
+> website lives elsewhere; this repo is just the Windows source.
+
 ## What it does
 
 | Gesture | Shows | Scope |
@@ -40,7 +47,17 @@ idle cost is near zero (one foreground event hook, no polling).
 
 ## Install
 
-`build.ps1` produces both shippable artifacts in `dist/`:
+**Download** the portable exe or the MSI from the
+[Releases](https://github.com/yasinuslu/zentab-windows/releases) page (published
+automatically when a `v*` tag is pushed). Each release includes a `SHA256SUMS.txt` — verify
+a download with:
+
+```powershell
+(Get-FileHash .\ZenTab-0.1.0-win-x64.msi -Algorithm SHA256).Hash.ToLower()
+# compare against the matching line in SHA256SUMS.txt
+```
+
+Or build the artifacts yourself — `build.ps1` produces both in `dist/`:
 
 ```powershell
 ./build.ps1                     # both: portable exe + MSI installer
@@ -100,11 +117,23 @@ tooltip and menu. `zentab.toml` is build-tree-only; the MSI does not ship it.
 - `DimWindow.cs` — the translucent recede layer behind the panel
 - `Config.cs` / `zentab.toml` — dev-mode shortcut profile
 - `App.xaml` / `.cs` — tray-resident entry point
-- `build.ps1` — one script → portable exe + WiX MSI in `dist/`
+- `app.manifest` — PerMonitorV2 DPI awareness
+- `build.ps1` — one script → portable exe + WiX MSI (+ checksums) in `dist/`
 - `installer/ZenTab.wxs` — the WiX MSI definition
+- `assets/` — placeholder app icon (`zentab.ico`) + its generator (`make-icon.ps1`)
+- `.github/workflows/` — CI (build on push/PR) + tag-driven Release
+- `docs/review-notes.md` — review backlog (bugs, feel/perf, packaging)
+
+## License
+
+[MIT](LICENSE) © Yasin Uslu.
 
 ## Not yet done (next steps)
 
+- **Code signing** — the exe and MSI are unsigned, so SmartScreen warns on first run.
+- **Real app icon** — `assets/zentab.ico` is a placeholder (regenerate via
+  `assets/make-icon.ps1`, or just replace the `.ico`).
 - **GPU blur** on the dim layer (currently a flat translucent dim).
 - Per-monitor-DPI correctness for panel/thumbnail placement on mixed-DPI multi-monitor.
-- A signed installer + a real app icon.
+- More from the [review backlog](docs/review-notes.md) — notably the lone-Alt menu-cue bug
+  and background pre-warming of the candidate list.

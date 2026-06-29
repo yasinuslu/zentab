@@ -27,6 +27,10 @@
     <!-- Compress the single file; the MSI stores it as-is (CompressionLevel=none) so the
          CAB doesn't try (and fail) to re-compress an already-compressed payload. -->
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- No symbols in a release publish: keeps the publish dir to a single shippable exe
+         (a bare ZenTab.exe is the portable artifact). `dotnet build`/`run` stay debuggable. -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
   <ItemGroup>

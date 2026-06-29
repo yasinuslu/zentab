@@ -10,9 +10,11 @@
   Alt+Tab / Alt+` / Ctrl+Alt+Tab gestures (dev mode is a build-tree-only aid).
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- Version is supplied by build.ps1 (-d Version=...); falls back to 0.1.0 for a bare `wix build`. -->
+  <?ifndef Version ?><?define Version = "0.1.0" ?><?endif?>
   <Package Name="ZenTab"
            Manufacturer="yasinuslu"
-           Version="0.1.0"
+           Version="$(var.Version)"
            UpgradeCode="727f441f-5fdc-4a81-a8e5-ad2f0f20758e"
            Scope="perMachine">
 

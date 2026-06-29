@@ -40,19 +40,26 @@ idle cost is near zero (one foreground event hook, no polling).
 
 ## Install
 
-Download / build the MSI and run it. It installs ZenTab to *Program Files*, adds a Start
-Menu shortcut, and starts ZenTab at login. Quit anytime from the tray icon's menu.
+`build.ps1` produces both shippable artifacts in `dist/`:
 
 ```powershell
-./build-installer.ps1        # -> dist/ZenTab-0.1.0-win-x64.msi
+./build.ps1                     # both: portable exe + MSI installer
+./build.ps1 -Target portable    # just the portable single-file exe
+./build.ps1 -Target installer   # just the MSI
+./build.ps1 -Version 0.2.0      # stamp a version into the exe, MSI, and filenames
 ```
 
-The installer bundles a **self-contained** build, so .NET does not need to be installed on
-the target machine. The installed app uses the real Alt+Tab / Alt+` / Ctrl+Alt+Tab
-gestures.
+| Artifact | What it is |
+| --- | --- |
+| `dist/ZenTab-0.1.0-win-x64-portable.exe` | **Truly portable** — one self-contained file. Copy it anywhere and double-click; no .NET install, no setup, no files beside it. |
+| `dist/ZenTab-0.1.0-win-x64.msi` | **Installer** — installs to *Program Files*, adds a Start Menu shortcut, and starts ZenTab at login. Quit anytime from the tray icon's menu. |
 
-> Heads-up: this is an early build (0.1.0). The MSI is unsigned, so SmartScreen may warn
-> on first run.
+Both bundle a **self-contained** build, so .NET does not need to be installed on the target
+machine, and both use the real Alt+Tab / Alt+` / Ctrl+Alt+Tab gestures (the portable exe
+ships without `zentab.toml`, so dev mode is off — see below).
+
+> Heads-up: this is an early build (0.1.0). The artifacts are unsigned, so SmartScreen may
+> warn on first run.
 
 ## Build & run from source
 
@@ -93,7 +100,8 @@ tooltip and menu. `zentab.toml` is build-tree-only; the MSI does not ship it.
 - `DimWindow.cs` — the translucent recede layer behind the panel
 - `Config.cs` / `zentab.toml` — dev-mode shortcut profile
 - `App.xaml` / `.cs` — tray-resident entry point
-- `installer/ZenTab.wxs` + `build-installer.ps1` — the WiX MSI
+- `build.ps1` — one script → portable exe + WiX MSI in `dist/`
+- `installer/ZenTab.wxs` — the WiX MSI definition
 
 ## Not yet done (next steps)
 

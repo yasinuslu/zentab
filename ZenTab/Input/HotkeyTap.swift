@@ -25,7 +25,15 @@ final class HotkeyTap: @unchecked Sendable {
     let cycle: @MainActor (_ backward: Bool) -> Void
     let confirm: @MainActor () -> Void
     let cancel: @MainActor () -> Void
+    let closeSelected: @MainActor () -> Void
+    let quitSelected: @MainActor () -> Void
   }
+
+  /// In-overlay action keys. Positional (like the triggers), and fixed — VISION makes
+  /// the W=close / Q=quit *behavior* non-configurable; only the trigger keys vary.
+  private static let closeWindowKeyCode: CGKeyCode = 13  // W
+  private static let quitAppKeyCode: CGKeyCode = 12  // Q
+  private static let escapeKeyCode: CGKeyCode = 53
 
   private let triggers: [Trigger]
   private let handlers: Handlers
@@ -169,10 +177,19 @@ final class HotkeyTap: @unchecked Sendable {
   /// Acts on a key-down and returns whether ZenTab consumed it.
   private func handleKeyDown(keyCode: CGKeyCode, modifiers: NSEvent.ModifierFlags) -> Bool {
     if snapshot.active {
-      if keyCode == 53 {  // Esc cancels
+      switch keyCode {
+      case Self.escapeKeyCode:  // Esc cancels
         endSession()
         dispatchMain { self.handlers.cancel() }
         return true
+      case Self.closeWindowKeyCode:  // W closes the selected window
+        dispatchMain { self.handlers.closeSelected() }
+        return true
+      case Self.quitAppKeyCode:  // Q quits the selected window's app
+        dispatchMain { self.handlers.quitSelected() }
+        return true
+      default:
+        break
       }
       // Pressing any trigger key again (while held) cycles.
       guard triggers.contains(where: { $0.binding.matches(keyCode: keyCode, modifiers: modifiers) })

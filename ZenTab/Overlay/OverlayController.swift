@@ -48,6 +48,16 @@ final class OverlayController {
       self?.send(.hover(index))
       self?.send(.confirm)
     }
+    // The on-thumbnail close/quit buttons act on the tile under the mouse: select it
+    // first (same as a click), then run the action on that selection.
+    grid.onClose = { [weak self] index in
+      self?.send(.hover(index))
+      self?.send(.closeSelected)
+    }
+    grid.onQuit = { [weak self] index in
+      self?.send(.hover(index))
+      self?.send(.quitSelected)
+    }
 
     startBackgroundRefresh()
   }
@@ -88,6 +98,8 @@ final class OverlayController {
   func cycle(backward: Bool) { send(.cycle(backward: backward)) }
   func confirm() { send(.confirm) }
   func cancel() { send(.cancel) }
+  func closeSelected() { send(.closeSelected) }
+  func quitSelected() { send(.quitSelected) }
 
   // MARK: - Reducer plumbing
 
@@ -123,12 +135,30 @@ final class OverlayController {
     case .updateSelection(let index):
       grid.updateSelection(index)
 
+    case .relayout(let windows, let index):
+      relayoutPanel(windows: windows, index: index)
+
     case .hide:
       panel.orderOut(nil)
 
     case .focus(let window):
       if let window { WindowFocuser.focus(window) }
+
+    case .close(let window):
+      WindowCloser.close(window)
+
+    case .quit(let pid):
+      WindowCloser.quitApp(pid: pid)
     }
+  }
+
+  /// Re-lay the grid after a close/quit dropped windows: resize + re-center the panel,
+  /// keeping the live thumbnails already captured for the survivors (no re-capture).
+  private func relayoutPanel(windows: [WindowInfo], index: Int) {
+    let size = grid.configure(windows: windows, selectedIndex: index, keepThumbnails: true)
+    panel.setContentSize(size)
+    centerPanel(size: size)
+    grid.refreshHoveredTile()  // the survivors shifted under the cursor; re-place badges
   }
 
   private func showPanel(windows: [WindowInfo], index: Int) {
@@ -136,6 +166,7 @@ final class OverlayController {
     panel.setContentSize(size)
     centerPanel(size: size)
     panel.makeKeyAndOrderFront(nil)
+    grid.refreshHoveredTile()  // show badges if the panel landed under the cursor
 
     let ids = windows.map(\.windowID)
     // Stale-but-instant: paint cached last-known frames now; the live capture below

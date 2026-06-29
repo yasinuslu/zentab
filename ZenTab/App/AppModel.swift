@@ -208,7 +208,9 @@ final class AppModel: ObservableObject {
         summon: { [weak overlay] mode in overlay?.summon(mode: mode) },
         cycle: { [weak overlay] backward in overlay?.cycle(backward: backward) },
         confirm: { [weak overlay] in overlay?.confirm() },
-        cancel: { [weak overlay] in overlay?.cancel() }))
+        cancel: { [weak overlay] in overlay?.cancel() },
+        closeSelected: { [weak overlay] in overlay?.closeSelected() },
+        quitSelected: { [weak overlay] in overlay?.quitSelected() }))
 
     guard tap.start() else { return }  // tapCreate fails only without Accessibility
 

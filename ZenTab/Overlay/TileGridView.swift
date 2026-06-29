@@ -8,18 +8,31 @@ import AppKit
 final class TileGridView: NSView {
   var onHover: (@MainActor (Int) -> Void)?
   var onActivate: (@MainActor (Int) -> Void)?
+  /// The close (✕) button on the hovered tile was clicked.
+  var onClose: (@MainActor (Int) -> Void)?
+  /// The quit (⏻) button on the hovered tile was clicked.
+  var onQuit: (@MainActor (Int) -> Void)?
 
   private let tileSize = CGSize(width: 240, height: 176)
   private let spacing: CGFloat = 16
   private let padding: CGFloat = 24
   private let barHeight: CGFloat = 36
   private let maxColumns = 5
+  private let buttonSize: CGFloat = 22
+  private let buttonInset: CGFloat = 8
+
+  /// Which tile's close/quit buttons to draw: the one physically under the cursor.
+  /// Tracked separately from the controller's selection (which the keyboard also
+  /// moves) because the buttons follow the mouse, per VISION.
+  private enum TileButton { case close, quit }
 
   private final class Tile {
     let container = CALayer()
     let thumbnail = CALayer()
     let icon = CALayer()
     let title = CATextLayer()
+    let closeButton = CALayer()
+    let quitButton = CALayer()
     var windowID: CGWindowID = 0
   }
 
@@ -29,6 +42,7 @@ final class TileGridView: NSView {
   private var selectedIndex = 0
   private var visibleCount = 0
   private var columns = 1
+  private var hoveredTileIndex: Int?
   private var trackingArea: NSTrackingArea?
 
   override init(frame frameRect: NSRect) {
@@ -45,10 +59,17 @@ final class TileGridView: NSView {
   // MARK: - Configuration
 
   /// Lay out `windows`, select `selectedIndex`, and return the content size the
-  /// panel should adopt. Tiles are reused across summons.
-  func configure(windows: [WindowInfo], selectedIndex: Int) -> NSSize {
+  /// panel should adopt. Tiles are reused across summons. `keepThumbnails` preserves
+  /// the already-captured frames across a close/quit relayout (pruned to the survivors)
+  /// so the grid doesn't flash back to icons; a fresh summon resets them.
+  func configure(windows: [WindowInfo], selectedIndex: Int, keepThumbnails: Bool = false) -> NSSize {
     self.windows = windows
-    self.thumbnails = [:]
+    if keepThumbnails {
+      let ids = Set(windows.map(\.windowID))
+      thumbnails = thumbnails.filter { ids.contains($0.key) }
+    } else {
+      thumbnails = [:]
+    }
     self.selectedIndex = selectedIndex
     self.visibleCount = windows.count
 
@@ -141,7 +162,35 @@ final class TileGridView: NSView {
     tile.title.contentsScale = 2
     tile.container.addSublayer(tile.title)
 
+    // Close (✕) / quit (⏻) badges, top-right of the thumbnail. Hidden until this tile
+    // is the one under the cursor; added last so they sit above the thumbnail.
+    let top = tileSize.height - buttonInset - buttonSize
+    let quitX = tileSize.width - buttonInset - buttonSize
+    configureBadge(tile.quitButton, glyph: "⏻", x: quitX, y: top)
+    configureBadge(tile.closeButton, glyph: "✕", x: quitX - buttonSize - 6, y: top)
+    tile.container.addSublayer(tile.closeButton)
+    tile.container.addSublayer(tile.quitButton)
+
     return tile
+  }
+
+  /// A small round badge with a centered glyph, hidden by default. Built once per tile
+  /// and reused; only its visibility toggles as the hover moves.
+  private func configureBadge(_ badge: CALayer, glyph: String, x: CGFloat, y: CGFloat) {
+    badge.frame = CGRect(x: x, y: y, width: buttonSize, height: buttonSize)
+    badge.cornerRadius = buttonSize / 2
+    badge.backgroundColor = NSColor.black.withAlphaComponent(0.6).cgColor
+    badge.borderColor = NSColor.white.withAlphaComponent(0.25).cgColor
+    badge.borderWidth = 1
+    badge.isHidden = true
+    let label = CATextLayer()
+    label.string = glyph
+    label.fontSize = 12
+    label.foregroundColor = NSColor.white.cgColor
+    label.alignmentMode = .center
+    label.contentsScale = 2
+    label.frame = CGRect(x: 0, y: (buttonSize - 16) / 2, width: buttonSize, height: 16)
+    badge.addSublayer(label)
   }
 
   private func fill(_ tile: Tile, with window: WindowInfo, selected: Bool) {
@@ -183,18 +232,70 @@ final class TileGridView: NSView {
   }
 
   override func mouseMoved(with event: NSEvent) {
-    if let index = tileIndex(at: event) { onHover?(index) }
+    let index = tileIndex(at: convert(event.locationInWindow, from: nil))
+    if index != hoveredTileIndex {
+      hoveredTileIndex = index
+      updateButtonVisibility()
+    }
+    if let index { onHover?(index) }
+  }
+
+  override func mouseExited(with event: NSEvent) {
+    guard hoveredTileIndex != nil else { return }
+    hoveredTileIndex = nil
+    updateButtonVisibility()
   }
 
   override func mouseDown(with event: NSEvent) {
-    if let index = tileIndex(at: event) { onActivate?(index) }
+    let point = convert(event.locationInWindow, from: nil)
+    guard let index = tileIndex(at: point) else { return }
+    // A click on the hovered tile's badges closes/quits; anywhere else activates.
+    if index == hoveredTileIndex, let button = buttonHit(at: point, in: tiles[index]) {
+      switch button {
+      case .close: onClose?(index)
+      case .quit: onQuit?(index)
+      }
+      return
+    }
+    onActivate?(index)
   }
 
-  private func tileIndex(at event: NSEvent) -> Int? {
-    let point = convert(event.locationInWindow, from: nil)
+  private func tileIndex(at point: CGPoint) -> Int? {
     for index in 0..<visibleCount where tiles[index].container.frame.contains(point) {
       return index
     }
     return nil
+  }
+
+  /// Which badge (if any) `point` lands on, in the tile's container coordinates.
+  private func buttonHit(at point: CGPoint, in tile: Tile) -> TileButton? {
+    let origin = tile.container.frame.origin
+    if tile.closeButton.frame.offsetBy(dx: origin.x, dy: origin.y).contains(point) { return .close }
+    if tile.quitButton.frame.offsetBy(dx: origin.x, dy: origin.y).contains(point) { return .quit }
+    return nil
+  }
+
+  /// Re-detect the hovered tile from the current cursor position, and show its badges.
+  /// The controller calls this after a show/relayout positions the panel (no
+  /// mouse-move fires, yet the window set / panel frame shifted under the cursor).
+  func refreshHoveredTile() {
+    let next =
+      window.map { tileIndex(at: convert($0.mouseLocationOutsideOfEventStream, from: nil)) }
+      ?? nil
+    if next != hoveredTileIndex {
+      hoveredTileIndex = next
+    }
+    updateButtonVisibility()
+  }
+
+  /// Show the close/quit badges on the hovered tile only.
+  private func updateButtonVisibility() {
+    withoutAnimations {
+      for (index, tile) in tiles.enumerated() {
+        let show = index == hoveredTileIndex && index < visibleCount
+        tile.closeButton.isHidden = !show
+        tile.quitButton.isHidden = !show
+      }
+    }
   }
 }

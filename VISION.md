@@ -104,6 +104,9 @@ configured trigger it:
   tiles), with tap-vs-hold (a fast tap switches with no overlay; a hold shows the grid);
 - navigates with Tab / Shift+Tab and the mouse (one shared selection), and focuses the
   window on release via the private SLPS front + synthetic-key + AX-raise sequence;
+- while the overlay is held, **W closes** the selected window (its AX close button) and
+  **Q quits** its whole app; the list re-lays instantly (optimistic), and small
+  close/quit badges appear on the thumbnail under the mouse for discoverability;
 - loads config from `~/.config/zentab/config.toml` (hand-rolled parser, strong defaults).
 
 The private SkyLight/CGS symbols are bound with `@_silgen_name` (no bridging header), and
@@ -123,6 +126,6 @@ menu bar icon is the at-a-glance indicator (calm rectangle = we own it, warning 
 **Next:** live thumbnails are wired through ScreenCaptureKit but the grid currently
 falls back to app icon + title until that's verified on-device; then the other two modes
 (current-app `Cmd+\``, everything `Option+Tab` across Spaces/monitors via the deferred
-private CGS calls), W=close / Q=quit, and recency for the tap toggle. The contributor
-guide (`CLAUDE.md`) and the local alt-tab reference clone hold the API names.
+private CGS calls), and recency for the tap toggle. The contributor guide (`CLAUDE.md`)
+and the local alt-tab reference clone hold the API names.
 </content>

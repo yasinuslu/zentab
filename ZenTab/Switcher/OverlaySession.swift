@@ -21,6 +21,10 @@ struct OverlaySession: Equatable {
     case confirm
     case cancel
     case hover(Int)
+    /// W: close the selected window (overlay stays up, modifier still held).
+    case closeSelected
+    /// Q: quit the selected window's whole app (all its windows go with it).
+    case quitSelected
   }
 
   enum Effect: Equatable {
@@ -32,10 +36,16 @@ struct OverlaySession: Equatable {
     case show(windows: [WindowInfo], index: Int)
     /// Move the selection highlight (overlay already visible).
     case updateSelection(Int)
+    /// Re-lay the (now shorter) grid after a close/quit removed windows.
+    case relayout(windows: [WindowInfo], index: Int)
     /// Dismiss the overlay.
     case hide
     /// Focus this window (nil = nothing to focus, e.g. cancel or empty list).
     case focus(WindowInfo?)
+    /// Close this window (press its AX close button).
+    case close(WindowInfo)
+    /// Quit this app (terminate every window it owns).
+    case quit(pid_t)
   }
 
   private(set) var session = 0
@@ -59,6 +69,8 @@ struct OverlaySession: Equatable {
     case .confirm: return confirm()
     case .cancel: return finish(focus: nil)
     case .hover(let i): return hover(i)
+    case .closeSelected: return closeSelected()
+    case .quitSelected: return quitSelected()
     }
   }
 
@@ -120,6 +132,48 @@ struct OverlaySession: Equatable {
     guard windows.indices.contains(i) else { return [] }
     index = i
     return isVisible ? [.updateSelection(index)] : []
+  }
+
+  /// W: close the selected window. Optimistically drop it from the list and re-lay
+  /// the grid (the actual AX close runs as a side effect), so the UI never waits on
+  /// the close. A hold-only action: a no-op unless the overlay is up. The session
+  /// stays alive — the modifier is still held — so you can keep closing or navigate.
+  private mutating func closeSelected() -> [Effect] {
+    guard isVisible, let target = selected else { return [] }
+    var effects: [Effect] = [.close(target)]
+    removeWindows { $0.windowID == target.windowID }
+    effects += relayoutOrHide()
+    return effects
+  }
+
+  /// Q: quit the selected window's whole app — optimistically drop *every* window of
+  /// that app, then re-lay (or hide). Mirrors `closeSelected`; the terminate is a
+  /// side effect.
+  private mutating func quitSelected() -> [Effect] {
+    guard isVisible, let target = selected else { return [] }
+    let pid = target.pid
+    var effects: [Effect] = [.quit(pid)]
+    removeWindows { $0.pid == pid }
+    effects += relayoutOrHide()
+    return effects
+  }
+
+  /// Remove matching windows and keep the selection on a sensible neighbor: it lands
+  /// on the window that followed the removed selection (or the new last one).
+  private mutating func removeWindows(where shouldRemove: (WindowInfo) -> Bool) {
+    let removedBeforeIndex = windows[..<index].lazy.filter(shouldRemove).count
+    windows.removeAll(where: shouldRemove)
+    index = windows.isEmpty ? 0 : min(max(0, index - removedBeforeIndex), windows.count - 1)
+  }
+
+  /// After a removal: re-lay the surviving grid, or hide if nothing is left (the
+  /// session stays alive, so a later release just focuses nothing).
+  private mutating func relayoutOrHide() -> [Effect] {
+    if windows.isEmpty {
+      isVisible = false
+      return [.hide]
+    }
+    return [.relayout(windows: windows, index: index)]
   }
 
   /// The single decision point. A requested confirm always wins: the overlay is

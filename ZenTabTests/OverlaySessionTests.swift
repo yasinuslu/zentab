@@ -20,6 +20,15 @@ struct OverlaySessionTests {
     }
   }
 
+  /// A window with an explicit pid/windowID, for the close/quit selection-math tests
+  /// (where several windows must share an app pid).
+  private func window(pid: pid_t, wid: CGWindowID) -> WindowInfo {
+    WindowInfo(
+      pid: pid, windowID: wid, title: "W\(wid)", appName: "App\(pid)",
+      frame: CGRect(x: 0, y: 0, width: 400, height: 300), isMinimized: false,
+      subrole: "AXStandardWindow")
+  }
+
   // The bug: a quick Ctrl+Opt+Tab tap showed the overlay and then got stuck.
   @Test("Quick tap focuses the first window without ever showing the overlay")
   func quickTapNeverShows() {
@@ -176,5 +185,114 @@ struct OverlaySessionTests {
     // Not shown yet: hover updates internal selection but emits no view effect.
     #expect(session.handle(.hover(2)).isEmpty)
     #expect(session.handle(.holdElapsed(session: 1)) == [.show(windows: list, index: 2)])
+  }
+
+  // MARK: - W = close / Q = quit
+
+  @Test("W closes the selected window, keeps the overlay, selects the next one")
+  func closeSelectedRelayouts() {
+    var session = OverlaySession()
+    let list = windows(3)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    _ = session.handle(.holdElapsed(session: 1))  // visible at 0
+
+    let remaining = [list[1], list[2]]
+    #expect(
+      session.handle(.closeSelected) == [.close(list[0]), .relayout(windows: remaining, index: 0)])
+    #expect(session.isVisible)
+    // Release now focuses the new selection, never the window we just closed.
+    #expect(session.handle(.confirm) == [.hide, .focus(list[1])])
+  }
+
+  @Test("Closing a middle window keeps the selection on the following window")
+  func closeMiddleKeepsNext() {
+    var session = OverlaySession()
+    let list = windows(4)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    _ = session.handle(.holdElapsed(session: 1))
+    _ = session.handle(.hover(1))  // select list[1]
+
+    let remaining = [list[0], list[2], list[3]]
+    #expect(
+      session.handle(.closeSelected) == [.close(list[1]), .relayout(windows: remaining, index: 1)])
+    #expect(session.handle(.confirm) == [.hide, .focus(list[2])])  // the next window
+  }
+
+  @Test("Closing the last window in the list clamps the selection to the new last")
+  func closeLastClampsSelection() {
+    var session = OverlaySession()
+    let list = windows(3)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    _ = session.handle(.holdElapsed(session: 1))
+    _ = session.handle(.hover(2))  // select the last window
+
+    let remaining = [list[0], list[1]]
+    #expect(
+      session.handle(.closeSelected) == [.close(list[2]), .relayout(windows: remaining, index: 1)])
+    #expect(session.handle(.confirm) == [.hide, .focus(list[1])])
+  }
+
+  @Test("Closing the only window hides the overlay and focuses nothing on release")
+  func closeOnlyWindowHides() {
+    var session = OverlaySession()
+    let list = windows(1)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    _ = session.handle(.holdElapsed(session: 1))
+
+    #expect(session.handle(.closeSelected) == [.close(list[0]), .hide])
+    #expect(!session.isVisible)
+    #expect(session.handle(.confirm) == [.focus(nil)])
+  }
+
+  @Test("Q quits the app, dropping every window that app owns")
+  func quitRemovesAllAppWindows() {
+    var session = OverlaySession()
+    // Windows 1 and 2 share app pid 100; window 3 is a different app.
+    let list = [window(pid: 100, wid: 1), window(pid: 100, wid: 2), window(pid: 200, wid: 3)]
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    _ = session.handle(.holdElapsed(session: 1))  // visible, selection at list[0] (pid 100)
+
+    #expect(
+      session.handle(.quitSelected) == [.quit(100), .relayout(windows: [list[2]], index: 0)])
+    #expect(session.handle(.confirm) == [.hide, .focus(list[2])])
+  }
+
+  @Test("Quit adjusts the selection past app windows removed before it")
+  func quitAdjustsSelectionForEarlierRemovals() {
+    var session = OverlaySession()
+    // pid 100 owns windows at indices 0 and 2; selecting index 2 then quitting drops
+    // both, and the selection lands on what followed (the other app at the end).
+    let list = [
+      window(pid: 100, wid: 1), window(pid: 200, wid: 2), window(pid: 100, wid: 3),
+      window(pid: 300, wid: 4),
+    ]
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    _ = session.handle(.holdElapsed(session: 1))
+    _ = session.handle(.hover(2))  // select the second pid-100 window
+
+    let remaining = [list[1], list[3]]
+    #expect(
+      session.handle(.quitSelected) == [.quit(100), .relayout(windows: remaining, index: 1)])
+    #expect(session.handle(.confirm) == [.hide, .focus(list[3])])
+  }
+
+  @Test("W / Q do nothing before the overlay is shown")
+  func closeAndQuitIgnoredWhenHidden() {
+    var session = OverlaySession()
+    let list = windows(3)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    // Enumerated but not held/shown: the action keys are inert.
+    #expect(session.handle(.closeSelected).isEmpty)
+    #expect(session.handle(.quitSelected).isEmpty)
+    #expect(!session.isVisible)
+    // A normal hold still shows the full, untouched list.
+    #expect(session.handle(.holdElapsed(session: 1)) == [.show(windows: list, index: 0)])
   }
 }

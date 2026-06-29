@@ -7,4 +7,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     NSApp.setActivationPolicy(.accessory)
     AppModel.shared.bootstrap()
   }
+
+  func applicationWillTerminate(_ notification: Notification) {
+    // The native symbolic-hotkey disable persists after we exit, so hand Cmd+Tab back
+    // to macOS on a clean quit — you're never left with a dead key when ZenTab is off.
+    AppModel.shared.shutdown()
+  }
 }

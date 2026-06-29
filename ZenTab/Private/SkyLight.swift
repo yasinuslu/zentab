@@ -81,3 +81,32 @@ func SLSSpaceSetFrontPSN(
 
 /// The process-wide WindowServer connection, resolved once at first use.
 let cgsConnection: CGSConnectionID = CGSMainConnectionID()
+
+// MARK: - Native symbolic hotkeys (the Cmd+Tab override)
+
+/// A native macOS "symbolic hotkey" — the system shortcuts the Dock/WindowServer
+/// consume *before* any event tap sees them. To capture Cmd+Tab we must disable the
+/// matching one(s); our `CGEventTap` then receives the keystroke like any other.
+/// Raw values are the WindowServer's stable hotkey ids. `Int32` matches the C
+/// `CGSSymbolicHotKey` (a plain `int`) the two SPIs below take.
+enum SymbolicHotkey: Int32 {
+  /// Cmd+Tab — switch to the next application.
+  case commandTab = 1
+  /// Cmd+Shift+Tab — the reverse switcher (must be disabled alongside `commandTab`).
+  case commandShiftTab = 2
+  /// Cmd+` (the key above Tab) — switch among the front app's windows.
+  case commandKeyAboveTab = 6
+}
+
+/// Enable or disable a native symbolic hotkey. Disabling Cmd+Tab is what lets our
+/// tap see it at all. NOTE: the effect **persists after this process exits**, so we
+/// must restore (re-enable) on quit/crash or the user is left with a dead Cmd+Tab.
+@_silgen_name("CGSSetSymbolicHotKeyEnabled")
+@discardableResult
+func CGSSetSymbolicHotKeyEnabled(_ hotKey: Int32, _ isEnabled: Bool) -> CGError
+
+/// Whether a native symbolic hotkey is currently enabled. The capture watchdog uses
+/// this to verify Cmd+Tab is still ours — other apps, macOS updates, or a login can
+/// silently re-enable it.
+@_silgen_name("CGSIsSymbolicHotKeyEnabled")
+func CGSIsSymbolicHotKeyEnabled(_ hotKey: Int32) -> Bool

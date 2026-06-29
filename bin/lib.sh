@@ -54,3 +54,39 @@ xcb() {
     xcodebuild "$@"
   fi
 }
+
+# Path to the built Debug .app bundle. Reads it from xcodebuild's resolved settings
+# (captured separately from the build so its output never pollutes the path).
+debug_app_path() {
+  local settings dir name
+  settings="$(xcodebuild -project "$PROJECT" -scheme "$SCHEME" \
+    -configuration Debug -destination "$DESTINATION" -showBuildSettings 2>/dev/null)"
+  dir="$(printf '%s\n' "$settings" | sed -n 's/^ *BUILT_PRODUCTS_DIR = //p' | head -1)"
+  name="$(printf '%s\n' "$settings" | sed -n 's/^ *FULL_PRODUCT_NAME = //p' | head -1)"
+  printf '%s/%s\n' "$dir" "$name"
+}
+
+# Build (Debug), then quit any running instance and relaunch, passing the given args
+# through to the app (e.g. `-profile dev`). We must relaunch — `open` only forwards
+# `--args` to a fresh process, so a switch of launch profile needs the old one gone.
+# Quitting via SIGTERM also triggers the app's restore of the native Cmd+Tab.
+build_and_launch() {
+  xcb build \
+    -project "$PROJECT" -scheme "$SCHEME" \
+    -configuration Debug -destination "$DESTINATION" \
+    CODE_SIGNING_ALLOWED=NO
+
+  local app
+  app="$(debug_app_path)"
+
+  if pgrep -x ZenTab >/dev/null 2>&1; then
+    pkill -x ZenTab 2>/dev/null || true
+    for _ in $(seq 1 30); do
+      pgrep -x ZenTab >/dev/null 2>&1 || break
+      sleep 0.1
+    done
+  fi
+
+  echo "Launching $app $*"
+  open "$app" --args "$@"
+}

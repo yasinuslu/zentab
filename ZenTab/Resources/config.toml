@@ -1,22 +1,26 @@
 # ZenTab config. The switching *behavior* is fixed (it is the opinion ZenTab
-# ships); only these trigger keys and the tap-vs-hold threshold are configurable.
-# Copy this to ~/.config/zentab/config.toml to override. Every value has a strong
-# default, so the file can be as short as a single line.
+# ships); only the trigger keys and the tap-vs-hold threshold are configurable.
 #
-# These are SAFE, non-hijacking dev chords. The shipped design binds Cmd+`,
-# Cmd+Tab, and Option+Tab, but overriding the native Cmd+Tab switcher dependably
-# is a later hardening milestone; until then ZenTab stays out of the system's way.
+# Every value has a strong compiled-in default, so this file ships with everything
+# COMMENTED OUT — the defaults win. The defaults depend on the launch profile:
+#   • production (the shipped app, `bin/run-prod`): Cmd+`, Cmd+Tab, Option+Tab
+#     — ZenTab replaces the native macOS switchers and keeps that claim reliable.
+#   • development (`bin/run`): Ctrl+Opt+`, Ctrl+Opt+Tab, Ctrl+Opt+A — safe chords
+#     that never touch your real Cmd+Tab while you iterate.
+#
+# To override, copy this file to ~/.config/zentab/config.toml and uncomment a line.
+# NOTE: an uncommented key here pins that key for ALL profiles (it overrides the
+# profile default), which is why the shipped copy leaves them commented.
 #
 # Modifiers: cmd, opt (alt), ctrl, shift. Shift is reserved as the universal
 # "reverse" key and is never part of a trigger.
 
-[keys]
-current_app = "ctrl+opt+`"    # (future Cmd+`)      windows of the current app
-other_apps  = "ctrl+opt+tab"  # (future Cmd+Tab)    other apps' windows
-everything  = "ctrl+opt+a"    # (future Option+Tab) everything (a = all). NOT Space:
-                              # Ctrl+Opt+Space is macOS "select next input source".
+# [keys]
+# current_app = "cmd+`"      # windows of the current app
+# other_apps  = "cmd+tab"    # other apps' windows (replaces the native switcher)
+# everything  = "opt+tab"    # everything, everywhere
 
-[behavior]
-# The overlay appears only after the trigger modifier is held this long. A faster
-# tap switches instantly with no overlay (the fast path is sacred).
-hold_threshold_ms = 150
+# [behavior]
+# The overlay appears only after the trigger modifier is held this long (ms). A
+# faster tap switches instantly with no overlay (the fast path is sacred).
+# hold_threshold_ms = 150

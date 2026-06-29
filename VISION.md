@@ -66,10 +66,15 @@ keys that trigger it are.
 - **Cmd+Tab replaces** the native switcher (private symbolic-hotkey API). This
   override is a **hard requirement: it must be dependable in every app** (alt-tab
   is flaky here; ZenTab is not). Whatever it takes: deterministic hotkey
-  resolution, HID-level event tap, tap recovery. The native shortcut is
-  **auto-restored** whenever our tap is disabled (sleep, secure input) or the app
-  crashes, so you are never stranded. Shipped default is Cmd+Tab; bindings are
-  configurable so a safe key can be used during development.
+  resolution, HID-level event tap, tap recovery. ZenTab **never silently rebinds to
+  another key as a fallback** — it holds the claim relentlessly (re-asserting it on
+  a watchdog tick, since other apps / macOS updates / a login can re-enable the
+  native hotkey) and **reports honestly in the menu bar** whether it currently owns
+  the shortcut. The native shortcut is **auto-restored** whenever our tap is disabled
+  (sleep, secure input) or the app crashes/quits, so you are never stranded with a
+  dead key. Shipped default is the Cmd+Tab suite; a **development launch profile**
+  (`bin/run`) uses safe non-hijacking chords so iterating never touches your Cmd+Tab,
+  and `bin/run-prod` exercises the real suite. The trigger keys remain configurable.
 - **App Sandbox OFF, no Mac App Store** (the feature set requires private
   SkyLight/CGS APIs). Distributed as a DMG / GitHub release. **Notarization is the
   committed end state** (we will ship notarized). Interim: **ad-hoc signed**
@@ -82,8 +87,11 @@ keys that trigger it are.
 
 **First vertical slice is implemented** (build- and test-verified; runtime needs
 Accessibility/Screen Recording granted and is hand-verified). The SwiftUI scaffold is
-gone; the app is a menu bar accessory. On a safe, non-hijacking hotkey (default
-`Ctrl+Opt+Tab`, configurable in TOML) it:
+gone; the app is a menu bar accessory. The shipped default is now the **Cmd+Tab
+suite** (`Cmd+Tab` other apps · `Cmd+\`` this app · `Option+Tab` everything); a
+development launch profile keeps the safe `Ctrl+Opt+…` chords for day-to-day work
+(`bin/run` = dev, `bin/run-prod` = production, both configurable in TOML). On the
+configured trigger it:
 
 - enumerates every window on the current monitor + Space (CoreGraphics z-order +
   Accessibility detail), in a stable list, with the selection starting on the
@@ -98,10 +106,19 @@ The private SkyLight/CGS symbols are bound with `@_silgen_name` (no bridging hea
 SkyLight is linked via `-framework SkyLight`; the menu bar has a diagnostics action to
 smoke-test the bindings.
 
+The **native `Cmd+Tab` override is implemented**: the colliding macOS symbolic hotkeys
+(`Cmd+Tab` / `Cmd+Shift+Tab` / `Cmd+\``) are disabled via the private
+`CGSSetSymbolicHotKeyEnabled` so the event tap can absorb the keystroke, but only once
+the tap is live (so we never brick the key when we can't serve it). A 2-second watchdog
+re-asserts the claim, re-enables the tap if the OS disabled it, verifies the claim with
+`CGSIsSymbolicHotKeyEnabled`, and **restores the native shortcuts** on quit, on crash
+(SIGTERM/SIGINT + uncaught-exception guards), or whenever capture isn't possible. The
+menu bar icon is the at-a-glance indicator (calm rectangle = we own it, warning triangle
+= we don't, with the reason in the dropdown).
+
 **Next:** live thumbnails are wired through ScreenCaptureKit but the grid currently
 falls back to app icon + title until that's verified on-device; then the other two modes
 (current-app `Cmd+\``, everything `Option+Tab` across Spaces/monitors via the deferred
-private CGS calls), W=close / Q=quit, recency for the tap toggle, and finally the native
-`Cmd+Tab` override (private symbolic-hotkey API) with auto-restore. The contributor guide
-(`CLAUDE.md`) and the local alt-tab reference clone hold the API names.
+private CGS calls), W=close / Q=quit, and recency for the tap toggle. The contributor
+guide (`CLAUDE.md`) and the local alt-tab reference clone hold the API names.
 </content>

@@ -11,19 +11,24 @@
 		213812D756CD965EA42EBA64 /* TOMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63934F2C629A4A581F13C591 /* TOMLParser.swift */; };
 		28C370C05D35E040E5BFF206 /* Keybinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71A17F28DCE54435B0B551F /* Keybinding.swift */; };
 		2F3828F4840412D873EBF181 /* SwitchMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6E403FDB76C082C2AB69A8 /* SwitchMode.swift */; };
+		400977C582141E7D8E80224F /* NativeHotkeyConflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = F381FDE6D9D28C4B9AA848B1 /* NativeHotkeyConflict.swift */; };
 		41B83E25DB349697EF521CAA /* WindowThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 409C195BA2D4A1458C179187 /* WindowThumbnail.swift */; };
 		422744913EA997BD7DFE40BF /* OverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B4263808D3FBE36E15E0F4D /* OverlayController.swift */; };
 		44F4865690A3E30090934586 /* config.toml in Resources */ = {isa = PBXBuildFile; fileRef = 17062CB8C07D2691E221AFE6 /* config.toml */; };
 		488C74E74EFFD744F2B66D90 /* HIServicesSPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = E65D4503B08575E79E2AEB2F /* HIServicesSPI.swift */; };
 		541A880C29DBA6E27CC52BC6 /* WindowEnumerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA237BC209BACEE03479F9C5 /* WindowEnumerator.swift */; };
+		59E62825276711B3AE23FED5 /* LaunchProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D1D9174ED8FD2CA0A4FF149 /* LaunchProfile.swift */; };
+		618E806B988620E172A13E45 /* NativeHotkeyRestore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41363FE7B5390C064877D81D /* NativeHotkeyRestore.swift */; };
 		64D37DF88335D28C83716F40 /* SkyLight.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA4D8F2BD049B818E4C3790D /* SkyLight.swift */; };
 		71E22CCD123CCF718091F8DB /* WindowFocuser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704F07B389F7056774BE70B9 /* WindowFocuser.swift */; };
 		788CF83B980BF98F27932075 /* TOMLConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24200F4FDDFA43F04520569 /* TOMLConfigTests.swift */; };
+		82116ACE947B3D87DD4DC32A /* CaptureHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48D48F4C062840E7113667E3 /* CaptureHealth.swift */; };
 		84D72A0697670315E9706A6D /* OverlaySessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6C3653BB248506198AFA276 /* OverlaySessionTests.swift */; };
 		8C701A9154B86A92D9151B1F /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE7D07C25D65DEB5BC91169 /* Permissions.swift */; };
 		8EA5EDC239B73833175CA897 /* SwitcherPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE31BC4E771567CE8001B2F2 /* SwitcherPanel.swift */; };
 		8EAC272A9ED831B3AA224EA6 /* WindowFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35E6B10B67E46713183282D9 /* WindowFilterTests.swift */; };
 		8F430DD57B9FB2BE9E1E87F4 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B601B39E631A5CE5C71E33E0 /* AppDelegate.swift */; };
+		9761A586C578B9E0B01C73BA /* CaptureReliabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0274FF576D3CC59D6FF4DC7F /* CaptureReliabilityTests.swift */; };
 		9FA8B2D7C769A64DDB5C2390 /* HotkeyTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3259A283E5998AA73D38DADA /* HotkeyTap.swift */; };
 		AD79D873F4AEB01BC613F01C /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 290AEA6B5D912D3B4979D7B9 /* Config.swift */; };
 		AE8BB607D689A924461C2D1A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 525600181727B1500BEC9252 /* Assets.xcassets */; };
@@ -34,6 +39,7 @@
 		E4F1395DD342554AA89800D3 /* WindowInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16DBA74F3FE81CD5DF5D4B1B /* WindowInfo.swift */; };
 		E9DF22A6B76029570579399D /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 376468B2DF2FB17C32FC2C84 /* AppModel.swift */; };
 		FA25D9FB60DFF43B09FE1C9C /* ConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C878A39364570F45F0E9BC /* ConfigStore.swift */; };
+		FD3BA4196AF855F4C1A0C3AA /* CaptureWatchdog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 398E6E7E4B452FEB1FB94B13 /* CaptureWatchdog.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,6 +53,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0274FF576D3CC59D6FF4DC7F /* CaptureReliabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureReliabilityTests.swift; sourceTree = "<group>"; };
 		14F7E385C2993CB30C4B2E43 /* KeybindingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeybindingTests.swift; sourceTree = "<group>"; };
 		16DBA74F3FE81CD5DF5D4B1B /* WindowInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowInfo.swift; sourceTree = "<group>"; };
 		17062CB8C07D2691E221AFE6 /* config.toml */ = {isa = PBXFileReference; path = config.toml; sourceTree = "<group>"; };
@@ -56,13 +63,17 @@
 		3259A283E5998AA73D38DADA /* HotkeyTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyTap.swift; sourceTree = "<group>"; };
 		35E6B10B67E46713183282D9 /* WindowFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowFilterTests.swift; sourceTree = "<group>"; };
 		376468B2DF2FB17C32FC2C84 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		398E6E7E4B452FEB1FB94B13 /* CaptureWatchdog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWatchdog.swift; sourceTree = "<group>"; };
 		3B4263808D3FBE36E15E0F4D /* OverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayController.swift; sourceTree = "<group>"; };
 		409C195BA2D4A1458C179187 /* WindowThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowThumbnail.swift; sourceTree = "<group>"; };
+		41363FE7B5390C064877D81D /* NativeHotkeyRestore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHotkeyRestore.swift; sourceTree = "<group>"; };
 		48C878A39364570F45F0E9BC /* ConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigStore.swift; sourceTree = "<group>"; };
+		48D48F4C062840E7113667E3 /* CaptureHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureHealth.swift; sourceTree = "<group>"; };
 		4A1A77506ECACA9398BCEDC4 /* OverlaySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlaySession.swift; sourceTree = "<group>"; };
 		4EBD932CC863F5804AAA20E0 /* ZenTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenTabApp.swift; sourceTree = "<group>"; };
 		525600181727B1500BEC9252 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		556FD0EDD87634D487E85A8D /* TileGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileGridView.swift; sourceTree = "<group>"; };
+		5D1D9174ED8FD2CA0A4FF149 /* LaunchProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchProfile.swift; sourceTree = "<group>"; };
 		63934F2C629A4A581F13C591 /* TOMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOMLParser.swift; sourceTree = "<group>"; };
 		6C2F680461FAE383379D7A6D /* MenuBarContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContent.swift; sourceTree = "<group>"; };
 		704F07B389F7056774BE70B9 /* WindowFocuser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowFocuser.swift; sourceTree = "<group>"; };
@@ -74,6 +85,7 @@
 		E7DEA57FB72789AEBFE7C117 /* ZenTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ZenTab.entitlements; sourceTree = "<group>"; };
 		EE31BC4E771567CE8001B2F2 /* SwitcherPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitcherPanel.swift; sourceTree = "<group>"; };
 		F24200F4FDDFA43F04520569 /* TOMLConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOMLConfigTests.swift; sourceTree = "<group>"; };
+		F381FDE6D9D28C4B9AA848B1 /* NativeHotkeyConflict.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHotkeyConflict.swift; sourceTree = "<group>"; };
 		F51A81869C402552D21D9573 /* ZenTabTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ZenTabTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA237BC209BACEE03479F9C5 /* WindowEnumerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowEnumerator.swift; sourceTree = "<group>"; };
 		FA4D8F2BD049B818E4C3790D /* SkyLight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyLight.swift; sourceTree = "<group>"; };
@@ -119,6 +131,7 @@
 		3F8CBDCB0A9F2D2A91A747AC /* ZenTabTests */ = {
 			isa = PBXGroup;
 			children = (
+				0274FF576D3CC59D6FF4DC7F /* CaptureReliabilityTests.swift */,
 				14F7E385C2993CB30C4B2E43 /* KeybindingTests.swift */,
 				E6C3653BB248506198AFA276 /* OverlaySessionTests.swift */,
 				F24200F4FDDFA43F04520569 /* TOMLConfigTests.swift */,
@@ -130,8 +143,12 @@
 		747F7E4EF93F8A9E52DDAE8F /* Input */ = {
 			isa = PBXGroup;
 			children = (
+				48D48F4C062840E7113667E3 /* CaptureHealth.swift */,
+				398E6E7E4B452FEB1FB94B13 /* CaptureWatchdog.swift */,
 				3259A283E5998AA73D38DADA /* HotkeyTap.swift */,
 				A71A17F28DCE54435B0B551F /* Keybinding.swift */,
+				F381FDE6D9D28C4B9AA848B1 /* NativeHotkeyConflict.swift */,
+				41363FE7B5390C064877D81D /* NativeHotkeyRestore.swift */,
 			);
 			path = Input;
 			sourceTree = "<group>";
@@ -158,6 +175,7 @@
 			children = (
 				B601B39E631A5CE5C71E33E0 /* AppDelegate.swift */,
 				376468B2DF2FB17C32FC2C84 /* AppModel.swift */,
+				5D1D9174ED8FD2CA0A4FF149 /* LaunchProfile.swift */,
 				6C2F680461FAE383379D7A6D /* MenuBarContent.swift */,
 				4EBD932CC863F5804AAA20E0 /* ZenTabApp.swift */,
 			);
@@ -307,6 +325,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9761A586C578B9E0B01C73BA /* CaptureReliabilityTests.swift in Sources */,
 				CF7103783C1EF0F490A5C9C2 /* KeybindingTests.swift in Sources */,
 				84D72A0697670315E9706A6D /* OverlaySessionTests.swift in Sources */,
 				788CF83B980BF98F27932075 /* TOMLConfigTests.swift in Sources */,
@@ -320,12 +339,17 @@
 			files = (
 				8F430DD57B9FB2BE9E1E87F4 /* AppDelegate.swift in Sources */,
 				E9DF22A6B76029570579399D /* AppModel.swift in Sources */,
+				82116ACE947B3D87DD4DC32A /* CaptureHealth.swift in Sources */,
+				FD3BA4196AF855F4C1A0C3AA /* CaptureWatchdog.swift in Sources */,
 				AD79D873F4AEB01BC613F01C /* Config.swift in Sources */,
 				FA25D9FB60DFF43B09FE1C9C /* ConfigStore.swift in Sources */,
 				488C74E74EFFD744F2B66D90 /* HIServicesSPI.swift in Sources */,
 				9FA8B2D7C769A64DDB5C2390 /* HotkeyTap.swift in Sources */,
 				28C370C05D35E040E5BFF206 /* Keybinding.swift in Sources */,
+				59E62825276711B3AE23FED5 /* LaunchProfile.swift in Sources */,
 				198AB7E7827DB4043A08A8C5 /* MenuBarContent.swift in Sources */,
+				400977C582141E7D8E80224F /* NativeHotkeyConflict.swift in Sources */,
+				618E806B988620E172A13E45 /* NativeHotkeyRestore.swift in Sources */,
 				422744913EA997BD7DFE40BF /* OverlayController.swift in Sources */,
 				B2F0FE1DE18A37EADD1A2385 /* OverlaySession.swift in Sources */,
 				8C701A9154B86A92D9151B1F /* Permissions.swift in Sources */,

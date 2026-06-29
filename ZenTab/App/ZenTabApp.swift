@@ -11,8 +11,12 @@ struct ZenTabApp: App {
   @StateObject private var model = AppModel.shared
 
   var body: some Scene {
-    MenuBarExtra("ZenTab", systemImage: "rectangle.on.rectangle") {
+    // The icon is the at-a-glance capture indicator: a calm rectangle when ZenTab
+    // owns the shortcut, a warning triangle the instant it doesn't.
+    MenuBarExtra {
       MenuBarContent(model: model)
+    } label: {
+      Image(systemName: model.captureHealth.menuBarSymbol)
     }
   }
 }

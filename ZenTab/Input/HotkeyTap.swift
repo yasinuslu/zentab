@@ -88,6 +88,23 @@ final class HotkeyTap: @unchecked Sendable {
     if let runLoop { CFRunLoopStop(runLoop) }
   }
 
+  /// Is the tap currently delivering events? The OS disables it on secure input and
+  /// can time it out; the watchdog polls this so capture health reflects reality.
+  /// `machPort` is set once in `start()` before the tap thread runs, so reading it
+  /// from the main actor afterwards is safe.
+  var isEnabled: Bool {
+    guard let machPort else { return false }
+    return CGEvent.tapIsEnabled(tap: machPort)
+  }
+
+  /// Re-enable the tap if the OS turned it off. Idempotent; cheap to call on a timer.
+  /// This is the slow, belt-and-suspenders complement to the in-callback re-enable
+  /// (which only fires on the explicit `tapDisabledBy*` events).
+  func ensureEnabled() {
+    guard let machPort, !CGEvent.tapIsEnabled(tap: machPort) else { return }
+    CGEvent.tapEnable(tap: machPort, enable: true)
+  }
+
   // MARK: - Tap-thread state (lock-guarded)
 
   private var snapshot: (active: Bool, hold: NSEvent.ModifierFlags) {

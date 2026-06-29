@@ -24,8 +24,29 @@ keyboard to confirm. The automation can't do this part.
 - [ ] Run **"Run private-API diagnostics"** from the menu; it should print a non-zero
       CGS connection and a PSN (confirms the `@_silgen_name` bindings are sound).
 
-If something misbehaves, the runtime (event tap, overlay, enumeration, focus) is the
-hand-verified shell; the pure logic is covered by `bin/test`.
+### Then verify the real Cmd+Tab capture (production suite)
+
+The above uses safe dev chords. To exercise the native-switcher override, launch the
+production suite. This *replaces* the macOS Cmd+Tab while ZenTab runs, so it needs a
+human to confirm it behaves and recovers correctly.
+
+- [ ] `bin/run-prod` (quits any running ZenTab first, then relaunches owning Cmd+Tab).
+- [ ] **Menu bar icon is the indicator:** a calm rectangle = ZenTab owns the shortcut;
+      a warning triangle = it doesn't (open the menu for the reason). With Accessibility
+      granted it should be the rectangle within ~2s.
+- [ ] **Press `Cmd+Tab`:** ZenTab's overlay/switch should appear — *not* the macOS
+      app switcher. Try `Cmd+\`` (this app) and `Option+Tab` (everything) too.
+- [ ] **Restore-on-quit:** Quit ZenTab; native macOS `Cmd+Tab` should work again
+      immediately. Relaunch; ZenTab reclaims it.
+- [ ] **Restore-on-kill:** `pkill -x ZenTab` (or kill it in Activity Monitor); native
+      `Cmd+Tab` should again be restored (SIGTERM guard), not left dead.
+- [ ] **Watchdog re-assert:** while ZenTab runs, the menu bar should stay on the
+      rectangle even if something briefly re-enables the native switcher (it re-claims
+      on the next 2-second tick).
+
+If something misbehaves, the runtime (event tap, overlay, enumeration, focus, native
+hotkey claim) is the hand-verified shell; the pure logic — trigger→symbolic-hotkey
+mapping, capture-health classification, launch-profile defaults — is covered by `bin/test`.
 
 ## 1. Signed + notarized releases (optional, recommended before public distribution)
 

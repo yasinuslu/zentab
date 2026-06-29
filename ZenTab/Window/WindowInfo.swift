@@ -9,6 +9,7 @@ struct WindowInfo: Sendable, Identifiable, Equatable {
   /// The owning application's process id.
   let pid: pid_t
   /// CoreGraphics window id (from `_AXUIElementGetWindow`); the focus/capture key.
+  /// `0` for a windowless-app entry (no real window: see `isWindowlessApp`).
   let windowID: CGWindowID
   /// Window title, may be empty (some apps withhold it without Screen Recording).
   let title: String
@@ -18,10 +19,38 @@ struct WindowInfo: Sendable, Identifiable, Equatable {
   let frame: CGRect
   /// Whether the window is currently minimized to the Dock.
   let isMinimized: Bool
+  /// Whether the window is in native (green-button) fullscreen.
+  let isFullscreen: Bool
   /// AX subrole, e.g. "AXStandardWindow" or "AXDialog".
   let subrole: String
+  /// A running regular app with **no open window**. Listed last in the
+  /// current-app / everything modes; selecting it activates the app so it reopens
+  /// a window (a Dock-click-style reopen). Carries `pid` + `bundleURL`, no `windowID`.
+  let isWindowlessApp: Bool
+  /// The owning app's bundle URL, used to reopen a windowless app via a launch
+  /// (the Apple-event reopen a Dock click sends). nil for plain windows.
+  let bundleURL: URL?
 
-  var id: CGWindowID { windowID }
+  init(
+    pid: pid_t, windowID: CGWindowID, title: String, appName: String, frame: CGRect,
+    isMinimized: Bool, isFullscreen: Bool = false, subrole: String,
+    isWindowlessApp: Bool = false, bundleURL: URL? = nil
+  ) {
+    self.pid = pid
+    self.windowID = windowID
+    self.title = title
+    self.appName = appName
+    self.frame = frame
+    self.isMinimized = isMinimized
+    self.isFullscreen = isFullscreen
+    self.subrole = subrole
+    self.isWindowlessApp = isWindowlessApp
+    self.bundleURL = bundleURL
+  }
+
+  /// Stable, unique identity across both window entries (by window id) and
+  /// windowless-app entries (which all share `windowID == 0`, so they key on pid).
+  var id: String { isWindowlessApp ? "app-\(pid)" : "wid-\(windowID)" }
 
   /// The window's center point (CoreGraphics global coords, top-left origin).
   var center: CGPoint { CGPoint(x: frame.midX, y: frame.midY) }

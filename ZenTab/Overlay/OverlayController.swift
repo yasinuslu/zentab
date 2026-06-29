@@ -79,8 +79,9 @@ final class OverlayController {
     pendingMode = mode
     pendingFrontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
     pendingSelfPID = ProcessInfo.processInfo.processIdentifier
-    // Scoped modes show only the monitor under the mouse; everything spans all.
-    pendingMonitorFrame = mode == .everything ? nil : Self.monitorUnderMouse()
+    // Only otherApps is scoped to the switcher's monitor (the behavior table);
+    // currentApp and everything span all screens.
+    pendingMonitorFrame = mode == .otherApps ? Self.monitorUnderMouse() : nil
     send(.summon)
   }
 
@@ -101,9 +102,13 @@ final class OverlayController {
       let frontmost = pendingFrontmostPID
       let selfPID = pendingSelfPID
       let monitorFrame = pendingMonitorFrame
+      // Instant in-memory read on the main actor (no AX on the summon path).
+      let registryWindows = WindowRegistry.shared.windowSnapshot()
+      let windowlessApps = WindowRegistry.shared.windowlessAppEntries()
       Task { [weak self] in
         let windows = await WindowEnumerator.enumerate(
-          mode: mode, frontmostPID: frontmost, selfPID: selfPID, monitorFrame: monitorFrame)
+          mode: mode, frontmostPID: frontmost, selfPID: selfPID, monitorFrame: monitorFrame,
+          registryWindows: registryWindows, windowlessApps: windowlessApps)
         self?.send(.enumerated(windows, currentPID: frontmost, session: id))
       }
 

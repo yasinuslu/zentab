@@ -9,16 +9,20 @@ calm, focused, zero lag.
 
 | Shortcut | Shows | Scope |
 | --- | --- | --- |
-| **Cmd+`** (backtick) | windows of the **current app** | current monitor + current Space |
-| **Cmd+Tab** | **every window here** (all apps, the current app included) | current monitor + current Space |
-| **Option+Tab** | **everything** | all apps, all Spaces, all monitors (no exclusions: includes the current app, minimized, hidden) |
+| **Cmd+`** (backtick) | windows of the **active app**, everywhere | all Spaces + all monitors (incl. minimized, hidden, fullscreen; the app itself listed last if it has no window) |
+| **Cmd+Tab** | **every window here** (all apps, the current app included) | current monitor + visible Space (real on-screen windows only) |
+| **Option+Tab** | **everything** | all apps, all Spaces, all monitors (no exclusions: includes the current app, minimized, hidden, windowless apps last) |
 
-Cmd+` and Cmd+Tab share the **same locality** (current monitor + current Space):
-Cmd+Tab shows every window there, and Cmd+` narrows that to just the current app's
-windows. The current app's windows are *in* the Cmd+Tab list (excluding them is
+Cmd+Tab is the fast everyday switch: what is live right here, on this monitor and
+this Space. The current app's windows are *in* that list (excluding them is
 disorienting), but the selection starts on the most-recent **other** window, so a
-quick tap still switches away from where you are (classic Cmd+Tab). Option+Tab is
-the only global shortcut: the escape hatch for reaching anything, anywhere.
+quick tap still switches away from where you are (classic Cmd+Tab). Cmd+` is the
+companion for one app: every window of the **active** app, gathered from wherever it
+is (other Spaces, other monitors, minimized), so you can fan through them without
+hunting. Option+Tab is the only fully global shortcut: the escape hatch for reaching
+anything, anywhere. The exact per-mode filters (apps, Spaces, screens, minimized,
+hidden, fullscreen, windowless) are fixed and not configurable; only the trigger
+keys are.
 
 ## Interaction
 

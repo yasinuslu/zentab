@@ -12,21 +12,29 @@ enum WindowThumbnail {
     let images: [CGWindowID: CGImage]
   }
 
-  /// Capture thumbnails for the given window ids in one ShareableContent pass.
-  /// SCK only sees on-screen windows, so ids on other Spaces won't be captured here
-  /// (the cache + `hwCapture` cover those).
+  /// Capture thumbnails for the given window ids. ScreenCaptureKit is the supported,
+  /// live path but only sees **on-screen** windows; for the ids it misses (other
+  /// Spaces, minimized) we fall back to the private hardware path, which captures from
+  /// the backing store. So the everything mode shows a real thumbnail for an off-Space
+  /// or minimized window instead of a bare icon. SCK results win on any overlap.
   static func capture(windowIDs: [CGWindowID], maxDimension: CGFloat = 480) async -> Captured {
-    guard !windowIDs.isEmpty,
-      let content = try? await SCShareableContent.excludingDesktopWindows(
-        false, onScreenWindowsOnly: true)
-    else { return Captured(images: [:]) }
+    guard !windowIDs.isEmpty else { return Captured(images: [:]) }
+    let wanted = Set(windowIDs.filter { $0 != 0 })  // windowless entries have id 0
 
-    let wanted = Set(windowIDs)
+    let content = try? await SCShareableContent.excludingDesktopWindows(
+      false, onScreenWindowsOnly: true)
     var images: [CGWindowID: CGImage] = [:]
-    for window in content.windows where wanted.contains(window.windowID) {
+    for window in (content?.windows ?? []) where wanted.contains(window.windowID) {
       if let image = await snapshot(window, maxDimension: maxDimension) {
         images[window.windowID] = image
       }
+    }
+
+    // HW-capture the ids ScreenCaptureKit didn't return (off-Space / minimized).
+    let missing = wanted.subtracting(images.keys)
+    if !missing.isEmpty {
+      let fallback = await hwCaptureFallback(for: Array(missing), maxDimension: maxDimension)
+      images.merge(fallback.images) { sck, _ in sck }
     }
     return Captured(images: images)
   }
@@ -76,6 +84,46 @@ enum WindowThumbnail {
     let array =
       CGSHWCaptureWindowList(cgsConnection, &wid, 1, options).takeRetainedValue() as? [CGImage]
     return array?.first
+  }
+
+  /// HW-capture a set of window ids off-main, each downscaled to `maxDimension` so the
+  /// fallback frames match the SCK path's footprint (the raw hardware bitmap is full
+  /// Retina size). The `CGSHWCaptureWindowList` calls are synchronous, so we run them
+  /// on a background queue rather than blocking the cooperative pool.
+  static func hwCaptureFallback(
+    for ids: [CGWindowID], maxDimension: CGFloat = 480
+  ) async -> Captured {
+    guard !ids.isEmpty else { return Captured(images: [:]) }
+    return await withCheckedContinuation { continuation in
+      DispatchQueue.global(qos: .userInitiated).async {
+        var images: [CGWindowID: CGImage] = [:]
+        for id in ids {
+          if let image = hwCapture(id) {
+            images[id] = downscale(image, maxDimension: maxDimension)
+          }
+        }
+        continuation.resume(returning: Captured(images: images))
+      }
+    }
+  }
+
+  /// Fit a CGImage within `maxDimension` on its longest side (no-op if already small).
+  private static func downscale(_ image: CGImage, maxDimension: CGFloat) -> CGImage {
+    let longest = CGFloat(max(image.width, image.height))
+    guard longest > maxDimension else { return image }
+    let scale = maxDimension / longest
+    let width = max(1, Int(CGFloat(image.width) * scale))
+    let height = max(1, Int(CGFloat(image.height) * scale))
+    guard
+      let context = CGContext(
+        data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+          | CGBitmapInfo.byteOrder32Little.rawValue)
+    else { return image }
+    context.interpolationQuality = .medium
+    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+    return context.makeImage() ?? image
   }
 
   /// Smoke-test `hwCapture` across a set of ids without touching the hot path: how

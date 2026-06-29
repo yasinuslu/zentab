@@ -19,7 +19,14 @@ import ApplicationServices
 enum WindowFocuser {
   private static let queue = DispatchQueue(label: "org.nepjua.ZenTab.focus", qos: .userInteractive)
 
+  @MainActor
   static func focus(_ window: WindowInfo) {
+    // A windowless-app entry has no window to raise: reopen the app so it spawns one
+    // (a Dock-click-style reopen), then we're done.
+    if window.isWindowlessApp {
+      reopenWindowlessApp(window)
+      return
+    }
     // Snapshot main-only state before going off-main.
     let pid = window.pid
     let windowID = window.windowID
@@ -27,21 +34,50 @@ enum WindowFocuser {
     let originFrontPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
     // Keep this a String (Sendable) across the queue hop; bridge back to CFString inside.
     let mainScreenUUID = NSScreen.main?.spaceUUID()
+    // The registry's cached AX element works **cross-Space** (kAXWindowsAttribute, the
+    // old `findAXWindow` source, only returns current-Space windows — so the AX raise /
+    // de-minimize step was silently skipped for off-Space targets). Boxed to cross the
+    // queue hop.
+    let axBox = WindowRegistry.shared.axElement(for: windowID)
     queue.async {
       perform(
         pid: pid, windowID: windowID, isMinimized: isMinimized,
-        originFrontPID: originFrontPID, mainScreenUUID: mainScreenUUID)
+        originFrontPID: originFrontPID, screen: ScreenContext(uuid: mainScreenUUID, axBox: axBox))
+    }
+  }
+
+  /// The two main-only handles `perform` needs, bundled so the off-main entry point
+  /// stays within the parameter budget: the display UUID (for the origin Space) and
+  /// the registry's cached AX element (for the cross-Space raise / de-minimize).
+  private struct ScreenContext {
+    let uuid: String?
+    let axBox: AXElementBox?
+  }
+
+  /// Reopen a running app that has no open window, so it spawns one (what clicking its
+  /// Dock icon does = the `kAEReopenApplication` Apple event). `openApplication` sends
+  /// that reopen for an already-running app; activating is the best-effort fallback.
+  @MainActor
+  private static func reopenWindowlessApp(_ window: WindowInfo) {
+    if let url = window.bundleURL {
+      let configuration = NSWorkspace.OpenConfiguration()
+      configuration.activates = true
+      NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, _ in }
+    } else {
+      NSRunningApplication(processIdentifier: window.pid)?
+        .activate(options: [.activateAllWindows])
     }
   }
 
   private static func perform(
     pid: pid_t, windowID: CGWindowID, isMinimized: Bool,
-    originFrontPID: pid_t?, mainScreenUUID: String?
+    originFrontPID: pid_t?, screen: ScreenContext
   ) {
-    let axWindow = findAXWindow(pid: pid, windowID: windowID)
+    // Prefer the registry's cross-Space element; fall back to a current-Space lookup.
+    let axWindow = screen.axBox?.element ?? findAXWindow(pid: pid, windowID: windowID)
 
     // Is the target on the current Space? (Drives the origin-Space repair below.)
-    let originSpaceID = mainScreenUUID.map {
+    let originSpaceID = screen.uuid.map {
       CGSManagedDisplayGetCurrentSpace(cgsConnection, $0 as CFString)
     }
     let windowSpaces =

@@ -37,6 +37,10 @@ final class AppModel: ObservableObject {
     NativeHotkeyRestore.installCrashGuards()
     config = ConfigStore.load(profile: profile)
     refreshPermissions()
+    // Start the window registry's observers off the summon path. AX permission is
+    // required to receive events; if it isn't granted yet the permission timer
+    // re-attempts via startSwitcherIfPossible (start() is idempotent).
+    if Permissions.isAccessibilityTrusted { WindowTracker.shared.start() }
     startSwitcherIfPossible()
     installDumpSignal()
 
@@ -105,12 +109,33 @@ final class AppModel: ObservableObject {
   func dumpSwitchability() {
     let selfPID = ProcessInfo.processInfo.processIdentifier
     let mainScreenUUID = NSScreen.main?.spaceUUID()
+    let registrySummary =
+      "# registry: \(WindowRegistry.shared.windowCount) windows across "
+      + "\(WindowRegistry.shared.appCount) tracked apps\n"
+    // Capture the registry snapshot on the main actor and run the REAL enumeration for
+    // each mode, so the dump shows exactly the list each shortcut would produce (the
+    // probe below is the independent brute-force cross-check, not the shipped path).
+    let snapshot = WindowRegistry.shared.windowSnapshot()
+    let windowlessApps = WindowRegistry.shared.windowlessAppEntries()
+    let frontmost = NSWorkspace.shared.frontmostApplication?.processIdentifier
     diagnostics = "Dumping switchability…"
     Task { [weak self] in
-      let probes = await WindowEnumerator.probeEverything(
+      var modeDump = "# --- actual mode output (registry-backed enumeration) ---\n"
+      for mode in [SwitchMode.everything, .currentApp, .otherApps] {
+        let list = await WindowEnumerator.enumerate(
+          mode: mode, frontmostPID: frontmost, selfPID: selfPID, monitorFrame: nil,
+          registryWindows: snapshot, windowlessApps: windowlessApps)
+        modeDump += "## \(mode) → \(list.count) entries\n"
+        for window in list {
+          modeDump +=
+            "   \(window.isWindowlessApp ? "[app] " : "")\(window.appName) — \(window.title)\n"
+        }
+      }
+      let probes = await SwitchabilityProbe.collect(
         selfPID: selfPID, mainScreenUUID: mainScreenUUID)
       let path = (NSHomeDirectory() as NSString).appendingPathComponent("zentab-switchability.txt")
-      try? Self.formatProbes(probes).write(toFile: path, atomically: true, encoding: .utf8)
+      try? (registrySummary + modeDump + "\n" + Self.formatProbes(probes)).write(
+        toFile: path, atomically: true, encoding: .utf8)
       await MainActor.run {
         let shown = probes.filter(\.passesCurrentFilter).count
         self?.diagnostics = "Wrote \(probes.count) windows (\(shown) shown) → \(path)"
@@ -126,14 +151,14 @@ final class AppModel: ObservableObject {
     let mainScreenUUID = NSScreen.main?.spaceUUID()
     diagnostics = "Testing HW capture…"
     Task { [weak self] in
-      let probes = await WindowEnumerator.probeEverything(
+      let probes = await SwitchabilityProbe.collect(
         selfPID: selfPID, mainScreenUUID: mainScreenUUID)
       let summary = await WindowThumbnail.hwCaptureSummary(for: probes.map(\.windowID))
       await MainActor.run { self?.diagnostics = summary }
     }
   }
 
-  private static func formatProbes(_ probes: [WindowEnumerator.SwitchabilityProbe]) -> String {
+  private static func formatProbes(_ probes: [SwitchabilityProbe.Sample]) -> String {
     var lines = [
       "# ZenTab switchability dump — everything-mode candidates, BEFORE filtering",
       "# verdict | onScreen onSpace hasAX | Layer role/subrole min | WxH | app — title",

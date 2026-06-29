@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		198AB7E7827DB4043A08A8C5 /* MenuBarContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C2F680461FAE383379D7A6D /* MenuBarContent.swift */; };
 		213812D756CD965EA42EBA64 /* TOMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63934F2C629A4A581F13C591 /* TOMLParser.swift */; };
-		241BCC05871A49295DB4352F /* SwitcherSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327845442DFBA25A0B1F1B72 /* SwitcherSelectionTests.swift */; };
 		28C370C05D35E040E5BFF206 /* Keybinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71A17F28DCE54435B0B551F /* Keybinding.swift */; };
 		2F3828F4840412D873EBF181 /* SwitchMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6E403FDB76C082C2AB69A8 /* SwitchMode.swift */; };
 		41B83E25DB349697EF521CAA /* WindowThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 409C195BA2D4A1458C179187 /* WindowThumbnail.swift */; };
@@ -31,7 +30,6 @@
 		B2F0FE1DE18A37EADD1A2385 /* OverlaySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A1A77506ECACA9398BCEDC4 /* OverlaySession.swift */; };
 		C5AE6A3AD7D42C53CEA397FE /* TileGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 556FD0EDD87634D487E85A8D /* TileGridView.swift */; };
 		CF7103783C1EF0F490A5C9C2 /* KeybindingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F7E385C2993CB30C4B2E43 /* KeybindingTests.swift */; };
-		DF129787AE6E75CC54271556 /* SwitcherSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD2E66BC40672DEC11503AD /* SwitcherSelection.swift */; };
 		DF1910CBB368C01357928020 /* ZenTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD932CC863F5804AAA20E0 /* ZenTabApp.swift */; };
 		E4F1395DD342554AA89800D3 /* WindowInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16DBA74F3FE81CD5DF5D4B1B /* WindowInfo.swift */; };
 		E9DF22A6B76029570579399D /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 376468B2DF2FB17C32FC2C84 /* AppModel.swift */; };
@@ -56,7 +54,6 @@
 		2D6E403FDB76C082C2AB69A8 /* SwitchMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchMode.swift; sourceTree = "<group>"; };
 		31B38D20870FD09668FC3E25 /* ZenTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZenTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3259A283E5998AA73D38DADA /* HotkeyTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyTap.swift; sourceTree = "<group>"; };
-		327845442DFBA25A0B1F1B72 /* SwitcherSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitcherSelectionTests.swift; sourceTree = "<group>"; };
 		35E6B10B67E46713183282D9 /* WindowFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowFilterTests.swift; sourceTree = "<group>"; };
 		376468B2DF2FB17C32FC2C84 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		3B4263808D3FBE36E15E0F4D /* OverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayController.swift; sourceTree = "<group>"; };
@@ -72,7 +69,6 @@
 		A71A17F28DCE54435B0B551F /* Keybinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keybinding.swift; sourceTree = "<group>"; };
 		B601B39E631A5CE5C71E33E0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		CEE7D07C25D65DEB5BC91169 /* Permissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Permissions.swift; sourceTree = "<group>"; };
-		DCD2E66BC40672DEC11503AD /* SwitcherSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitcherSelection.swift; sourceTree = "<group>"; };
 		E65D4503B08575E79E2AEB2F /* HIServicesSPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIServicesSPI.swift; sourceTree = "<group>"; };
 		E6C3653BB248506198AFA276 /* OverlaySessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlaySessionTests.swift; sourceTree = "<group>"; };
 		E7DEA57FB72789AEBFE7C117 /* ZenTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ZenTab.entitlements; sourceTree = "<group>"; };
@@ -125,7 +121,6 @@
 			children = (
 				14F7E385C2993CB30C4B2E43 /* KeybindingTests.swift */,
 				E6C3653BB248506198AFA276 /* OverlaySessionTests.swift */,
-				327845442DFBA25A0B1F1B72 /* SwitcherSelectionTests.swift */,
 				F24200F4FDDFA43F04520569 /* TOMLConfigTests.swift */,
 				35E6B10B67E46713183282D9 /* WindowFilterTests.swift */,
 			);
@@ -145,7 +140,6 @@
 			isa = PBXGroup;
 			children = (
 				4A1A77506ECACA9398BCEDC4 /* OverlaySession.swift */,
-				DCD2E66BC40672DEC11503AD /* SwitcherSelection.swift */,
 				2D6E403FDB76C082C2AB69A8 /* SwitchMode.swift */,
 			);
 			path = Switcher;
@@ -315,7 +309,6 @@
 			files = (
 				CF7103783C1EF0F490A5C9C2 /* KeybindingTests.swift in Sources */,
 				84D72A0697670315E9706A6D /* OverlaySessionTests.swift in Sources */,
-				241BCC05871A49295DB4352F /* SwitcherSelectionTests.swift in Sources */,
 				788CF83B980BF98F27932075 /* TOMLConfigTests.swift in Sources */,
 				8EAC272A9ED831B3AA224EA6 /* WindowFilterTests.swift in Sources */,
 			);
@@ -339,7 +332,6 @@
 				64D37DF88335D28C83716F40 /* SkyLight.swift in Sources */,
 				2F3828F4840412D873EBF181 /* SwitchMode.swift in Sources */,
 				8EA5EDC239B73833175CA897 /* SwitcherPanel.swift in Sources */,
-				DF129787AE6E75CC54271556 /* SwitcherSelection.swift in Sources */,
 				213812D756CD965EA42EBA64 /* TOMLParser.swift in Sources */,
 				C5AE6A3AD7D42C53CEA397FE /* TileGridView.swift in Sources */,
 				541A880C29DBA6E27CC52BC6 /* WindowEnumerator.swift in Sources */,

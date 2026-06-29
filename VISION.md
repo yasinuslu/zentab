@@ -10,13 +10,15 @@ calm, focused, zero lag.
 | Shortcut | Shows | Scope |
 | --- | --- | --- |
 | **Cmd+`** (backtick) | windows of the **current app** | current monitor + current Space |
-| **Cmd+Tab** | windows of **other apps** | current monitor + current Space, **excluding the current app** |
+| **Cmd+Tab** | **every window here** (all apps, the current app included) | current monitor + current Space |
 | **Option+Tab** | **everything** | all apps, all Spaces, all monitors (no exclusions: includes the current app, minimized, hidden) |
 
-Cmd+` and Cmd+Tab are complementary halves at the **same locality** (current
-monitor + current Space): Cmd+` shows your current app's windows there, and
-Cmd+Tab shows every *other* app's windows there. Option+Tab is the only global
-shortcut: the escape hatch for reaching anything, anywhere.
+Cmd+` and Cmd+Tab share the **same locality** (current monitor + current Space):
+Cmd+Tab shows every window there, and Cmd+` narrows that to just the current app's
+windows. The current app's windows are *in* the Cmd+Tab list (excluding them is
+disorienting), but the selection starts on the most-recent **other** window, so a
+quick tap still switches away from where you are (classic Cmd+Tab). Option+Tab is
+the only global shortcut: the escape hatch for reaching anything, anywhere.
 
 ## Interaction
 
@@ -83,8 +85,9 @@ Accessibility/Screen Recording granted and is hand-verified). The SwiftUI scaffo
 gone; the app is a menu bar accessory. On a safe, non-hijacking hotkey (default
 `Ctrl+Opt+Tab`, configurable in TOML) it:
 
-- enumerates other apps' windows on the current Space (CoreGraphics z-order +
-  Accessibility detail), in a stable list;
+- enumerates every window on the current monitor + Space (CoreGraphics z-order +
+  Accessibility detail), in a stable list, with the selection starting on the
+  most-recent other window so a quick tap switches away;
 - shows the hand-rolled, non-activating AppKit overlay (`NSPanel` + recycled CALayer
   tiles), with tap-vs-hold (a fast tap switches with no overlay; a hold shows the grid);
 - navigates with Tab / Shift+Tab and the mouse (one shared selection), and focuses the

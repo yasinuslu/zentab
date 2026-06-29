@@ -30,12 +30,41 @@ struct OverlaySessionTests {
     #expect(onSummon == [.beginEnumeration(session: 1), .scheduleHold(session: 1)])
 
     // Enumeration finishes fast; nothing should display yet (no hold, no confirm).
-    #expect(session.handle(.enumerated(list, session: 1)).isEmpty)
+    #expect(session.handle(.enumerated(list, currentPID: nil, session: 1)).isEmpty)
     #expect(!session.isVisible)
 
     // Modifier released before the hold threshold -> confirm. Focus, no overlay.
     #expect(session.handle(.confirm) == [.focus(list[0])])
     #expect(!session.isVisible)
+  }
+
+  // The current app is now in the list; a quick tap must still switch *away* from
+  // the focused window (to the previous one), not to the window you're already in.
+  @Test("Quick tap skips the focused window and switches to the previous one")
+  func quickTapSkipsFocusedWindow() {
+    var session = OverlaySession()
+    let list = windows(3)  // pids 100, 101, 102; list[0] is the focused window
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: 100, session: 1))
+    #expect(session.handle(.confirm) == [.focus(list[1])])  // previous, not list[0]
+  }
+
+  @Test("Holding starts the highlight on the window after the focused one")
+  func holdStartsAfterFocusedWindow() {
+    var session = OverlaySession()
+    let list = windows(3)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: 100, session: 1))
+    #expect(session.handle(.holdElapsed(session: 1)) == [.show(windows: list, index: 1)])
+  }
+
+  @Test("When the focused app has no window here, selection starts at the front")
+  func focusedAppNotInListStartsAtFront() {
+    var session = OverlaySession()
+    let list = windows(3)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: 999, session: 1))  // 999 not in list
+    #expect(session.handle(.confirm) == [.focus(list[0])])
   }
 
   // The "stuck" half: the deferred hold timer must not re-open the overlay after a
@@ -45,7 +74,7 @@ struct OverlaySessionTests {
     var session = OverlaySession()
     let list = windows(2)
     _ = session.handle(.summon)  // session 1
-    _ = session.handle(.enumerated(list, session: 1))
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
     _ = session.handle(.confirm)  // finishes -> session bumped to 2
 
     // The 150ms timer (scheduled for session 1) now fires late:
@@ -58,7 +87,7 @@ struct OverlaySessionTests {
     var session = OverlaySession()
     let list = windows(3)
     _ = session.handle(.summon)
-    _ = session.handle(.enumerated(list, session: 1))
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
 
     #expect(session.handle(.holdElapsed(session: 1)) == [.show(windows: list, index: 0)])
     #expect(session.isVisible)
@@ -74,7 +103,7 @@ struct OverlaySessionTests {
     _ = session.handle(.summon)
 
     #expect(session.handle(.confirm).isEmpty)  // nothing to focus yet
-    #expect(session.handle(.enumerated(list, session: 1)) == [.focus(list[0])])
+    #expect(session.handle(.enumerated(list, currentPID: nil, session: 1)) == [.focus(list[0])])
     #expect(!session.isVisible)
   }
 
@@ -85,7 +114,7 @@ struct OverlaySessionTests {
     _ = session.handle(.summon)
     #expect(session.handle(.cycle(backward: false)).isEmpty)
     #expect(session.handle(.cycle(backward: false)).isEmpty)
-    _ = session.handle(.enumerated(list, session: 1))
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
 
     // Two forward steps from 0 -> index 2; the hold then shows that selection.
     #expect(session.handle(.holdElapsed(session: 1)) == [.show(windows: list, index: 2)])
@@ -96,7 +125,7 @@ struct OverlaySessionTests {
     var session = OverlaySession()
     let list = windows(2)
     _ = session.handle(.summon)
-    _ = session.handle(.enumerated(list, session: 1))
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
     _ = session.handle(.holdElapsed(session: 1))  // visible at 0
 
     #expect(session.handle(.cycle(backward: false)) == [.updateSelection(1)])
@@ -112,7 +141,7 @@ struct OverlaySessionTests {
     _ = session.handle(.summon)  // session 3
 
     // A late enumeration tagged session 1 must not affect the live session 3.
-    #expect(session.handle(.enumerated(windows(5), session: 1)).isEmpty)
+    #expect(session.handle(.enumerated(windows(5), currentPID: nil, session: 1)).isEmpty)
     #expect(!session.isVisible)
   }
 
@@ -121,7 +150,7 @@ struct OverlaySessionTests {
     var session = OverlaySession()
     let list = windows(2)
     _ = session.handle(.summon)
-    _ = session.handle(.enumerated(list, session: 1))
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
     _ = session.handle(.holdElapsed(session: 1))  // visible
 
     #expect(session.handle(.cancel) == [.hide, .focus(nil)])
@@ -132,7 +161,7 @@ struct OverlaySessionTests {
   func emptyListShowsNothing() {
     var session = OverlaySession()
     _ = session.handle(.summon)
-    _ = session.handle(.enumerated([], session: 1))
+    _ = session.handle(.enumerated([], currentPID: nil, session: 1))
     #expect(session.handle(.holdElapsed(session: 1)).isEmpty)  // nothing to show
     #expect(!session.isVisible)
     #expect(session.handle(.confirm) == [.focus(nil)])
@@ -143,7 +172,7 @@ struct OverlaySessionTests {
     var session = OverlaySession()
     let list = windows(3)
     _ = session.handle(.summon)
-    _ = session.handle(.enumerated(list, session: 1))
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
     // Not shown yet: hover updates internal selection but emits no view effect.
     #expect(session.handle(.hover(2)).isEmpty)
     #expect(session.handle(.holdElapsed(session: 1)) == [.show(windows: list, index: 2)])

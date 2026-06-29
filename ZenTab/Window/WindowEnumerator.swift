@@ -117,8 +117,10 @@ enum WindowEnumerator {
   ) -> Bool {
     guard pid != selfPID else { return false }
     switch mode {
-    case .everything: return true
-    case .otherApps: return pid != frontmostPID
+    // otherApps includes the current app too (its windows are in the list); the
+    // selection just starts past the focused window so a quick tap still switches
+    // away. currentApp is the only mode that filters to a single app.
+    case .everything, .otherApps: return true
     case .currentApp: return pid == frontmostPID
     }
   }

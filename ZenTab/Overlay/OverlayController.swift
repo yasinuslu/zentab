@@ -75,7 +75,7 @@ final class OverlayController {
       Task { [weak self] in
         let windows = await WindowEnumerator.enumerate(
           mode: mode, frontmostPID: frontmost, selfPID: selfPID, monitorFrame: monitorFrame)
-        self?.send(.enumerated(windows, session: id))
+        self?.send(.enumerated(windows, currentPID: frontmost, session: id))
       }
 
     case .scheduleHold(let id):

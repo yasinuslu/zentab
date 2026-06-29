@@ -1,3 +1,5 @@
+import Foundation
+
 /// The pure decision logic for one switcher invocation: tap-vs-hold, the deferred
 /// overlay show, and "confirm always wins". It is deliberately free of AppKit,
 /// timers, and enumeration so every scenario (including the nasty timing bugs) is
@@ -11,7 +13,9 @@
 struct OverlaySession: Equatable {
   enum Event: Equatable {
     case summon
-    case enumerated([WindowInfo], session: Int)
+    /// `currentPID` is the focused app, so the initial selection can skip the
+    /// focused window — a quick tap then switches to the previous window.
+    case enumerated([WindowInfo], currentPID: pid_t?, session: Int)
     case holdElapsed(session: Int)
     case cycle(backward: Bool)
     case confirm
@@ -48,7 +52,8 @@ struct OverlaySession: Equatable {
   mutating func handle(_ event: Event) -> [Effect] {
     switch event {
     case .summon: return summon()
-    case .enumerated(let list, let id): return enumerated(list, session: id)
+    case .enumerated(let list, let pid, let id):
+      return enumerated(list, currentPID: pid, session: id)
     case .holdElapsed(let id): return holdElapsed(session: id)
     case .cycle(let backward): return cycle(backward: backward)
     case .confirm: return confirm()
@@ -75,11 +80,17 @@ struct OverlaySession: Equatable {
     return effects
   }
 
-  private mutating func enumerated(_ list: [WindowInfo], session id: Int) -> [Effect] {
+  private mutating func enumerated(
+    _ list: [WindowInfo], currentPID: pid_t?, session id: Int
+  ) -> [Effect] {
     guard id == session else { return [] }  // superseded by a newer summon / finish
     windows = list
     windowsReady = true
-    index = list.isEmpty ? 0 : ((pendingSteps % list.count) + list.count) % list.count
+    // Start one past the focused window (Cmd+Tab style), so a quick tap switches to
+    // the previous window rather than the one you're already in. If the focused app
+    // has no window here (e.g. it's on another monitor), start at the front (0).
+    let base = list.firstIndex { $0.pid == currentPID }.map { $0 + 1 } ?? 0
+    index = list.isEmpty ? 0 : ((base + pendingSteps) % list.count + list.count) % list.count
     pendingSteps = 0
     return update()
   }

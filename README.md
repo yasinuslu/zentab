@@ -9,11 +9,12 @@ GitHub Actions release pipeline.
 model, tap-vs-hold, the non-negotiable principles).
 
 > **Status:** the first vertical slice is in. On a safe, non-hijacking hotkey
-> (`Ctrl+Opt+Tab` by default) it enumerates other apps' windows on the current
-> Space, shows the overlay grid, navigates with Tab / Shift+Tab and the mouse, and
-> focuses the window on release. It runs as a menu bar accessory (no Dock icon) and
-> needs **Accessibility** permission (mandatory) and **Screen Recording** (for live
-> thumbnails). See "Permissions" below.
+> (`Ctrl+Opt+Tab` by default) it enumerates every window on the monitor under the
+> mouse (current Space), shows the overlay grid, navigates with Tab / Shift+Tab and
+> the mouse, and focuses the window on release (a quick tap switches to the previous
+> window). It runs as a menu bar accessory (no Dock icon) and needs **Accessibility**
+> permission (mandatory) and **Screen Recording** (for live thumbnails). See
+> "Permissions" below.
 
 ## Requirements
 

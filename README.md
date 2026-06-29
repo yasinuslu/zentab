@@ -185,6 +185,19 @@ Spaces, the window-filtering model, and the countless macOS edge cases they spen
 getting right. ZenTab is a deliberately focused, opinionated take on the same idea, and it
 exists because of their work. Huge thanks.
 
+The door swings both ways: anything learned here is offered back freely. If @lwouis would
+like to fold these findings into alt-tab, ship a build shaped like this, or collaborate, that
+is genuinely welcome (GPL-3.0 makes it natural).
+
+ZenTab exists for a narrow reason. A window switcher should:
+
+1. **Register its shortcuts reliably** (forcefully grab them, never silently fall back).
+2. **Perform well** (zero perceptible lag).
+3. **Never make you fight a wall of settings.** The behavior is opinionated and fixed.
+4. **Be nixifiable.** Configuration is a single TOML file you can declare and check into git.
+
+That is the whole product: strong defaults, no configuration hell, owned by you.
+
 ## License
 
 ZenTab is licensed under the **GNU General Public License v3.0** (the same license as

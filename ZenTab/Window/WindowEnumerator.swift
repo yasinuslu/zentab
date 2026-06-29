@@ -17,13 +17,16 @@ import ApplicationServices
 /// stay scoped to the current Space (per VISION); only `everything` reaches across
 /// Spaces and includes minimized windows.
 enum WindowEnumerator {
+  /// `monitorFrame` (CoreGraphics coords) restricts the scoped modes to one monitor;
+  /// pass nil to span all monitors (the `everything` mode always spans all).
   static func enumerate(
-    mode: SwitchMode, frontmostPID: pid_t?, selfPID: pid_t
+    mode: SwitchMode, frontmostPID: pid_t?, selfPID: pid_t, monitorFrame: CGRect?
   ) async -> [WindowInfo] {
     await withCheckedContinuation { continuation in
       queue.async {
         continuation.resume(
-          returning: collect(mode: mode, frontmostPID: frontmostPID, selfPID: selfPID))
+          returning: collect(
+            mode: mode, frontmostPID: frontmostPID, selfPID: selfPID, monitorFrame: monitorFrame))
       }
     }
   }
@@ -53,26 +56,28 @@ enum WindowEnumerator {
   // MARK: - Collection
 
   private static func collect(
-    mode: SwitchMode, frontmostPID: pid_t?, selfPID: pid_t
+    mode: SwitchMode, frontmostPID: pid_t?, selfPID: pid_t, monitorFrame: CGRect?
   ) -> [WindowInfo] {
     switch mode {
     case .everything:
       return collectEverything(selfPID: selfPID)
     case .currentApp, .otherApps:
-      return collectCurrentSpace(mode: mode, frontmostPID: frontmostPID, selfPID: selfPID)
+      return collectCurrentSpace(
+        mode: mode, frontmostPID: frontmostPID, selfPID: selfPID, monitorFrame: monitorFrame)
     }
   }
 
-  /// Current-Space, on-screen windows for the scoped modes.
+  /// Current-Space, current-monitor, on-screen windows for the scoped modes.
   private static func collectCurrentSpace(
-    mode: SwitchMode, frontmostPID: pid_t?, selfPID: pid_t
+    mode: SwitchMode, frontmostPID: pid_t?, selfPID: pid_t, monitorFrame: CGRect?
   ) -> [WindowInfo] {
     let include: (pid_t) -> Bool = {
       includes($0, mode: mode, frontmostPID: frontmostPID, selfPID: selfPID)
     }
     let entries = windowEntries(onScreenOnly: true, include: include)
     let details = axDetails(for: Set(entries.map(\.pid)))
-    return entries.map { merge($0, details[$0.windowID]) }.filter { WindowInfo.isSwitchable($0) }
+    return entries.map { merge($0, details[$0.windowID]) }
+      .filter { WindowInfo.isSwitchable($0) && $0.isOnMonitor(monitorFrame) }
   }
 
   /// Every window across all Spaces (plus minimized), for the `everything` mode.

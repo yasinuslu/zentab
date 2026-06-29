@@ -23,6 +23,17 @@ struct WindowInfo: Sendable, Identifiable, Equatable {
 
   var id: CGWindowID { windowID }
 
+  /// The window's center point (CoreGraphics global coords, top-left origin).
+  var center: CGPoint { CGPoint(x: frame.midX, y: frame.midY) }
+
+  /// Whether the window belongs to a monitor: its center lies within the monitor's
+  /// frame. Both are CoreGraphics coords, so this composes with `CGDisplayBounds`.
+  /// A nil frame means "any monitor" (no filtering).
+  func isOnMonitor(_ monitorFrame: CGRect?) -> Bool {
+    guard let monitorFrame else { return true }
+    return monitorFrame.contains(center)
+  }
+
   /// Windows smaller than this in either dimension are treated as chrome/helpers.
   static let minimumSize: CGFloat = 50
 

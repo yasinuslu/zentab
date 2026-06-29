@@ -16,6 +16,7 @@ final class OverlayController {
   private var pendingMode: SwitchMode = .otherApps
   private var pendingFrontmostPID: pid_t?
   private var pendingSelfPID: pid_t = 0
+  private var pendingMonitorFrame: CGRect?
 
   init(config: Config) {
     self.config = config
@@ -49,6 +50,8 @@ final class OverlayController {
     pendingMode = mode
     pendingFrontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
     pendingSelfPID = ProcessInfo.processInfo.processIdentifier
+    // Scoped modes show only the monitor under the mouse; everything spans all.
+    pendingMonitorFrame = mode == .everything ? nil : Self.monitorUnderMouse()
     send(.summon)
   }
 
@@ -68,9 +71,10 @@ final class OverlayController {
       let mode = pendingMode
       let frontmost = pendingFrontmostPID
       let selfPID = pendingSelfPID
+      let monitorFrame = pendingMonitorFrame
       Task { [weak self] in
         let windows = await WindowEnumerator.enumerate(
-          mode: mode, frontmostPID: frontmost, selfPID: selfPID)
+          mode: mode, frontmostPID: frontmost, selfPID: selfPID, monitorFrame: monitorFrame)
         self?.send(.enumerated(windows, session: id))
       }
 
@@ -109,9 +113,25 @@ final class OverlayController {
   }
 
   private func centerPanel(size: NSSize) {
-    let screen = NSScreen.main ?? NSScreen.screens.first
+    // Center on the monitor under the mouse, so the overlay shows where you're looking.
+    let mouse = NSEvent.mouseLocation
+    let screen =
+      NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
+      ?? NSScreen.main ?? NSScreen.screens.first
     guard let frame = screen?.frame else { return }
     panel.setFrameOrigin(
       NSPoint(x: frame.midX - size.width / 2, y: frame.midY - size.height / 2))
+  }
+
+  /// The CoreGraphics bounds of the display under the mouse cursor (top-left global
+  /// coords, matching CGWindowList bounds). Used to scope the switcher to one monitor.
+  private static func monitorUnderMouse() -> CGRect? {
+    guard let mouse = CGEvent(source: nil)?.location else { return nil }
+    var displayID = CGMainDisplayID()
+    var count: UInt32 = 0
+    if CGGetDisplaysWithPoint(mouse, 1, &displayID, &count) == .success, count > 0 {
+      return CGDisplayBounds(displayID)
+    }
+    return CGDisplayBounds(CGMainDisplayID())
   }
 }

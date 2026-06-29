@@ -60,6 +60,14 @@ struct WindowFilterTests {
     #expect(WindowInfo.isSwitchable(window(minimized: true), includeMinimized: true))
   }
 
+  @Test("isOnMonitor keeps windows whose center is on the given monitor")
+  func monitorFilter() {
+    let w = window()  // frame 0,0,400,300 -> center (200,150)
+    #expect(w.isOnMonitor(nil))  // nil = no filtering (everything mode)
+    #expect(w.isOnMonitor(CGRect(x: 0, y: 0, width: 1440, height: 900)))  // this monitor
+    #expect(!w.isOnMonitor(CGRect(x: 1440, y: 0, width: 1440, height: 900)))  // the other monitor
+  }
+
   @Test("A minimized window passes even with an unreliable zero AX size")
   func minimizedSkipsSizeGate() {
     let zeroSized = window(width: 0, height: 0, minimized: true)

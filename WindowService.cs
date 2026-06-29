@@ -5,6 +5,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace ZenTab;
 
@@ -29,6 +33,9 @@ public sealed class WindowService : IDisposable
     // Concurrent because a background warm-up fills them off the UI thread.
     private readonly ConcurrentDictionary<uint, string?> _pathByPid = new();
     private readonly ConcurrentDictionary<string, string> _friendlyByPath = new(StringComparer.OrdinalIgnoreCase);
+    // App icons extracted from the exe, frozen so they can be built on the warm-up thread
+    // and consumed on the UI thread. Null means "tried and couldn't resolve".
+    private readonly ConcurrentDictionary<string, ImageSource?> _iconByPath = new(StringComparer.OrdinalIgnoreCase);
 
     // win-event hook (foreground changes) — near-zero idle cost, only fires on switch.
     private Native.WinEventDelegate? _winEventProc;
@@ -57,7 +64,7 @@ public sealed class WindowService : IDisposable
             {
                 if (!Native.IsCandidate(h)) continue;
                 var path = PathOf(Native.Pid(h));
-                if (path != null) FriendlyName(path);
+                if (path != null) { FriendlyName(path); IconForPath(path); }
             }
         }
         catch
@@ -101,6 +108,30 @@ public sealed class WindowService : IDisposable
         catch
         {
             return Path.GetFileNameWithoutExtension(p);
+        }
+    });
+
+    /// <summary>The app icon for a window's process (cached by exe path); null if unresolved.</summary>
+    private ImageSource? IconFor(nint hWnd)
+    {
+        var path = PathOf(Native.Pid(hWnd));
+        return path is null ? null : IconForPath(path);
+    }
+
+    private ImageSource? IconForPath(string path) => _iconByPath.GetOrAdd(path, static p =>
+    {
+        try
+        {
+            using var icon = System.Drawing.Icon.ExtractAssociatedIcon(p);
+            if (icon is null) return null;
+            var src = Imaging.CreateBitmapSourceFromHIcon(
+                icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            src.Freeze(); // immutable + cross-thread (built on warm-up thread, used on UI)
+            return src;
+        }
+        catch
+        {
+            return null; // no extractable icon (e.g. a system path) — UI falls back gracefully
         }
     });
 
@@ -167,6 +198,7 @@ public sealed class WindowService : IDisposable
                 Primary = h,
                 Handles = new[] { h },
                 IsApp = false,
+                Icon = IconFor(h),
             })
             .ToList();
 
@@ -198,6 +230,7 @@ public sealed class WindowService : IDisposable
                     Primary = primary,
                     Handles = windows,
                     IsApp = true,
+                    Icon = IconFor(primary),
                 };
             })
             .ToList();

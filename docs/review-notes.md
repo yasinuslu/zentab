@@ -111,3 +111,28 @@ seam, not a configurability leak.
   finish action.
 - 🔭 **Full IL trimming / AOT.** Unsupported for WPF — do not attempt. ~66 MB is near the floor.
 - ✅ **build.ps1 requires pwsh 7.** Added `#requires -Version 7.0`.
+
+## UI / visual (overlay)
+
+From a fresh visual-only review (UX/behavior explicitly out of scope). Palette is Catppuccin
+Mocha.
+
+- ✅ **App icon beside the title** (the requested feature). 18px, inline-left, centered as a
+  group with the title `MaxWidth`-bounded so it still ellipsizes; the `Image` collapses when
+  there's no icon. Icons are extracted from the exe and cached/warmed by path
+  (`WindowService`), frozen so they cross the warm-up→UI thread boundary.
+- ✅ **Unstyled system scrollbar** → minimal track-less rounded thumb (`CalmScrollBar` in
+  `App.xaml`), applied to the list.
+- ✅ **Square window corners / no elevation** → `DwmSetWindowAttribute` round corners in
+  `OverlayWindow.OnSourceInitialized`, which also restores the native soft shadow.
+- ✅ **Misleading thumbnail corner radius** → removed (DWM thumbnails are square; honest now).
+- ✅ **Faint selection** → unselected titles muted (Subtext0), selected title brightened
+  (Text), keeping the existing wash/border. No motion (keeps "last input wins" snappy).
+- ✅ **White-tinted letterbox bars** → neutral dark placeholder (Mantle).
+- ✅ **Empty state** → a deliberate muted "Nothing here" at a sensible min panel size.
+- ✅ **No shared palette + `#1E1E2D` typo** → palette centralized as brushes in `App.xaml`;
+  Base corrected to `#1E1E2E`.
+- ⬜ **Ragged last wrap row.** `WrapPanel` left-aligns a partial final row under a centered
+  window. Deferred — true centered-wrap needs a custom panel; low value.
+- 🔭 **GPU blur backdrop** (also a feel/perf item above) remains the big visual TODO; the
+  recede is still a flat dim.

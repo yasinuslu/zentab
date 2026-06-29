@@ -54,6 +54,10 @@ public partial class OverlayWindow : Window
         ex |= Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE;
         ex &= ~Native.WS_EX_APPWINDOW;
         Native.SetWindowLongPtr(hwnd, Native.GWL_EXSTYLE, (nint)ex);
+
+        // Rounded corners + native soft shadow so the panel reads as a floating card, not a
+        // hard-edged rectangle pasted over the dim (Win11; harmless on older Windows).
+        Native.RoundCorners(hwnd);
     }
 
     public SwitchEntry? Selected => Cards.SelectedItem as SwitchEntry;
@@ -64,6 +68,7 @@ public partial class OverlayWindow : Window
         _entries = new List<SwitchEntry>(entries);
         Cards.ItemsSource = _entries;
         Cards.SelectedIndex = _entries.Count == 0 ? -1 : Math.Clamp(selectedIndex, 0, _entries.Count - 1);
+        EmptyLabel.Visibility = _entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         _dim.ShowDim();
 

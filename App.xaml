@@ -4,5 +4,56 @@
              xmlns:local="clr-namespace:ZenTab"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
+        <!-- ZenTab's single palette (Catppuccin Mocha). One right look, no knobs — define
+             colors here once and reference them everywhere (see VISION.md). -->
+        <SolidColorBrush x:Key="PanelBrush"           Color="#1E1E2E"/>  <!-- Base -->
+        <SolidColorBrush x:Key="ThumbPlaceholderBrush" Color="#181825"/> <!-- Mantle -->
+        <SolidColorBrush x:Key="TitleBrush"           Color="#A6ADC8"/>  <!-- Subtext0 (unselected) -->
+        <SolidColorBrush x:Key="TitleSelectedBrush"   Color="#CDD6F4"/>  <!-- Text (selected) -->
+        <SolidColorBrush x:Key="MutedBrush"           Color="#6C7086"/>  <!-- Overlay0 -->
+        <SolidColorBrush x:Key="SelectionWashBrush"   Color="#2ECDD6F4"/>
+        <SolidColorBrush x:Key="SelectionBorderBrush" Color="#B4B4BEFE"/> <!-- Lavender -->
+        <SolidColorBrush x:Key="ScrollThumbBrush"      Color="#33CDD6F4"/>
+        <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#55CDD6F4"/>
+
+        <!-- Minimal, calm scrollbar: a track-less rounded thumb, no arrow buttons. -->
+        <Style x:Key="CalmScrollBar" TargetType="ScrollBar">
+            <Setter Property="Width" Value="6"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent" Margin="2,0">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border x:Name="ThumbBorder"
+                                                        CornerRadius="3"
+                                                        Background="{StaticResource ScrollThumbBrush}"/>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background"
+                                                                Value="{StaticResource ScrollThumbHoverBrush}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <!-- Track-less: page buttons are invisible, zero-size hit targets. -->
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False"/>
+                                </Track.IncreaseRepeatButton>
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False"/>
+                                </Track.DecreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Application.Resources>
 </Application>

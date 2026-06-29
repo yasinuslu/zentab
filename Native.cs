@@ -83,6 +83,20 @@ internal static class Native
     [DllImport("dwmapi.dll")]
     public static extern int DwmGetWindowAttribute(nint hWnd, int dwAttribute, out int pvAttribute, int cbAttribute);
 
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmSetWindowAttribute(nint hWnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
+
+    public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33; // Win11+: round the window corners
+    public const int DWMWCP_ROUND = 2;
+
+    /// <summary>Round a window's corners at the GPU/DWM level (Win11; no-op on older Windows).
+    /// Also restores the native soft drop shadow on a borderless window.</summary>
+    public static void RoundCorners(nint hWnd)
+    {
+        int pref = DWMWCP_ROUND;
+        DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
+    }
+
     // ---- Monitors / cursor ----------------------------------------------------
     [DllImport("user32.dll")]
     public static extern nint MonitorFromWindow(nint hWnd, uint dwFlags);

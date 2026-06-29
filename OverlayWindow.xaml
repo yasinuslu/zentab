@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ZenTab"
         WindowStyle="None"
-        Background="#1E1E2D"
+        Background="{StaticResource PanelBrush}"
         ShowInTaskbar="False"
         ShowActivated="False"
         Topmost="True"
@@ -12,7 +12,8 @@
         WindowStartupLocation="Manual">
 
     <!-- A floating, content-sized panel (NOT full-screen). The recede/dim comes from the
-         separate translucent DimWindow underneath. Opaque so DWM live thumbnails render. -->
+         separate translucent DimWindow underneath. Opaque so DWM live thumbnails render;
+         corners are rounded at the DWM level (see OverlayWindow.OnSourceInitialized). -->
 
     <Window.Resources>
         <Style x:Key="CardItem" TargetType="ListBoxItem">
@@ -31,23 +32,49 @@
                                 BorderBrush="Transparent"
                                 BorderThickness="1.5">
                             <StackPanel Width="240">
-                                <!-- DWM draws the live thumbnail over this rectangle. -->
+                                <!-- DWM draws the live (square) thumbnail over this rectangle;
+                                     the placeholder is a neutral dark so letterbox bars recede. -->
                                 <Border x:Name="Thumb"
                                         Width="240" Height="150"
-                                        CornerRadius="6"
-                                        Background="#14FFFFFF"/>
-                                <TextBlock Text="{Binding Title}"
-                                           Foreground="#CDD6F4"
-                                           FontSize="13"
-                                           TextAlignment="Center"
-                                           TextTrimming="CharacterEllipsis"
-                                           Margin="0,10,0,0"/>
+                                        Background="{StaticResource ThumbPlaceholderBrush}"/>
+                                <!-- App icon + title, centered as a group; the title is bounded
+                                     so it still ellipsizes and the group stays centered. -->
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            Margin="0,10,0,0">
+                                    <Image Source="{Binding Icon}"
+                                           Width="18" Height="18"
+                                           Margin="0,0,8,0"
+                                           VerticalAlignment="Center"
+                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                           SnapsToDevicePixels="True">
+                                        <Image.Style>
+                                            <Style TargetType="Image">
+                                                <Style.Triggers>
+                                                    <!-- No icon → collapse so the title re-centers with no gap. -->
+                                                    <Trigger Property="Source" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Image.Style>
+                                    </Image>
+                                    <TextBlock x:Name="TitleText"
+                                               Text="{Binding Title}"
+                                               Foreground="{StaticResource TitleBrush}"
+                                               FontSize="13"
+                                               MaxWidth="214"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Card" Property="Background" Value="#2ECDD6F4"/>
-                                <Setter TargetName="Card" Property="BorderBrush" Value="#B4B4BEFE"/>
+                                <Setter TargetName="Card" Property="Background" Value="{StaticResource SelectionWashBrush}"/>
+                                <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource SelectionBorderBrush}"/>
+                                <!-- Brighten the selected title; unselected stay muted so the choice wins. -->
+                                <Setter TargetName="TitleText" Property="Foreground" Value="{StaticResource TitleSelectedBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -57,7 +84,7 @@
     </Window.Resources>
 
     <!-- Scene fades in/out (~100 ms). -->
-    <Grid x:Name="Scene" Margin="22">
+    <Grid x:Name="Scene" Margin="22" MinWidth="240" MinHeight="140">
         <ListBox x:Name="Cards"
                  Background="Transparent"
                  BorderThickness="0"
@@ -65,11 +92,24 @@
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                  ItemContainerStyle="{StaticResource CardItem}">
+            <ListBox.Resources>
+                <!-- Apply the calm scrollbar to this list's vertical scrollbar. -->
+                <Style TargetType="ScrollBar" BasedOn="{StaticResource CalmScrollBar}"/>
+            </ListBox.Resources>
             <ListBox.ItemsPanel>
                 <ItemsPanelTemplate>
                     <WrapPanel Orientation="Horizontal"/>
                 </ItemsPanelTemplate>
             </ListBox.ItemsPanel>
         </ListBox>
+
+        <!-- Deliberate empty state (rare) instead of a tiny blank box. -->
+        <TextBlock x:Name="EmptyLabel"
+                   Text="Nothing here"
+                   Foreground="{StaticResource MutedBrush}"
+                   FontSize="13"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Visibility="Collapsed"/>
     </Grid>
 </Window>

@@ -52,7 +52,15 @@ if (-not (Test-Path $builtExe)) { throw "Publish did not produce $builtExe" }
 #    it "truly portable" — Config.Load finds no toml, so dev mode is off and the real
 #    Alt+Tab gestures are used.
 if ($Target -in @("all", "portable")) {
-    Copy-Item $builtExe $portable -Force
+    # A just-built/previous exe can be briefly locked by an AV real-time scan; retry the copy.
+    for ($attempt = 1; ; $attempt++) {
+        try { Copy-Item $builtExe $portable -Force; break }
+        catch {
+            if ($attempt -ge 5) { throw }
+            Write-Host "   (output locked, retrying $attempt/5...)" -ForegroundColor DarkYellow
+            Start-Sleep -Seconds 2
+        }
+    }
     Write-Host "==> Portable exe: $portable" -ForegroundColor Green
 }
 

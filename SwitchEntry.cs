@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Windows.Media;
 
 namespace ZenTab;
 
@@ -26,4 +27,8 @@ public sealed class SwitchEntry
     public required nint Primary { get; init; }
     public required IReadOnlyList<nint> Handles { get; init; }
     public required bool IsApp { get; init; }
+
+    /// <summary>The app's icon (from its executable), shown beside the title so apps are
+    /// recognizable when the live thumbnail isn't. Null if it couldn't be resolved.</summary>
+    public ImageSource? Icon { get; init; }
 }

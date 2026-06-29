@@ -26,20 +26,31 @@ struct WindowInfo: Sendable, Identifiable, Equatable {
   /// Windows smaller than this in either dimension are treated as chrome/helpers.
   static let minimumSize: CGFloat = 50
 
+  /// AX subroles that are explicitly *not* user-switchable windows (palettes,
+  /// floating tool windows, system dialogs). Everything else — including
+  /// `AXStandardWindow`, `AXDialog`, an unknown subrole, or an empty one — is
+  /// treated as a real window. A **denylist** (not an allowlist) so a real window
+  /// that reports an odd subrole, like some Chrome/Electron windows, is never
+  /// silently dropped. Reliability over precision.
+  static let nonWindowSubroles: Set<String> = [
+    "AXFloatingWindow", "AXSystemFloatingWindow", "AXSystemDialog",
+  ]
+
   /// Pure predicate: is this a real, user-switchable window? Kept free of any AX
   /// call so it is exhaustively unit-testable from synthetic values.
   ///
-  /// For the MVP "other apps" mode we only show on-screen, current-Space windows,
-  /// so minimized windows are excluded (the public capture path can't image them
-  /// anyway). The cross-Space "everything" mode will relax this later.
-  static func isSwitchable(_ window: WindowInfo) -> Bool {
-    guard !window.isMinimized else { return false }
-    guard window.frame.width >= minimumSize, window.frame.height >= minimumSize else {
-      return false
+  /// The current-app / other-apps modes show only on-screen windows, so minimized
+  /// ones are excluded. The "everything" mode passes `includeMinimized: true` to
+  /// surface them too; their AX frame is unreliable while minimized, so the size
+  /// gate is skipped for them.
+  static func isSwitchable(_ window: WindowInfo, includeMinimized: Bool = false) -> Bool {
+    if window.isMinimized {
+      guard includeMinimized else { return false }
+    } else {
+      guard window.frame.width >= minimumSize, window.frame.height >= minimumSize else {
+        return false
+      }
     }
-    switch window.subrole {
-    case "AXStandardWindow", "AXDialog": return true
-    default: return false
-    }
+    return !nonWindowSubroles.contains(window.subrole)
   }
 }

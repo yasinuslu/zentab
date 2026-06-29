@@ -28,12 +28,18 @@ struct WindowFilterTests {
     #expect(WindowInfo.isSwitchable(window()))
   }
 
-  @Test("Dialogs are switchable; other subroles are not")
+  @Test("Real windows pass (denylist); only explicit non-windows are rejected")
   func subroleFilter() {
+    // Standard, dialog, unknown, and empty subroles are all treated as real
+    // windows — reliability over precision, so odd-reporting apps aren't dropped.
+    #expect(WindowInfo.isSwitchable(window(subrole: "AXStandardWindow")))
     #expect(WindowInfo.isSwitchable(window(subrole: "AXDialog")))
+    #expect(WindowInfo.isSwitchable(window(subrole: "AXUnknown")))
+    #expect(WindowInfo.isSwitchable(window(subrole: "")))
+    // Explicit palettes / floating tool windows / system dialogs are not switchable.
+    #expect(!WindowInfo.isSwitchable(window(subrole: "AXFloatingWindow")))
+    #expect(!WindowInfo.isSwitchable(window(subrole: "AXSystemFloatingWindow")))
     #expect(!WindowInfo.isSwitchable(window(subrole: "AXSystemDialog")))
-    #expect(!WindowInfo.isSwitchable(window(subrole: "AXUnknown")))
-    #expect(!WindowInfo.isSwitchable(window(subrole: "")))
   }
 
   @Test("Tiny windows are filtered as chrome/helpers")
@@ -44,8 +50,24 @@ struct WindowFilterTests {
     #expect(WindowInfo.isSwitchable(window(width: 50, height: 50)))
   }
 
-  @Test("Minimized windows are excluded in the MVP (current-Space, on-screen only)")
-  func minimizedExcluded() {
+  @Test("Minimized windows are excluded by default (current-app / other-apps modes)")
+  func minimizedExcludedByDefault() {
     #expect(!WindowInfo.isSwitchable(window(minimized: true)))
+  }
+
+  @Test("Minimized windows are included for the everything mode")
+  func minimizedIncludedWhenAsked() {
+    #expect(WindowInfo.isSwitchable(window(minimized: true), includeMinimized: true))
+  }
+
+  @Test("A minimized window passes even with an unreliable zero AX size")
+  func minimizedSkipsSizeGate() {
+    let zeroSized = window(width: 0, height: 0, minimized: true)
+    #expect(WindowInfo.isSwitchable(zeroSized, includeMinimized: true))
+    // ...but an explicit non-window (a floating palette) is still rejected.
+    let palette = WindowInfo(
+      pid: 1, windowID: 1, title: "t", appName: "A",
+      frame: .zero, isMinimized: true, subrole: "AXFloatingWindow")
+    #expect(!WindowInfo.isSwitchable(palette, includeMinimized: true))
   }
 }

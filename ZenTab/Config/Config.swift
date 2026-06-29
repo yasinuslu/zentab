@@ -25,10 +25,19 @@ struct Config: Sendable, Equatable {
     self.holdThresholdMs = holdThresholdMs
   }
 
-  /// Strong defaults so the on-disk config can be near-empty (VISION principle 3).
-  /// These are SAFE, non-hijacking dev chords; the native Cmd+Tab / Cmd+` /
-  /// Option+Tab override is a later hardening milestone.
-  static let `default` = Config(
+  /// The shipped suite (VISION's three-shortcut model): ZenTab owns Cmd+Tab and
+  /// Cmd+`, replacing the native switchers. This is the default for the released app
+  /// and `bin/run-prod`; the capture watchdog keeps the claim reliable.
+  static let productionDefault = Config(
+    currentApp: Keybinding("cmd+`")!,
+    otherApps: Keybinding("cmd+tab")!,
+    everything: Keybinding("opt+tab")!,
+    holdThresholdMs: 150
+  )
+
+  /// SAFE, non-hijacking chords for day-to-day development (`bin/run`): they never
+  /// touch the native Cmd+Tab, so iterating on the app can't strand your switcher.
+  static let developmentDefault = Config(
     currentApp: Keybinding("ctrl+opt+`")!,
     otherApps: Keybinding("ctrl+opt+tab")!,
     // Not Space: Ctrl+Opt+Space is macOS "select next input source".
@@ -36,12 +45,17 @@ struct Config: Sendable, Equatable {
     holdThresholdMs: 150
   )
 
-  /// Build a Config from parsed TOML tables, falling back to `default` per field
-  /// so a partial or empty file still yields a complete, valid config.
-  init(toml: [String: [String: String]]) {
+  /// The fallback for config that doesn't specify a profile (and the shipped app's
+  /// out-of-box behavior): the production Cmd+Tab suite.
+  static let `default` = productionDefault
+
+  /// Build a Config from parsed TOML tables, falling back to `defaults` per field so
+  /// a partial or empty file still yields a complete, valid config. `defaults` is the
+  /// launch profile's suite (production unless `bin/run` selected development).
+  init(toml: [String: [String: String]], defaults: Config = .default) {
     let keys = toml["keys"] ?? [:]
     let behavior = toml["behavior"] ?? [:]
-    let fallback = Config.default
+    let fallback = defaults
 
     func binding(_ name: String, _ fallbackBinding: Keybinding) -> Keybinding {
       if let raw = keys[name], let parsed = Keybinding(raw) { return parsed }

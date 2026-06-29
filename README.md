@@ -8,13 +8,17 @@ GitHub Actions release pipeline.
 **Read [`VISION.md`](VISION.md) first** for the product direction (the three-shortcut
 model, tap-vs-hold, the non-negotiable principles).
 
-> **Status:** the first vertical slice is in. On a safe, non-hijacking hotkey
-> (`Ctrl+Opt+Tab` by default) it enumerates every window on the monitor under the
-> mouse (current Space), shows the overlay grid, navigates with Tab / Shift+Tab and
-> the mouse, and focuses the window on release (a quick tap switches to the previous
-> window). It runs as a menu bar accessory (no Dock icon) and needs **Accessibility**
-> permission (mandatory) and **Screen Recording** (for live thumbnails). See
-> "Permissions" below.
+> **Status:** the first vertical slice is in. It binds the **Cmd+Tab suite** by
+> default (`Cmd+Tab` every window here · `Cmd+\`` this app · `Option+Tab` everything),
+> replacing the native macOS switchers while it runs; `bin/run` launches with safe
+> `Ctrl+Opt+…` dev chords instead, and `bin/run-prod` with the real suite. On the
+> trigger it enumerates every window on the monitor under the mouse (current Space),
+> shows the overlay grid, navigates with Tab / Shift+Tab and the mouse, and focuses on
+> release (a quick tap switches to the previous window). The menu bar icon shows
+> whether ZenTab currently owns the shortcut (it never silently falls back to another
+> key, and restores the native shortcut when it can't capture or on quit/crash). It
+> runs as a menu bar accessory (no Dock icon) and needs **Accessibility** permission
+> (mandatory) and **Screen Recording** (for live thumbnails). See "Permissions" below.
 
 ## Requirements
 
@@ -96,7 +100,8 @@ Thin wrappers around `xcodebuild` so the terminal and CI run identical commands:
 | --- | --- |
 | `bin/setup` | One-time: install tools, generate the project, build once, write `buildServer.json` |
 | `bin/generate` | Regenerate `ZenTab.xcodeproj` from `project.yml` (after adding files / changing settings) |
-| `bin/run` | Build (Debug) and launch the app |
+| `bin/run` | Build (Debug) and launch with **safe dev shortcuts** (`Ctrl+Opt+…`); never touches your Cmd+Tab |
+| `bin/run-prod` | Build (Debug) and launch with the **production Cmd+Tab suite** (what the shipped app does) |
 | `bin/build` | Debug build |
 | `bin/test` | Build + run the test suite |
 | `bin/lint` | SwiftLint (config: `.swiftlint.yml`) |

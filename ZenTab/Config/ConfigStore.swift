@@ -11,11 +11,12 @@ enum ConfigStore {
       .appendingPathComponent(".config/zentab/config.toml")
   }
 
-  static func load() -> Config {
+  static func load(profile: LaunchProfile = .current) -> Config {
+    let defaults = profile.configDefaults
     guard let text = readUserConfig() ?? readBundledConfig() else {
-      return .default
+      return defaults
     }
-    return Config(toml: TOMLParser.parse(text))
+    return Config(toml: TOMLParser.parse(text), defaults: defaults)
   }
 
   private static func readUserConfig() -> String? {

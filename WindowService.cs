@@ -1,9 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace ZenTab;
 
@@ -25,8 +26,9 @@ public sealed class WindowService : IDisposable
     private long _activeSeq;
 
     // Per-pid caches — process lookups are comparatively expensive; do them once.
-    private readonly Dictionary<uint, string?> _pathByPid = new();
-    private readonly Dictionary<string, string> _friendlyByPath = new(StringComparer.OrdinalIgnoreCase);
+    // Concurrent because a background warm-up fills them off the UI thread.
+    private readonly ConcurrentDictionary<uint, string?> _pathByPid = new();
+    private readonly ConcurrentDictionary<string, string> _friendlyByPath = new(StringComparer.OrdinalIgnoreCase);
 
     // win-event hook (foreground changes) — near-zero idle cost, only fires on switch.
     private Native.WinEventDelegate? _winEventProc;
@@ -41,6 +43,27 @@ public sealed class WindowService : IDisposable
 
         // Seed recency with whatever is focused right now.
         Touch(Native.GetForegroundWindow());
+
+        // Pre-warm the process caches off the UI thread so the first summon is already hot.
+        Task.Run(Warmup);
+    }
+
+    /// <summary>Resolve process paths/names for the current windows now, so summon stays cheap.</summary>
+    private void Warmup()
+    {
+        try
+        {
+            foreach (var h in Native.EnumerateTopLevel())
+            {
+                if (!Native.IsCandidate(h)) continue;
+                var path = PathOf(Native.Pid(h));
+                if (path != null) FriendlyName(path);
+            }
+        }
+        catch
+        {
+            // Warm-up is best-effort; a failure just means the first summon pays the cost.
+        }
     }
 
     private void OnForegroundChanged(nint hook, uint ev, nint hWnd, int idObject, int idChild, uint thread, uint time)
@@ -66,39 +89,20 @@ public sealed class WindowService : IDisposable
     private long FirstSeen(nint h) => _firstSeen.TryGetValue(h, out var v) ? v : long.MaxValue;
     private long LastActive(nint h) => _lastActive.TryGetValue(h, out var v) ? v : 0;
 
-    private string? PathOf(uint pid)
-    {
-        if (_pathByPid.TryGetValue(pid, out var cached)) return cached;
-        string? path = null;
-        try
-        {
-            using var p = Process.GetProcessById((int)pid);
-            path = p.MainModule?.FileName;
-        }
-        catch
-        {
-            // Protected / exited process — leave null; such windows group by pid instead.
-        }
-        _pathByPid[pid] = path;
-        return path;
-    }
+    private string? PathOf(uint pid) => _pathByPid.GetOrAdd(pid, Native.ProcessPath);
 
-    private string FriendlyName(string path)
+    private string FriendlyName(string path) => _friendlyByPath.GetOrAdd(path, static p =>
     {
-        if (_friendlyByPath.TryGetValue(path, out var cached)) return cached;
-        string name;
         try
         {
-            var desc = FileVersionInfo.GetVersionInfo(path).FileDescription;
-            name = string.IsNullOrWhiteSpace(desc) ? Path.GetFileNameWithoutExtension(path) : desc;
+            var desc = FileVersionInfo.GetVersionInfo(p).FileDescription;
+            return string.IsNullOrWhiteSpace(desc) ? Path.GetFileNameWithoutExtension(p) : desc;
         }
         catch
         {
-            name = Path.GetFileNameWithoutExtension(path);
+            return Path.GetFileNameWithoutExtension(p);
         }
-        _friendlyByPath[path] = name;
-        return name;
-    }
+    });
 
     /// <summary>
     /// Build the entry list for a mode plus the initially-highlighted index. Initial
@@ -160,7 +164,6 @@ public sealed class WindowService : IDisposable
             .Select(h => new SwitchEntry
             {
                 Title = Native.Title(h),
-                Icon = IconFor(h),
                 Primary = h,
                 Handles = new[] { h },
                 IsApp = false,
@@ -192,32 +195,12 @@ public sealed class WindowService : IDisposable
                 return new SwitchEntry
                 {
                     Title = string.IsNullOrEmpty(title) ? Native.Title(primary) : title,
-                    Icon = IconFor(primary),
                     Primary = primary,
                     Handles = windows,
                     IsApp = true,
                 };
             })
             .ToList();
-    }
-
-    private System.Windows.Media.ImageSource? IconFor(nint h)
-    {
-        var icon = Native.GetIcon(h);
-        if (icon != null) return icon;
-
-        // Fall back to the executable's associated icon.
-        var path = PathOf(Native.Pid(h));
-        if (path == null) return null;
-        try
-        {
-            using var ico = System.Drawing.Icon.ExtractAssociatedIcon(path);
-            return ico == null ? null : Native.FromHIcon(ico.Handle);
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     private int InitialSelection(List<SwitchEntry> entries, nint foreground)

@@ -63,8 +63,9 @@ public sealed class KeyboardHook : IDisposable
         bool up = msg is Native.WM_KEYUP or Native.WM_SYSKEYUP;
         if (!down && !up) return false;
 
-        var data = System.Runtime.InteropServices.Marshal.PtrToStructure<Native.KBDLLHOOKSTRUCT>(lParam);
-        int vk = (int)data.vkCode;
+        // This runs for every keystroke system-wide, so stay lean: vkCode is the first
+        // field of KBDLLHOOKSTRUCT — read it directly instead of marshalling the struct.
+        int vk = System.Runtime.InteropServices.Marshal.ReadInt32(lParam);
 
         if (down)
         {

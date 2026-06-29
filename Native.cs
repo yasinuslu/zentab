@@ -1,10 +1,6 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace ZenTab;
 
@@ -67,13 +63,21 @@ internal static class Native
     [DllImport("kernel32.dll")]
     public static extern uint GetCurrentThreadId();
 
+    // ---- Process image path (fast, robust across bitness/elevation) ------------
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern nint OpenProcess(uint access, bool inherit, uint pid);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool CloseHandle(nint handle);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern bool QueryFullProcessImageName(nint process, uint flags, StringBuilder buffer, ref uint size);
+
+    public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
     // ---- Messaging (close window) ---------------------------------------------
     [DllImport("user32.dll")]
     public static extern bool PostMessage(nint hWnd, uint msg, nint wParam, nint lParam);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    public static extern nint SendMessageTimeout(nint hWnd, uint msg, nint wParam, nint lParam,
-        uint flags, uint timeout, out nint result);
 
     // ---- DWM ------------------------------------------------------------------
     [DllImport("dwmapi.dll")]
@@ -225,13 +229,6 @@ internal static class Native
 
     public static bool IsKeyDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 
-    // ---- Icons ----------------------------------------------------------------
-    [DllImport("user32.dll")]
-    public static extern nint GetClassLongPtr(nint hWnd, int nIndex);
-
-    [DllImport("user32.dll")]
-    public static extern bool DestroyIcon(nint hIcon);
-
     // ---- Constants ------------------------------------------------------------
     public const uint GW_OWNER = 4;
 
@@ -250,12 +247,6 @@ internal static class Native
     public const uint MONITOR_DEFAULTTONEAREST = 2;
 
     public const uint WM_CLOSE = 0x0010;
-    public const uint WM_GETICON = 0x007F;
-    public const nint ICON_SMALL2 = 2;
-    public const nint ICON_BIG = 1;
-    public const int GCLP_HICON = -14;
-    public const int GCLP_HICONSM = -34;
-    public const uint SMTO_ABORTIFHUNG = 0x0002;
 
     // ---- Helpers --------------------------------------------------------------
 
@@ -296,6 +287,26 @@ internal static class Native
 
     public static nint Monitor(nint hWnd) => MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
 
+    /// <summary>
+    /// Full executable path of a process via QueryFullProcessImageName — much cheaper than
+    /// Process.MainModule and it doesn't throw across 32/64-bit or elevation boundaries.
+    /// </summary>
+    public static string? ProcessPath(uint pid)
+    {
+        nint handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+        if (handle == 0) return null;
+        try
+        {
+            var sb = new StringBuilder(1024);
+            uint size = (uint)sb.Capacity;
+            return QueryFullProcessImageName(handle, 0, sb, ref size) ? sb.ToString() : null;
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
+
     public static string Title(nint hWnd)
     {
         int len = GetWindowTextLength(hWnd);
@@ -303,40 +314,6 @@ internal static class Native
         var sb = new StringBuilder(len + 1);
         GetWindowText(hWnd, sb, sb.Capacity);
         return sb.ToString();
-    }
-
-    /// <summary>Best-effort per-window icon as a frozen, UI-ready ImageSource.</summary>
-    public static ImageSource? GetIcon(nint hWnd)
-    {
-        nint hIcon = QueryIcon(hWnd, WM_GETICON, ICON_BIG);
-        if (hIcon == 0) hIcon = QueryIcon(hWnd, WM_GETICON, ICON_SMALL2);
-        if (hIcon == 0) hIcon = GetClassLongPtr(hWnd, GCLP_HICON);
-        if (hIcon == 0) hIcon = GetClassLongPtr(hWnd, GCLP_HICONSM);
-        if (hIcon == 0) return null;
-        return FromHIcon(hIcon);
-    }
-
-    private static nint QueryIcon(nint hWnd, uint msg, nint wParam)
-    {
-        // SendMessageTimeout so a hung window never stalls the summon.
-        if (SendMessageTimeout(hWnd, msg, wParam, 0, SMTO_ABORTIFHUNG, 200, out nint result) != 0)
-            return result;
-        return 0;
-    }
-
-    public static ImageSource? FromHIcon(nint hIcon)
-    {
-        try
-        {
-            var src = Imaging.CreateBitmapSourceFromHIcon(
-                hIcon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-            src.Freeze();
-            return src;
-        }
-        catch
-        {
-            return null;
-        }
     }
 
     /// <summary>Bring a window to the foreground, restoring it if minimized.</summary>

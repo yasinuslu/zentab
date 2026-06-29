@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Windows.Media;
 
 namespace ZenTab;
 
@@ -24,7 +23,6 @@ public enum SwitchMode
 public sealed class SwitchEntry
 {
     public required string Title { get; init; }
-    public required ImageSource? Icon { get; init; }
     public required nint Primary { get; init; }
     public required IReadOnlyList<nint> Handles { get; init; }
     public required bool IsApp { get; init; }

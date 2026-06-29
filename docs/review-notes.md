@@ -11,6 +11,13 @@ Status legend: ⬜ open · ✅ addressed in this pass · 🔭 deliberate / visio
 
 ## Correctness bugs
 
+- ✅ **Phantom system windows shown (e.g. "Windows Input Experience"/TextInputHost).**
+  `IsCandidate` now drops the UWP shell `Windows.UI.Core.CoreWindow` (TextInputHost,
+  SearchHost, ShellExperienceHost, …) and `Progman`/`WorkerW` — mode-independently, since
+  Everything mode keeps shell-cloaked windows. Also adopted Raymond Chen's
+  GA_ROOTOWNER/GetLastActivePopup owner-walk and the `WS_EX_APPWINDOW` tool-window override.
+  Verified on live windows: phantom dropped, real apps (incl. UWP `ApplicationFrameWindow`)
+  kept. Deliberately did NOT use `WS_EX_NOREDIRECTIONBITMAP` (real apps here set it).
 - ⬜ **HIGH — Lone-Alt menu activation.** `KeyboardHook.cs:84,111,125` swallows only the
   trigger key, never the modifier, so a full Alt+Tab cycle looks to the OS like Alt
   pressed+released with no intervening key → can leave the newly-focused window in

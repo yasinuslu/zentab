@@ -32,8 +32,18 @@ internal static class Native
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern int GetWindowText(nint hWnd, StringBuilder lpString, int nMaxCount);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int GetClassName(nint hWnd, StringBuilder lpClassName, int nMaxCount);
+
     [DllImport("user32.dll")]
     public static extern nint GetWindow(nint hWnd, uint uCmd);
+
+    // Owner-walk for Raymond Chen's "is this an Alt+Tab window?" predicate.
+    [DllImport("user32.dll")]
+    public static extern nint GetAncestor(nint hWnd, uint gaFlags);
+
+    [DllImport("user32.dll")]
+    public static extern nint GetLastActivePopup(nint hWnd);
 
     [DllImport("user32.dll")]
     public static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
@@ -245,6 +255,7 @@ internal static class Native
 
     // ---- Constants ------------------------------------------------------------
     public const uint GW_OWNER = 4;
+    public const uint GA_ROOTOWNER = 3;
 
     public const int GWL_EXSTYLE = -20;
     public const long WS_EX_TOOLWINDOW = 0x00000080;
@@ -265,21 +276,60 @@ internal static class Native
     // ---- Helpers --------------------------------------------------------------
 
     /// <summary>
-    /// Cheap, mode-independent test for an alt-tab-worthy top-level window: visible,
-    /// not owned, not a tool window, has a title, and not minimized. Virtual-desktop
-    /// and process scoping are applied by <see cref="WindowService"/> per mode.
-    /// Minimized windows are excluded everywhere by design (see VISION.md).
+    /// Cheap, mode-independent test for a genuinely Alt+Tab-switchable top-level window:
+    /// visible, not minimized, titled, the representative of its owner cluster (Raymond
+    /// Chen's algorithm), and not a phantom system window. Virtual-desktop and process
+    /// scoping are applied by <see cref="WindowService"/> per mode. Minimized windows are
+    /// excluded everywhere by design (see VISION.md).
     /// </summary>
     public static bool IsCandidate(nint hWnd)
     {
         if (!IsWindowVisible(hWnd)) return false;
         if (IsIconic(hWnd)) return false;
-        if (GetWindow(hWnd, GW_OWNER) != 0) return false;
+        if (GetWindowTextLength(hWnd) == 0) return false;
 
+        // Tool windows are hidden from Alt+Tab unless they explicitly opt in (WS_EX_APPWINDOW).
         long ex = GetWindowLongPtr(hWnd, GWL_EXSTYLE).ToInt64();
-        if ((ex & WS_EX_TOOLWINDOW) != 0) return false;
+        if ((ex & WS_EX_TOOLWINDOW) != 0 && (ex & WS_EX_APPWINDOW) == 0) return false;
 
-        return GetWindowTextLength(hWnd) > 0;
+        // Phantom system windows that pass every style check but aren't real switch targets.
+        // The UWP shell CoreWindow covers "Windows Input Experience" (TextInputHost),
+        // SearchHost, ShellExperienceHost, StartMenuExperienceHost — and it must be dropped
+        // here, NOT via cloaking, because Everything mode keeps shell-cloaked windows. Real
+        // UWP apps surface as the outer ApplicationFrameWindow, never the CoreWindow, so this
+        // never hides a real app. Progman/WorkerW are the desktop shell.
+        switch (ClassName(hWnd))
+        {
+            case "Windows.UI.Core.CoreWindow":
+            case "Progman":
+            case "WorkerW":
+                return false;
+        }
+
+        return IsAltTabWindow(hWnd);
+    }
+
+    /// <summary>
+    /// Raymond Chen's predicate: a window is the Alt+Tab representative of its owner cluster
+    /// iff walking from its root owner through GetLastActivePopup lands back on it. Handles
+    /// owned dialogs and the WS_EX_APPWINDOW override better than a blanket "has an owner" reject.
+    /// </summary>
+    private static bool IsAltTabWindow(nint hWnd)
+    {
+        nint walk = GetAncestor(hWnd, GA_ROOTOWNER);
+        nint popup;
+        while ((popup = GetLastActivePopup(walk)) != walk)
+        {
+            if (IsWindowVisible(popup)) break;
+            walk = popup;
+        }
+        return walk == hWnd;
+    }
+
+    public static string ClassName(nint hWnd)
+    {
+        var sb = new StringBuilder(256);
+        return GetClassName(hWnd, sb, sb.Capacity) > 0 ? sb.ToString() : string.Empty;
     }
 
     public static IEnumerable<nint> EnumerateTopLevel()

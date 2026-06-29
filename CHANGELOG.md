@@ -15,6 +15,10 @@ the GitHub Release for each tag carries the portable exe, the MSI, and `SHA256SU
 - GitHub Actions: CI (build + publish smoke test on push/PR) and a tag-driven Release.
 - `global.json` SDK pin; `docs/review-notes.md` review backlog.
 
+### Fixed
+- Phantom system windows (e.g. "Windows Input Experience"/TextInputHost) no longer appear
+  in the switcher; only genuinely Alt+Tab-switchable windows are shown.
+
 ### Changed
 - The portable exe is now truly portable: shipped without `zentab.toml`
   (`CopyToPublishDirectory="Never"`), so it always uses the real Alt+Tab gestures.

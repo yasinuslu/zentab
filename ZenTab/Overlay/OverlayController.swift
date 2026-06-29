@@ -1,28 +1,21 @@
 import AppKit
 
-/// The main-actor coordinator between input, model, and view. It receives
-/// summon/cycle/confirm/cancel from `HotkeyTap` and:
-///
-/// - enumerates windows off-main, then builds a stable `SwitcherSelection`;
-/// - implements tap-vs-hold: the panel is only shown after the hold threshold, so a
-///   fast tap focuses the first window with no overlay at all;
-/// - drives the `TileGridView` and focuses the selection on confirm.
-///
-/// A monotonically increasing `session` id guards against stale async results from a
-/// previous summon landing on the current one.
+/// The main-actor shell around `OverlaySession`. It owns the AppKit overlay and the
+/// real side effects (off-main enumeration, the hold timer, thumbnail capture, focus)
+/// but holds **no decision logic**: every input is fed to the pure `OverlaySession`,
+/// and whatever `Effect`s it returns are executed here. That keeps the tricky
+/// tap-vs-hold / confirm-wins / stale-timer behavior in a unit-tested value type.
 @MainActor
 final class OverlayController {
   private let config: Config
   private let panel = SwitcherPanel()
   private let grid = TileGridView(frame: .zero)
+  private var machine = OverlaySession()
 
-  private var selection = SwitcherSelection()
-  private var session = 0
-  private var enumerated = false
-  private var showRequested = false
-  private var pendingConfirm = false
-  private var pendingSteps = 0
-  private var isVisible = false
+  // Captured at each summon so the enumeration effect knows what to ask for.
+  private var pendingMode: SwitchMode = .otherApps
+  private var pendingFrontmostPID: pid_t?
+  private var pendingSelfPID: pid_t = 0
 
   init(config: Config) {
     self.config = config
@@ -43,116 +36,76 @@ final class OverlayController {
     ])
     panel.contentView = container
 
-    grid.onHover = { [weak self] index in self?.hover(index) }
+    grid.onHover = { [weak self] index in self?.send(.hover(index)) }
     grid.onActivate = { [weak self] index in
-      self?.hover(index)
-      self?.confirm()
+      self?.send(.hover(index))
+      self?.send(.confirm)
     }
   }
 
   // MARK: - HotkeyTap handlers
 
-  func summon() {
-    session += 1
-    let current = session
-    enumerated = false
-    showRequested = false
-    pendingConfirm = false
-    pendingSteps = 0
-    selection = SwitcherSelection()
+  func summon(mode: SwitchMode) {
+    pendingMode = mode
+    pendingFrontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+    pendingSelfPID = ProcessInfo.processInfo.processIdentifier
+    send(.summon)
+  }
 
-    let excluded = excludedPIDs()
-    Task { [weak self] in
-      let windows = await WindowEnumerator.enumerate(excludingPIDs: excluded)
-      self?.onEnumerated(windows, session: current)
-    }
+  func cycle(backward: Bool) { send(.cycle(backward: backward)) }
+  func confirm() { send(.confirm) }
+  func cancel() { send(.cancel) }
 
-    DispatchQueue.main.asyncAfter(deadline: .now() + config.holdThreshold) { [weak self] in
-      MainActor.assumeIsolated {
-        guard let self, self.session == current else { return }
-        self.showRequested = true
-        self.showPanelIfReady()
+  // MARK: - Reducer plumbing
+
+  private func send(_ event: OverlaySession.Event) {
+    for effect in machine.handle(event) { perform(effect) }
+  }
+
+  private func perform(_ effect: OverlaySession.Effect) {
+    switch effect {
+    case .beginEnumeration(let id):
+      let mode = pendingMode
+      let frontmost = pendingFrontmostPID
+      let selfPID = pendingSelfPID
+      Task { [weak self] in
+        let windows = await WindowEnumerator.enumerate(
+          mode: mode, frontmostPID: frontmost, selfPID: selfPID)
+        self?.send(.enumerated(windows, session: id))
       }
+
+    case .scheduleHold(let id):
+      DispatchQueue.main.asyncAfter(deadline: .now() + config.holdThreshold) { [weak self] in
+        MainActor.assumeIsolated { self?.send(.holdElapsed(session: id)) }
+      }
+
+    case .show(let windows, let index):
+      showPanel(windows: windows, index: index)
+
+    case .updateSelection(let index):
+      grid.updateSelection(index)
+
+    case .hide:
+      panel.orderOut(nil)
+
+    case .focus(let window):
+      if let window { WindowFocuser.focus(window) }
     }
   }
 
-  func cycle(backward: Bool) {
-    guard enumerated else {
-      pendingSteps += backward ? -1 : 1
-      return
-    }
-    if backward { selection.selectPrevious() } else { selection.selectNext() }
-    grid.updateSelection(selection.index)
-  }
-
-  func confirm() {
-    guard enumerated else {
-      pendingConfirm = true
-      return
-    }
-    let target = selection.selected
-    hide()
-    if let target { WindowFocuser.focus(target) }
-  }
-
-  func cancel() {
-    pendingConfirm = false
-    hide()
-  }
-
-  // MARK: - Internal flow
-
-  private func onEnumerated(_ windows: [WindowInfo], session current: Int) {
-    guard session == current else { return }  // a newer summon superseded this one
-    enumerated = true
-
-    let start: Int
-    if windows.isEmpty {
-      start = 0
-    } else {
-      let modulo = windows.count
-      start = ((pendingSteps % modulo) + modulo) % modulo
-    }
-    selection = SwitcherSelection(windows: windows, startIndex: start)
-    pendingSteps = 0
-
-    if pendingConfirm {
-      pendingConfirm = false
-      let target = selection.selected
-      hide()
-      if let target { WindowFocuser.focus(target) }
-      return
-    }
-    showPanelIfReady()
-  }
-
-  private func showPanelIfReady() {
-    guard showRequested, enumerated, !isVisible, !selection.isEmpty else { return }
-
-    let current = session
-    let size = grid.configure(windows: selection.windows, selectedIndex: selection.index)
+  private func showPanel(windows: [WindowInfo], index: Int) {
+    let size = grid.configure(windows: windows, selectedIndex: index)
     panel.setContentSize(size)
     centerPanel(size: size)
     panel.makeKeyAndOrderFront(nil)
-    isVisible = true
 
-    let ids = selection.windows.map(\.windowID)
+    let ids = windows.map(\.windowID)
+    let shownSession = machine.session
     Task { [weak self] in
       let captured = await WindowThumbnail.capture(windowIDs: ids)
-      guard let self, self.session == current, self.isVisible else { return }
+      guard let self, self.machine.session == shownSession, self.machine.isVisible else { return }
       self.grid.applyThumbnails(captured.images)
     }
-  }
-
-  private func hover(_ index: Int) {
-    selection.hover(index)
-    grid.updateSelection(selection.index)
-  }
-
-  private func hide() {
-    panel.orderOut(nil)
-    isVisible = false
-    showRequested = false
   }
 
   private func centerPanel(size: NSSize) {
@@ -160,14 +113,5 @@ final class OverlayController {
     guard let frame = screen?.frame else { return }
     panel.setFrameOrigin(
       NSPoint(x: frame.midX - size.width / 2, y: frame.midY - size.height / 2))
-  }
-
-  /// Exclude ZenTab itself and the current (frontmost) app: "other apps" mode.
-  private func excludedPIDs() -> Set<pid_t> {
-    var excluded: Set<pid_t> = [ProcessInfo.processInfo.processIdentifier]
-    if let front = NSWorkspace.shared.frontmostApplication?.processIdentifier {
-      excluded.insert(front)
-    }
-    return excluded
   }
 }

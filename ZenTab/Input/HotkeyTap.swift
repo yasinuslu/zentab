@@ -1,36 +1,46 @@
 import AppKit
 import CoreGraphics
 
-/// One `CGEventTap` on a dedicated background-thread runloop. It detects the
-/// configured trigger chord (summon on first key-down, cycle on subsequent ones),
-/// the trigger-modifier *release* (confirm, via `.flagsChanged` — which survives
-/// secure input where key events don't), and Esc (cancel). The C tap callback runs
-/// on the tap thread and must return its absorb/pass decision synchronously; all
-/// actual switcher work is hopped to the main actor.
+/// One `CGEventTap` on a dedicated background-thread runloop. It watches several
+/// trigger chords (one per `SwitchMode`) and reports which one fired (summon on
+/// first key-down, cycle on subsequent ones while held), the trigger-modifier
+/// *release* (confirm, via `.flagsChanged` — which survives secure input where key
+/// events don't), and Esc (cancel). The C tap callback runs on the tap thread and
+/// must return its absorb/pass decision synchronously; all switcher work is hopped
+/// to the main actor.
 ///
-/// `@unchecked Sendable`: `binding`/`handlers` are immutable; `active` is lock-
-/// guarded; `machPort`/`runLoop`/`thread` are set once before the tap thread starts.
+/// `@unchecked Sendable`: `triggers`/`handlers` are immutable; `active`/`activeHold`
+/// are lock-guarded; `machPort`/`runLoop`/`thread` are set once before the tap
+/// thread starts.
 final class HotkeyTap: @unchecked Sendable {
+  /// A chord that triggers a given mode.
+  struct Trigger {
+    let mode: SwitchMode
+    let binding: Keybinding
+  }
+
   /// Main-actor callbacks driven by the tap.
   struct Handlers {
-    let summon: @MainActor () -> Void
+    let summon: @MainActor (_ mode: SwitchMode) -> Void
     let cycle: @MainActor (_ backward: Bool) -> Void
     let confirm: @MainActor () -> Void
     let cancel: @MainActor () -> Void
   }
 
-  private let binding: Keybinding
+  private let triggers: [Trigger]
   private let handlers: Handlers
 
   private let lock = NSLock()
   private var active = false
+  /// The held modifiers of the chord that summoned; releasing any of them confirms.
+  private var activeHold: NSEvent.ModifierFlags = []
 
   private var machPort: CFMachPort?
   private var runLoop: CFRunLoop?
   private var thread: Thread?
 
-  init(binding: Keybinding, handlers: Handlers) {
-    self.binding = binding
+  init(triggers: [Trigger], handlers: Handlers) {
+    self.triggers = triggers
     self.handlers = handlers
   }
 
@@ -80,15 +90,23 @@ final class HotkeyTap: @unchecked Sendable {
 
   // MARK: - Tap-thread state (lock-guarded)
 
-  private var isActive: Bool {
+  private var snapshot: (active: Bool, hold: NSEvent.ModifierFlags) {
     lock.lock()
     defer { lock.unlock() }
-    return active
+    return (active, activeHold)
   }
 
-  private func setActive(_ value: Bool) {
+  private func beginSession(hold: NSEvent.ModifierFlags) {
     lock.lock()
-    active = value
+    active = true
+    activeHold = hold
+    lock.unlock()
+  }
+
+  private func endSession() {
+    lock.lock()
+    active = false
+    activeHold = []
     lock.unlock()
   }
 
@@ -110,11 +128,12 @@ final class HotkeyTap: @unchecked Sendable {
       return passthrough
 
     case .flagsChanged:
+      let (isActive, hold) = snapshot
+      guard isActive else { return passthrough }
       let modifiers = NSEvent.ModifierFlags(rawValue: UInt(event.flags.rawValue))
-      let stillHeld = modifiers.intersection(Keybinding.triggerModifierMask)
-        .isSuperset(of: binding.holdModifiers)
-      if isActive && !stillHeld {
-        setActive(false)
+      let stillHeld = modifiers.intersection(Keybinding.triggerModifierMask).isSuperset(of: hold)
+      if !stillHeld {
+        endSession()
         dispatchMain { self.handlers.confirm() }
       }
       return passthrough  // never absorb modifier changes
@@ -122,29 +141,40 @@ final class HotkeyTap: @unchecked Sendable {
     case .keyDown:
       let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
       let modifiers = NSEvent.ModifierFlags(rawValue: UInt(event.flags.rawValue))
-
-      // Esc cancels an open switch and is swallowed.
-      if isActive && keyCode == 53 {
-        setActive(false)
-        dispatchMain { self.handlers.cancel() }
-        return nil
-      }
-
-      if binding.matches(keyCode: keyCode, modifiers: modifiers) {
-        let backward = modifiers.contains(.shift)
-        if isActive {
-          dispatchMain { self.handlers.cycle(backward) }
-        } else {
-          setActive(true)
-          dispatchMain { self.handlers.summon() }
-        }
-        return nil  // absorb the trigger key so the focused app never sees it
-      }
-      return passthrough
+      // Absorb keys we handle so the focused app never sees the trigger / Esc.
+      return handleKeyDown(keyCode: keyCode, modifiers: modifiers) ? nil : passthrough
 
     default:
       return passthrough
     }
+  }
+
+  /// Acts on a key-down and returns whether ZenTab consumed it.
+  private func handleKeyDown(keyCode: CGKeyCode, modifiers: NSEvent.ModifierFlags) -> Bool {
+    if snapshot.active {
+      if keyCode == 53 {  // Esc cancels
+        endSession()
+        dispatchMain { self.handlers.cancel() }
+        return true
+      }
+      // Pressing any trigger key again (while held) cycles.
+      guard triggers.contains(where: { $0.binding.matches(keyCode: keyCode, modifiers: modifiers) })
+      else { return false }
+      let backward = modifiers.contains(.shift)
+      dispatchMain { self.handlers.cycle(backward) }
+      return true
+    }
+
+    // Not active: the first matching trigger summons its mode.
+    guard
+      let trigger = triggers.first(where: {
+        $0.binding.matches(keyCode: keyCode, modifiers: modifiers)
+      })
+    else { return false }
+    beginSession(hold: trigger.binding.holdModifiers)
+    let mode = trigger.mode
+    dispatchMain { self.handlers.summon(mode) }
+    return true
   }
 
   /// Hop a main-actor handler onto the main thread, preserving FIFO order.

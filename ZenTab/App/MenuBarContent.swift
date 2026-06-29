@@ -9,7 +9,7 @@ struct MenuBarContent: View {
   var body: some View {
     if model.accessibilityTrusted {
       Text(model.switcherRunning ? "ZenTab is running" : "Starting…")
-      Text("Hold ⌃⌥ and press Tab to switch windows")
+      Text("Hold ⌃⌥ then: Tab = other apps · ` = this app · A = everything")
         .font(.caption)
     } else {
       Text("Accessibility permission required")

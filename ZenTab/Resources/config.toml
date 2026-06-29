@@ -11,9 +11,10 @@
 # "reverse" key and is never part of a trigger.
 
 [keys]
-current_app = "ctrl+opt+`"      # (future Cmd+`)     windows of the current app
-other_apps  = "ctrl+opt+tab"    # (future Cmd+Tab)   other apps' windows
-everything  = "ctrl+opt+space"  # (future Option+Tab) everything, everywhere
+current_app = "ctrl+opt+`"    # (future Cmd+`)      windows of the current app
+other_apps  = "ctrl+opt+tab"  # (future Cmd+Tab)    other apps' windows
+everything  = "ctrl+opt+a"    # (future Option+Tab) everything (a = all). NOT Space:
+                              # Ctrl+Opt+Space is macOS "select next input source".
 
 [behavior]
 # The overlay appears only after the trigger modifier is held this long. A faster

@@ -11,11 +11,28 @@ import ApplicationServices
 ///   reliable title (works without Screen Recording), and is the bridge we'll reuse
 ///   at focus time. AX calls can block, so the whole thing runs off-main.
 enum WindowEnumerator {
-  /// Switchable windows of every app except those in `excluded` (the current app
-  /// and ZenTab itself), in global front-to-back order.
-  static func enumerate(excludingPIDs excluded: Set<pid_t>) async -> [WindowInfo] {
+  /// Switchable windows for `mode`, scoped to the current Space, in global
+  /// front-to-back order. ZenTab's own windows are always excluded.
+  static func enumerate(
+    mode: SwitchMode, frontmostPID: pid_t?, selfPID: pid_t
+  ) async -> [WindowInfo] {
     await withCheckedContinuation { continuation in
-      queue.async { continuation.resume(returning: collect(excluding: excluded)) }
+      queue.async {
+        continuation.resume(
+          returning: collect(mode: mode, frontmostPID: frontmostPID, selfPID: selfPID))
+      }
+    }
+  }
+
+  /// Whether a window owned by `pid` belongs in `mode`'s list.
+  private static func includes(
+    _ pid: pid_t, mode: SwitchMode, frontmostPID: pid_t?, selfPID: pid_t
+  ) -> Bool {
+    guard pid != selfPID else { return false }
+    switch mode {
+    case .everything: return true
+    case .otherApps: return pid != frontmostPID
+    case .currentApp: return pid == frontmostPID
     }
   }
 
@@ -38,8 +55,10 @@ enum WindowEnumerator {
     let title: String
   }
 
-  private static func collect(excluding excluded: Set<pid_t>) -> [WindowInfo] {
-    let entries = onScreenEntries(excluding: excluded)
+  private static func collect(
+    mode: SwitchMode, frontmostPID: pid_t?, selfPID: pid_t
+  ) -> [WindowInfo] {
+    let entries = onScreenEntries(mode: mode, frontmostPID: frontmostPID, selfPID: selfPID)
     let details = axDetails(for: Set(entries.map(\.pid)))
     return entries.compactMap { entry in
       let window = merge(entry, details[entry.windowID])
@@ -47,9 +66,11 @@ enum WindowEnumerator {
     }
   }
 
-  /// Normal windows (layer 0) of non-excluded apps, in the CoreGraphics
+  /// Normal windows (layer 0) belonging to `mode`, in the CoreGraphics
   /// front-to-back z-order.
-  private static func onScreenEntries(excluding excluded: Set<pid_t>) -> [Entry] {
+  private static func onScreenEntries(
+    mode: SwitchMode, frontmostPID: pid_t?, selfPID: pid_t
+  ) -> [Entry] {
     guard
       let infoList = CGWindowListCopyWindowInfo(
         [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]]
@@ -60,7 +81,7 @@ enum WindowEnumerator {
       guard let layer = info[kCGWindowLayer as String] as? Int, layer == 0,
         let windowID = info[kCGWindowNumber as String] as? CGWindowID,
         let pid = info[kCGWindowOwnerPID as String] as? pid_t,
-        !excluded.contains(pid)
+        includes(pid, mode: mode, frontmostPID: frontmostPID, selfPID: selfPID)
       else { continue }
       entries.append(
         Entry(

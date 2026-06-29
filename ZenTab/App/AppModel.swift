@@ -67,10 +67,15 @@ final class AppModel: ObservableObject {
     guard !switcherRunning, Permissions.isAccessibilityTrusted else { return }
 
     let overlay = OverlayController(config: config)
+    let triggers = [
+      HotkeyTap.Trigger(mode: .currentApp, binding: config.currentApp),
+      HotkeyTap.Trigger(mode: .otherApps, binding: config.otherApps),
+      HotkeyTap.Trigger(mode: .everything, binding: config.everything),
+    ]
     let tap = HotkeyTap(
-      binding: config.otherApps,
+      triggers: triggers,
       handlers: HotkeyTap.Handlers(
-        summon: { [weak overlay] in overlay?.summon() },
+        summon: { [weak overlay] mode in overlay?.summon(mode: mode) },
         cycle: { [weak overlay] backward in overlay?.cycle(backward: backward) },
         confirm: { [weak overlay] in overlay?.confirm() },
         cancel: { [weak overlay] in overlay?.cancel() }))

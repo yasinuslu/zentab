@@ -31,7 +31,8 @@ struct Config: Sendable, Equatable {
   static let `default` = Config(
     currentApp: Keybinding("ctrl+opt+`")!,
     otherApps: Keybinding("ctrl+opt+tab")!,
-    everything: Keybinding("ctrl+opt+space")!,
+    // Not Space: Ctrl+Opt+Space is macOS "select next input source".
+    everything: Keybinding("ctrl+opt+a")!,
     holdThresholdMs: 150
   )
 

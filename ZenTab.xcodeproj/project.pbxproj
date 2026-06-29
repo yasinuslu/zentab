@@ -11,6 +11,7 @@
 		213812D756CD965EA42EBA64 /* TOMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63934F2C629A4A581F13C591 /* TOMLParser.swift */; };
 		241BCC05871A49295DB4352F /* SwitcherSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327845442DFBA25A0B1F1B72 /* SwitcherSelectionTests.swift */; };
 		28C370C05D35E040E5BFF206 /* Keybinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71A17F28DCE54435B0B551F /* Keybinding.swift */; };
+		2F3828F4840412D873EBF181 /* SwitchMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6E403FDB76C082C2AB69A8 /* SwitchMode.swift */; };
 		41B83E25DB349697EF521CAA /* WindowThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 409C195BA2D4A1458C179187 /* WindowThumbnail.swift */; };
 		422744913EA997BD7DFE40BF /* OverlayController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B4263808D3FBE36E15E0F4D /* OverlayController.swift */; };
 		44F4865690A3E30090934586 /* config.toml in Resources */ = {isa = PBXBuildFile; fileRef = 17062CB8C07D2691E221AFE6 /* config.toml */; };
@@ -19,6 +20,7 @@
 		64D37DF88335D28C83716F40 /* SkyLight.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA4D8F2BD049B818E4C3790D /* SkyLight.swift */; };
 		71E22CCD123CCF718091F8DB /* WindowFocuser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704F07B389F7056774BE70B9 /* WindowFocuser.swift */; };
 		788CF83B980BF98F27932075 /* TOMLConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24200F4FDDFA43F04520569 /* TOMLConfigTests.swift */; };
+		84D72A0697670315E9706A6D /* OverlaySessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6C3653BB248506198AFA276 /* OverlaySessionTests.swift */; };
 		8C701A9154B86A92D9151B1F /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE7D07C25D65DEB5BC91169 /* Permissions.swift */; };
 		8EA5EDC239B73833175CA897 /* SwitcherPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE31BC4E771567CE8001B2F2 /* SwitcherPanel.swift */; };
 		8EAC272A9ED831B3AA224EA6 /* WindowFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35E6B10B67E46713183282D9 /* WindowFilterTests.swift */; };
@@ -26,6 +28,7 @@
 		9FA8B2D7C769A64DDB5C2390 /* HotkeyTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3259A283E5998AA73D38DADA /* HotkeyTap.swift */; };
 		AD79D873F4AEB01BC613F01C /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 290AEA6B5D912D3B4979D7B9 /* Config.swift */; };
 		AE8BB607D689A924461C2D1A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 525600181727B1500BEC9252 /* Assets.xcassets */; };
+		B2F0FE1DE18A37EADD1A2385 /* OverlaySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A1A77506ECACA9398BCEDC4 /* OverlaySession.swift */; };
 		C5AE6A3AD7D42C53CEA397FE /* TileGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 556FD0EDD87634D487E85A8D /* TileGridView.swift */; };
 		CF7103783C1EF0F490A5C9C2 /* KeybindingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F7E385C2993CB30C4B2E43 /* KeybindingTests.swift */; };
 		DF129787AE6E75CC54271556 /* SwitcherSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCD2E66BC40672DEC11503AD /* SwitcherSelection.swift */; };
@@ -50,6 +53,7 @@
 		16DBA74F3FE81CD5DF5D4B1B /* WindowInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowInfo.swift; sourceTree = "<group>"; };
 		17062CB8C07D2691E221AFE6 /* config.toml */ = {isa = PBXFileReference; path = config.toml; sourceTree = "<group>"; };
 		290AEA6B5D912D3B4979D7B9 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		2D6E403FDB76C082C2AB69A8 /* SwitchMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchMode.swift; sourceTree = "<group>"; };
 		31B38D20870FD09668FC3E25 /* ZenTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZenTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3259A283E5998AA73D38DADA /* HotkeyTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyTap.swift; sourceTree = "<group>"; };
 		327845442DFBA25A0B1F1B72 /* SwitcherSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitcherSelectionTests.swift; sourceTree = "<group>"; };
@@ -58,6 +62,7 @@
 		3B4263808D3FBE36E15E0F4D /* OverlayController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayController.swift; sourceTree = "<group>"; };
 		409C195BA2D4A1458C179187 /* WindowThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowThumbnail.swift; sourceTree = "<group>"; };
 		48C878A39364570F45F0E9BC /* ConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigStore.swift; sourceTree = "<group>"; };
+		4A1A77506ECACA9398BCEDC4 /* OverlaySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlaySession.swift; sourceTree = "<group>"; };
 		4EBD932CC863F5804AAA20E0 /* ZenTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenTabApp.swift; sourceTree = "<group>"; };
 		525600181727B1500BEC9252 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		556FD0EDD87634D487E85A8D /* TileGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileGridView.swift; sourceTree = "<group>"; };
@@ -69,6 +74,7 @@
 		CEE7D07C25D65DEB5BC91169 /* Permissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Permissions.swift; sourceTree = "<group>"; };
 		DCD2E66BC40672DEC11503AD /* SwitcherSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitcherSelection.swift; sourceTree = "<group>"; };
 		E65D4503B08575E79E2AEB2F /* HIServicesSPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIServicesSPI.swift; sourceTree = "<group>"; };
+		E6C3653BB248506198AFA276 /* OverlaySessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlaySessionTests.swift; sourceTree = "<group>"; };
 		E7DEA57FB72789AEBFE7C117 /* ZenTab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ZenTab.entitlements; sourceTree = "<group>"; };
 		EE31BC4E771567CE8001B2F2 /* SwitcherPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitcherPanel.swift; sourceTree = "<group>"; };
 		F24200F4FDDFA43F04520569 /* TOMLConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOMLConfigTests.swift; sourceTree = "<group>"; };
@@ -118,6 +124,7 @@
 			isa = PBXGroup;
 			children = (
 				14F7E385C2993CB30C4B2E43 /* KeybindingTests.swift */,
+				E6C3653BB248506198AFA276 /* OverlaySessionTests.swift */,
 				327845442DFBA25A0B1F1B72 /* SwitcherSelectionTests.swift */,
 				F24200F4FDDFA43F04520569 /* TOMLConfigTests.swift */,
 				35E6B10B67E46713183282D9 /* WindowFilterTests.swift */,
@@ -137,7 +144,9 @@
 		8600FD2B52AED55EBE2305A5 /* Switcher */ = {
 			isa = PBXGroup;
 			children = (
+				4A1A77506ECACA9398BCEDC4 /* OverlaySession.swift */,
 				DCD2E66BC40672DEC11503AD /* SwitcherSelection.swift */,
+				2D6E403FDB76C082C2AB69A8 /* SwitchMode.swift */,
 			);
 			path = Switcher;
 			sourceTree = "<group>";
@@ -305,6 +314,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CF7103783C1EF0F490A5C9C2 /* KeybindingTests.swift in Sources */,
+				84D72A0697670315E9706A6D /* OverlaySessionTests.swift in Sources */,
 				241BCC05871A49295DB4352F /* SwitcherSelectionTests.swift in Sources */,
 				788CF83B980BF98F27932075 /* TOMLConfigTests.swift in Sources */,
 				8EAC272A9ED831B3AA224EA6 /* WindowFilterTests.swift in Sources */,
@@ -324,8 +334,10 @@
 				28C370C05D35E040E5BFF206 /* Keybinding.swift in Sources */,
 				198AB7E7827DB4043A08A8C5 /* MenuBarContent.swift in Sources */,
 				422744913EA997BD7DFE40BF /* OverlayController.swift in Sources */,
+				B2F0FE1DE18A37EADD1A2385 /* OverlaySession.swift in Sources */,
 				8C701A9154B86A92D9151B1F /* Permissions.swift in Sources */,
 				64D37DF88335D28C83716F40 /* SkyLight.swift in Sources */,
+				2F3828F4840412D873EBF181 /* SwitchMode.swift in Sources */,
 				8EA5EDC239B73833175CA897 /* SwitcherPanel.swift in Sources */,
 				DF129787AE6E75CC54271556 /* SwitcherSelection.swift in Sources */,
 				213812D756CD965EA42EBA64 /* TOMLParser.swift in Sources */,

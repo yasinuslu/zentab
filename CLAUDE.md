@@ -1,7 +1,10 @@
 # ZenTab
 
 A free, opinionated macOS window switcher (alternative to Cmd+Tab and
-alt-tab-macos). SwiftUI scaffold today; the real app is a window switcher.
+alt-tab-macos). The first vertical slice is implemented: a menu bar accessory that,
+on a safe hotkey (default `Ctrl+Opt+Tab`), enumerates other apps' current-Space
+windows, shows a non-activating AppKit overlay, and focuses on release. See
+`VISION.md` "Status" for what's done vs. next.
 
 ## Read this first
 
@@ -21,7 +24,22 @@ facts and API names, do not copy its code into ZenTab.
 
 ## Build and test
 
-See `README.md`. Use `bin/run`, `bin/build`, `bin/test`, `bin/format`. Develop in
-Zed (no Xcode GUI required). The `bin/*` scripts wrap `xcodebuild` and clear the
-`LD` env var that otherwise breaks linking.
+See `README.md`. Use `bin/run`, `bin/build`, `bin/test`, `bin/format`, `bin/lint`.
+Develop in Zed (no Xcode GUI required). The `bin/*` scripts wrap `xcodebuild` and
+clear the `LD` env var that otherwise breaks linking.
+
+**`project.yml` is the source of truth; `ZenTab.xcodeproj` is generated from it.**
+Sources are discovered by directory, so a new `.swift` file just needs `bin/generate`
+(never hand-edit the `.pbxproj`, and avoid changing build settings in the Xcode GUI:
+a regenerate overwrites them). Put build settings, Info.plist keys, and entitlement
+changes in `project.yml` / `ZenTab.entitlements`, then `bin/generate` and commit both.
+
+## Private APIs
+
+Private SkyLight/CGS + Accessibility SPIs are declared with `@_silgen_name` (no
+bridging header) in `ZenTab/Private/`; SkyLight is linked via `-framework SkyLight`
+(set in `project.yml`). A `@_silgen_name` signature is an unchecked C-ABI contract:
+transcribe arg widths/order/return exactly, and smoke-test new symbols via the menu
+bar "Run private-API diagnostics" action before using them in the hot path. App
+Sandbox is OFF; hardened runtime keeps `disable-library-validation`.
 </content>

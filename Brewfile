@@ -8,5 +8,6 @@
 brew "swiftlint"          # linting (bin/lint)
 brew "xcbeautify"         # readable xcodebuild output (used by bin/* and CI)
 brew "xcode-build-server" # feeds SourceKit-LSP so editors (Zed) get autocomplete
+brew "xcodegen"           # generates ZenTab.xcodeproj from project.yml (bin/generate)
 
 # The release .dmg is built with hdiutil, which ships with macOS, so no tool is needed.

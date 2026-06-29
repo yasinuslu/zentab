@@ -2,11 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- App Sandbox is enabled by default for new macOS apps (matches Xcode's
-	     template and is required for the Mac App Store). If your app later
-	     needs file, network, or automation access, add the matching
-	     entitlement here. See docs/HUMAN-TODO.md. -->
+	<!-- App Sandbox is OFF on purpose. ZenTab is a window switcher: it calls
+	     private SkyLight/CGS and Accessibility SPIs to enumerate, focus, and
+	     capture other apps' windows. The sandbox blocks every one of those, and
+	     this feature set rules out the Mac App Store anyway (see VISION.md).
+	     Distribution is a notarized DMG / GitHub release, not the App Store. -->
 	<key>com.apple.security.app-sandbox</key>
+	<false/>
+	<!-- Hardened runtime is on (ENABLE_HARDENED_RUNTIME=YES). Allow loading the
+	     private SkyLight.framework from /System/Library/PrivateFrameworks. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
 	<true/>
 </dict>
 </plist>

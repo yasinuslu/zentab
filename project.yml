@@ -1,9 +1,15 @@
-# XcodeGen spec: used ONCE to scaffold ZenTab.xcodeproj.
+# XcodeGen spec: the SOURCE OF TRUTH for ZenTab.xcodeproj.
 #
-# After generation the committed ZenTab.xcodeproj is the source of truth and
-# you edit settings in Xcode as normal. This file is kept only as readable
-# documentation of how the project was created; regenerate with
-# `xcodegen generate` only if you want to rebuild the project from scratch.
+# As ZenTab grew into a real window switcher (many source files across several
+# folders), hand-editing the .pbxproj for every new file became the bottleneck.
+# So project.yml is now authoritative and the committed ZenTab.xcodeproj is
+# generated from it. Sources are discovered by directory (`path: ZenTab`), so
+# adding a .swift file needs no project edit: just regenerate.
+#
+#   xcodegen generate     # or: bin/generate
+#
+# Change build settings, Info.plist keys, and entitlements HERE (not in Xcode),
+# then regenerate and commit both this file and the regenerated project.
 name: ZenTab
 options:
   bundleIdPrefix: org.nepjua
@@ -34,8 +40,18 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: ZenTab
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        # Accessory (agent) app: no Dock icon, no main menu. The switcher lives
+        # in the menu bar and a non-activating overlay, so it must never become
+        # the active app or steal key focus from the window being switched to.
+        INFOPLIST_KEY_LSUIElement: "YES"
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_ENTITLEMENTS: ZenTab/ZenTab.entitlements
+        # Link the private SkyLight.framework (WindowServer / CGS + SLPS SPIs used
+        # for enumeration, focus, and capture). It is an OS dylib in the dyld
+        # shared cache: link it, never embed it. Expressed as flags rather than a
+        # Frameworks build phase so the generated project stays trivial.
+        FRAMEWORK_SEARCH_PATHS: "$(inherited) /System/Library/PrivateFrameworks"
+        OTHER_LDFLAGS: "$(inherited) -framework SkyLight"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_PREVIEWS: YES
 

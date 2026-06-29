@@ -4,6 +4,29 @@ Things the automation can't do for you, each needs an account, a secret, or a
 personal decision. Nothing here blocks day-to-day development; the app builds,
 runs, tests, and produces (unsigned) releases as-is.
 
+## 0. Try the switcher (grant permissions + hand-verify the slice)
+
+The first vertical slice is build- and test-verified, but its actual switching
+behavior needs two TCC permissions that only you can grant, and a human at the
+keyboard to confirm. The automation can't do this part.
+
+- [ ] `bin/run` to launch ZenTab. It appears as a menu bar item (no Dock icon).
+- [ ] From the menu bar, **Grant Accessibility…** and enable ZenTab in System
+      Settings. It starts the switcher automatically once trusted (no relaunch).
+- [ ] Optionally **Enable live thumbnails (Screen Recording)…**; without it, tiles
+      show app icon + title.
+- [ ] **Hold `Ctrl+Opt` and press `Tab`:** the overlay grid should appear after the
+      hold threshold; `Tab` / `Shift+Tab` and the mouse move the selection; releasing
+      `Ctrl+Opt` focuses the selected window. A quick `Ctrl+Opt+Tab` tap should switch
+      with no overlay. `Esc` cancels.
+- [ ] Test focus across a few app kinds (Safari, Terminal, an Electron app) since the
+      private front/key sequence has app-specific edge cases.
+- [ ] Run **"Run private-API diagnostics"** from the menu; it should print a non-zero
+      CGS connection and a PSN (confirms the `@_silgen_name` bindings are sound).
+
+If something misbehaves, the runtime (event tap, overlay, enumeration, focus) is the
+hand-verified shell; the pure logic is covered by `bin/test`.
+
 ## 1. Signed + notarized releases (optional, recommended before public distribution)
 
 Today `release.yml` ships an **ad-hoc-signed, un-notarized** `.dmg`. It runs, but
@@ -56,12 +79,14 @@ Once this is in place, delete the Gatekeeper note from the release body.
 
 ## 2. Decisions baked in as defaults (change if you disagree)
 
-- [ ] **Bundle identifier** `org.nepjua.ZenTab`, change in Xcode (target →
-      Signing & Capabilities) and in `project.yml` if you regenerate.
-- [ ] **Deployment target** macOS 15.0, raise to macOS 26 for newest-only APIs,
-      or lower for wider reach (Xcode → target → General → Minimum Deployments).
-- [ ] **App Sandbox** is enabled. Add entitlements in `ZenTab.entitlements` when a
-      feature needs broader access.
+- [ ] **Bundle identifier** `org.nepjua.ZenTab`, change in `project.yml` (the source
+      of truth) then run `bin/generate`.
+- [ ] **Deployment target** macOS 15.0, raise to macOS 26 for newest-only APIs, or
+      lower for wider reach (set in `project.yml` → `options.deploymentTarget`).
+- [ ] **App Sandbox is OFF** by design (the switcher needs private SkyLight/CGS +
+      Accessibility SPIs, which also rules out the Mac App Store). Hardened runtime
+      stays on with `com.apple.security.cs.disable-library-validation` so the binary
+      can load `SkyLight.framework`. See `ZenTab.entitlements`.
 
 ## 3. Nice-to-have polish
 

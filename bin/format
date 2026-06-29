@@ -2,5 +2,6 @@
 # Format all Swift sources in place using swift-format (ships with Xcode).
 source "$(dirname "$0")/lib.sh"
 
+ensure_xcode  # swift-format ships with Xcode; xcrun needs the right developer dir
 xcrun swift-format format --in-place --recursive ZenTab ZenTabTests
 echo "Formatted ZenTab and ZenTabTests."

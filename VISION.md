@@ -78,9 +78,27 @@ keys that trigger it are.
 
 ## Status
 
-The product spec is complete. Next session moves to implementation: pivot the
-SwiftUI scaffold, stand up window enumeration (AX + private SkyLight/CGS), build
-the AppKit overlay, and wire the three shortcuts (start on a non-hijacking key,
-harden the native Cmd+Tab override before making it the default). The contributor
-guide (`CLAUDE.md`) and the local alt-tab reference clone hold the API names.
+**First vertical slice is implemented** (build- and test-verified; runtime needs
+Accessibility/Screen Recording granted and is hand-verified). The SwiftUI scaffold is
+gone; the app is a menu bar accessory. On a safe, non-hijacking hotkey (default
+`Ctrl+Opt+Tab`, configurable in TOML) it:
+
+- enumerates other apps' windows on the current Space (CoreGraphics z-order +
+  Accessibility detail), in a stable list;
+- shows the hand-rolled, non-activating AppKit overlay (`NSPanel` + recycled CALayer
+  tiles), with tap-vs-hold (a fast tap switches with no overlay; a hold shows the grid);
+- navigates with Tab / Shift+Tab and the mouse (one shared selection), and focuses the
+  window on release via the private SLPS front + synthetic-key + AX-raise sequence;
+- loads config from `~/.config/zentab/config.toml` (hand-rolled parser, strong defaults).
+
+The private SkyLight/CGS symbols are bound with `@_silgen_name` (no bridging header), and
+SkyLight is linked via `-framework SkyLight`; the menu bar has a diagnostics action to
+smoke-test the bindings.
+
+**Next:** live thumbnails are wired through ScreenCaptureKit but the grid currently
+falls back to app icon + title until that's verified on-device; then the other two modes
+(current-app `Cmd+\``, everything `Option+Tab` across Spaces/monitors via the deferred
+private CGS calls), W=close / Q=quit, recency for the tap toggle, and finally the native
+`Cmd+Tab` override (private symbolic-hotkey API) with auto-restore. The contributor guide
+(`CLAUDE.md`) and the local alt-tab reference clone hold the API names.
 </content>

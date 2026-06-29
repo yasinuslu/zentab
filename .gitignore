@@ -16,6 +16,10 @@ dist/
 *.dmg
 *.zip
 
+# Code coverage artifacts (from running instrumented test binaries)
+*.profraw
+*.profdata
+
 # Swift Package Manager
 .build/
 .swiftpm/

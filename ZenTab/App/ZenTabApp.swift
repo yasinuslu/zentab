@@ -1,16 +1,18 @@
 import SwiftUI
 
-/// ZenTab: a calm, single-window macOS app starter.
+/// ZenTab: a free, opinionated macOS window switcher.
 ///
-/// The entire app is intentionally small: one window, one view, one tiny model.
-/// It is meant as a clean foundation you can grow into a real product.
+/// There is no main window. The app is a menu bar accessory; switching happens in a
+/// hand-rolled, non-activating AppKit overlay driven by a global hotkey (see
+/// `AppModel` / `OverlayController`). SwiftUI is used only for the menu bar UI.
 @main
 struct ZenTabApp: App {
-    var body: some Scene {
-        Window("ZenTab", id: "main") {
-            ContentView()
-        }
-        .windowResizability(.contentMinSize)
-        .defaultSize(width: 440, height: 560)
+  @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+  @StateObject private var model = AppModel.shared
+
+  var body: some Scene {
+    MenuBarExtra("ZenTab", systemImage: "rectangle.on.rectangle") {
+      MenuBarContent(model: model)
     }
+  }
 }

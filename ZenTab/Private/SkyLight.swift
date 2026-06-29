@@ -79,6 +79,35 @@ func SLSSpaceSetFrontPSN(
   _ cid: CGSConnectionID, _ sid: CGSSpaceID, _ psn: ProcessSerialNumber
 ) -> CGError
 
+// MARK: - Window capture (cross-Space + minimized)
+
+/// Flags for `CGSHWCaptureWindowList` (yabai/alt-tab constants).
+struct CGSWindowCaptureOptions: OptionSet {
+  let rawValue: UInt32
+  /// Capture the full window bitmap ignoring its global clip/mask shape.
+  static let ignoreGlobalClipShape = CGSWindowCaptureOptions(rawValue: 1 << 11)
+  /// 1pt = 1px (1/4 the pixels of `bestResolution` on Retina).
+  static let nominalResolution = CGSWindowCaptureOptions(rawValue: 1 << 9)
+  /// Full backing-store resolution (Retina-native).
+  static let bestResolution = CGSWindowCaptureOptions(rawValue: 1 << 8)
+  /// Full-size regardless of Stage Manager skew.
+  static let fullSize = CGSWindowCaptureOptions(rawValue: 1 << 19)
+}
+
+/// Hardware-path window capture. Returns a CFArray of `CGImage` for the given window
+/// ids — and unlike ScreenCaptureKit's on-screen-only path, it captures **minimized
+/// windows and windows on other Spaces** from their backing store. (It does NOT draw
+/// offscreen content that was never rendered.) In practice it reliably returns the
+/// image of the *first* id, so capture one window per call. Faster than the old
+/// `CGWindowListCreateImage`. App Sandbox must be OFF.
+@_silgen_name("CGSHWCaptureWindowList")
+func CGSHWCaptureWindowList(
+  _ cid: CGSConnectionID,
+  _ windowList: UnsafeMutablePointer<CGWindowID>,
+  _ windowCount: UInt32,
+  _ options: CGSWindowCaptureOptions
+) -> Unmanaged<CFArray>
+
 /// The process-wide WindowServer connection, resolved once at first use.
 let cgsConnection: CGSConnectionID = CGSMainConnectionID()
 

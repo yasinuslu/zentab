@@ -11,6 +11,12 @@ final class OverlayController {
   private let panel = SwitcherPanel()
   private let grid = TileGridView(frame: .zero)
   private var machine = OverlaySession()
+  /// Last-known frame per window, so off-Space / off-monitor windows (which can't be
+  /// captured live) still show their latest thumbnail instead of a bare icon.
+  private let thumbnailCache = ThumbnailCache()
+  /// Keeps the cache warm so a summon paints a recent frame instantly. On-screen
+  /// windows only, gently paced, and paused under Low Power to respect the battery.
+  private var refreshTimer: Timer?
 
   // Captured at each summon so the enumeration effect knows what to ask for.
   private var pendingMode: SwitchMode = .otherApps
@@ -41,6 +47,29 @@ final class OverlayController {
     grid.onActivate = { [weak self] index in
       self?.send(.hover(index))
       self?.send(.confirm)
+    }
+
+    startBackgroundRefresh()
+  }
+
+  // MARK: - Background cache refresh
+
+  /// Periodically snapshot on-screen windows into the thumbnail cache, so the overlay
+  /// can paint a recent frame the instant it's summoned (and so a window that later
+  /// moves to another Space keeps a fresh last-known frame). Deliberately cheap:
+  /// gentle interval, on-screen windows only, skipped while the overlay is up or the
+  /// machine is in Low Power Mode.
+  private func startBackgroundRefresh() {
+    refreshTimer = Timer.scheduledTimer(withTimeInterval: 6, repeats: true) { [weak self] _ in
+      MainActor.assumeIsolated { self?.refreshCache() }
+    }
+  }
+
+  private func refreshCache() {
+    guard !machine.isVisible, !ProcessInfo.processInfo.isLowPowerModeEnabled else { return }
+    Task { [weak self] in
+      let captured = await WindowThumbnail.captureOnScreen()
+      self?.thumbnailCache.remember(captured.images)
     }
   }
 
@@ -104,10 +133,15 @@ final class OverlayController {
     panel.makeKeyAndOrderFront(nil)
 
     let ids = windows.map(\.windowID)
+    // Stale-but-instant: paint cached last-known frames now; the live capture below
+    // replaces them where it succeeds, and leaves them where it can't (off-Space).
+    grid.applyThumbnails(thumbnailCache.frames(for: ids))
+
     let shownSession = machine.session
     Task { [weak self] in
       let captured = await WindowThumbnail.capture(windowIDs: ids)
       guard let self, self.machine.session == shownSession, self.machine.isVisible else { return }
+      self.thumbnailCache.remember(captured.images)
       self.grid.applyThumbnails(captured.images)
     }
   }

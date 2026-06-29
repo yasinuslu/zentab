@@ -34,6 +34,8 @@ struct MenuBarContent: View {
     Divider()
 
     Button("Run private-API diagnostics") { model.runDiagnostics() }
+    Button("Dump switchability") { model.dumpSwitchability() }
+    Button("Test HW capture (off-Space)") { model.runCaptureDiagnostics() }
     if let diagnostics = model.diagnostics {
       Text(diagnostics).font(.caption).textSelection(.enabled)
     }

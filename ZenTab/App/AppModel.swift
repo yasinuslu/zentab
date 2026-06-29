@@ -25,6 +25,7 @@ final class AppModel: ObservableObject {
   private var hotkeyTap: HotkeyTap?
   private var watchdog: CaptureWatchdog?
   private var permissionTimer: Timer?
+  private var dumpSignalSource: DispatchSourceSignal?
 
   private init() {}
 
@@ -37,6 +38,7 @@ final class AppModel: ObservableObject {
     config = ConfigStore.load(profile: profile)
     refreshPermissions()
     startSwitcherIfPossible()
+    installDumpSignal()
 
     // Reflect a permission grant (and start the switcher) without a relaunch, and
     // re-assert the Cmd+Tab claim (other apps / macOS can quietly reclaim it).
@@ -94,6 +96,76 @@ final class AppModel: ObservableObject {
       native switchers: [\(managed.isEmpty ? "none managed — binding isn't Cmd-based" : hotkeyStates)]
       tap: \(tapState) · health: \(captureHealth.summary)
       """
+  }
+
+  /// Dump every everything-mode *candidate* window with all its switchability
+  /// signals to `~/zentab-switchability.txt`. Read-only: it changes no behavior,
+  /// it just shows us why a window is or isn't switchable, so the filter can be
+  /// driven by ground truth instead of guesses.
+  func dumpSwitchability() {
+    let selfPID = ProcessInfo.processInfo.processIdentifier
+    let mainScreenUUID = NSScreen.main?.spaceUUID()
+    diagnostics = "Dumping switchability…"
+    Task { [weak self] in
+      let probes = await WindowEnumerator.probeEverything(
+        selfPID: selfPID, mainScreenUUID: mainScreenUUID)
+      let path = (NSHomeDirectory() as NSString).appendingPathComponent("zentab-switchability.txt")
+      try? Self.formatProbes(probes).write(toFile: path, atomically: true, encoding: .utf8)
+      await MainActor.run {
+        let shown = probes.filter(\.passesCurrentFilter).count
+        self?.diagnostics = "Wrote \(probes.count) windows (\(shown) shown) → \(path)"
+      }
+    }
+  }
+
+  /// Smoke-test the private `CGSHWCaptureWindowList` binding before it goes in the
+  /// hot path: capture every everything-mode window via the hardware path and report
+  /// how many succeeded (this is the cross-Space / minimized capture SCK can't do).
+  func runCaptureDiagnostics() {
+    let selfPID = ProcessInfo.processInfo.processIdentifier
+    let mainScreenUUID = NSScreen.main?.spaceUUID()
+    diagnostics = "Testing HW capture…"
+    Task { [weak self] in
+      let probes = await WindowEnumerator.probeEverything(
+        selfPID: selfPID, mainScreenUUID: mainScreenUUID)
+      let summary = await WindowThumbnail.hwCaptureSummary(for: probes.map(\.windowID))
+      await MainActor.run { self?.diagnostics = summary }
+    }
+  }
+
+  private static func formatProbes(_ probes: [WindowEnumerator.SwitchabilityProbe]) -> String {
+    var lines = [
+      "# ZenTab switchability dump — everything-mode candidates, BEFORE filtering",
+      "# verdict | onScreen onSpace hasAX | Layer role/subrole min | WxH | app — title",
+      "",
+    ]
+    for probe in probes {
+      let flags =
+        "\(probe.onScreen ? "scr" : "---") "
+        + "\(probe.onCurrentSpace ? "spc" : "---") "
+        + "\(probe.hasAXWindow ? "AX" : "--")"
+      let layer = probe.cgLayer.map { "L\($0)" } ?? "L·"
+      let role = probe.role.isEmpty ? "-" : probe.role
+      let subrole = probe.subrole.isEmpty ? "-" : probe.subrole
+      lines.append(
+        "\(probe.passesCurrentFilter ? "SHOWN" : "hide ") | \(flags) | "
+          + "\(layer) \(role)/\(subrole) \(probe.minimized ? "min" : "   ") | "
+          + "\(Int(probe.width))x\(Int(probe.height)) | \(probe.appName) — \(probe.title)")
+    }
+    return lines.joined(separator: "\n") + "\n"
+  }
+
+  /// Trigger a switchability dump on `SIGUSR1` (`kill -USR1 <pid>` / `killall -USR1
+  /// ZenTab`), so the dump can be driven from the shell without a menu click — used
+  /// to investigate the window list headlessly.
+  private func installDumpSignal() {
+    signal(SIGUSR1, SIG_IGN)  // let the dispatch source own it instead of the default (terminate)
+    let source = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
+    source.setEventHandler { [weak self] in
+      MainActor.assumeIsolated { self?.dumpSwitchability() }
+    }
+    source.resume()
+    dumpSignalSource = source
   }
 
   private func startSwitcherIfPossible() {

@@ -26,3 +26,13 @@ func zt_GetProcessForPID(
   _ pid: pid_t,
   _ psn: UnsafeMutablePointer<ProcessSerialNumber>
 ) -> OSStatus
+
+/// Reconstructs an Accessibility element from an opaque "remote token". We use it to
+/// brute-force a process's windows: a window's token is a fixed 20-byte blob —
+/// `pid` (4) + `0` (4) + `0x636f636f` ("coco", 4) + an `AXUIElementID` (8) — so
+/// iterating the trailing id yields every window element, **including ones on other
+/// Spaces** that `kAXWindowsAttribute` omits. Returns nil for ids that don't map to
+/// an element. Missing from the public headers; lives in the already-linked
+/// HIServices. (Technique from alt-tab / yabai.)
+@_silgen_name("_AXUIElementCreateWithRemoteToken")
+func _AXUIElementCreateWithRemoteToken(_ data: CFData) -> Unmanaged<AXUIElement>?

@@ -129,7 +129,7 @@ enum WindowFocuser {
 extension NSScreen {
   /// The display's WindowServer UUID string, for CGS Space queries. Returned as a
   /// `String` so it can cross a concurrency boundary (CFString isn't Sendable).
-  fileprivate func spaceUUID() -> String? {
+  func spaceUUID() -> String? {
     guard
       let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
       let uuid = CGDisplayCreateUUIDFromDisplayID(number)?.takeRetainedValue()

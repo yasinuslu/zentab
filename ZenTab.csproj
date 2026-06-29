@@ -6,8 +6,27 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <!-- WinForms is enabled only for the tray icon (NotifyIcon) and exe-icon extraction. -->
+    <!-- WinForms is enabled only for the tray icon (NotifyIcon). -->
     <UseWindowsForms>true</UseWindowsForms>
+
+    <!-- Product / version metadata (stamped into ZenTab.exe and the installer). -->
+    <AssemblyName>ZenTab</AssemblyName>
+    <Product>ZenTab</Product>
+    <Company>yasinuslu</Company>
+    <Authors>yasinuslu</Authors>
+    <Description>An opinionated Alt+Tab alternative for Windows — feel and performance over configurability.</Description>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <!-- Publish settings: only apply when a RID is supplied (dotnet publish -r win-x64),
+       so plain `dotnet build` / `dotnet run` stay framework-dependent and fast. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- Compress the single file; the MSI stores it as-is (CompressionLevel=none) so the
+         CAB doesn't try (and fail) to re-compress an already-compressed payload. -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>

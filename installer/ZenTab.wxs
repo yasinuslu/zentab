@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ZenTab installer (WiX). Produces a per-machine MSI that:
+    - installs ZenTab.exe (self-contained single file) to Program Files\ZenTab
+    - adds a Start Menu shortcut
+    - registers ZenTab to start at login (HKLM ...\Run)
+  Build with build-installer.ps1, which supplies the PublishDir variable.
+
+  Note: the installed app reads no zentab.toml, so it uses the real
+  Alt+Tab / Alt+` / Ctrl+Alt+Tab gestures (dev mode is a build-tree-only aid).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="ZenTab"
+           Manufacturer="yasinuslu"
+           Version="0.1.0"
+           UpgradeCode="727f441f-5fdc-4a81-a8e5-ad2f0f20758e"
+           Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of ZenTab is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="none" />
+
+    <!-- No <Icon> from the exe — that would embed the whole 71 MB binary again. -->
+    <Property Id="ARPHELPLINK" Value="https://github.com/yasinuslu/zentab-windows" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="ZenTab">
+        <Component Id="MainExe" Bitness="always64">
+          <File Id="ZenTabExe" Source="$(PublishDir)\ZenTab.exe" KeyPath="yes" />
+        </Component>
+        <Component Id="AutoStart" Guid="c7f10264-cf09-4981-84e1-c9fd2dc5f3f6" Bitness="always64">
+          <RegistryValue Root="HKLM"
+                         Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                         Name="ZenTab"
+                         Type="string"
+                         Value="&quot;[INSTALLFOLDER]ZenTab.exe&quot;"
+                         KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="e5bc29eb-02be-466e-be5a-cee7311c13d1">
+        <Shortcut Id="ZenTabStartMenu"
+                  Name="ZenTab"
+                  Description="An opinionated Alt+Tab alternative"
+                  Target="[INSTALLFOLDER]ZenTab.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="CleanupStartMenu" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\yasinuslu\ZenTab" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="ZenTab">
+      <ComponentRef Id="MainExe" />
+      <ComponentRef Id="AutoStart" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+</Wix>

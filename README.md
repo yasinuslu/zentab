@@ -173,3 +173,20 @@ project.yml   the source of truth; ZenTab.xcodeproj is generated from it
 - **App Sandbox is OFF** on purpose (the switcher needs private SkyLight/CGS + AX
   SPIs). Hardened runtime stays on with `disable-library-validation` so the binary
   can load `SkyLight.framework`. See `ZenTab.entitlements`.
+
+## Credits
+
+ZenTab stands on the shoulders of
+[**alt-tab-macos**](https://github.com/lwouis/alt-tab-macos) by
+[@lwouis](https://github.com/lwouis) and its contributors. It is a remarkable, deeply
+polished window switcher, and ZenTab has learned an enormous amount from it: the private
+SkyLight/CGS and Accessibility techniques for discovering and focusing windows across
+Spaces, the window-filtering model, and the countless macOS edge cases they spent years
+getting right. ZenTab is a deliberately focused, opinionated take on the same idea, and it
+exists because of their work. Huge thanks.
+
+## License
+
+ZenTab is licensed under the **GNU General Public License v3.0** (the same license as
+alt-tab-macos, the project it learns from). See [`LICENSE`](LICENSE). You are free to use,
+study, modify, and redistribute it under the same terms.

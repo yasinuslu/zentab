@@ -30,6 +30,7 @@ jobs:
         run: dotnet build -c Release --no-restore
 
       # Smoke-test the self-contained publish that actually ships (catches publish-only
-      # breakage: single-file, trimming, manifest, embedded icon).
+      # breakage: single-file, trimming, manifest, embedded icon). No --no-restore: a
+      # RID-specific publish needs its own restore (win-x64 target).
       - name: Publish smoke test
-        run: dotnet publish -c Release -r win-x64 --no-restore
+        run: dotnet publish -c Release -r win-x64

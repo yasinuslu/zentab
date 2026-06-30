@@ -20,13 +20,15 @@ entire configuration in one file you own. No Pro tier, no settings maze, free fo
 
 - **[`VISION.md`](VISION.md)** — the single, authoritative product direction for both apps
   (the three-mode model, tap-vs-hold, the principles). Read it first.
+- **[`BRANDING.md`](BRANDING.md)**: the shared visual identity both apps transcribe (the
+  always-dark spotlight, the Electric `#5D6DFF` accent, the card/tile/fade tokens).
 - **macOS** — [`darwin/README.md`](darwin/README.md). Build/run with the `darwin/bin/*`
   scripts (`bin/run`, `bin/build`, `bin/test`).
 - **Windows** — [`windows/README.md`](windows/README.md). Build/run with the PowerShell
   scripts (`windows/dev.ps1`, `windows/build.ps1`).
 
-The shared `VISION.md`, `CLAUDE.md`, and `LICENSE` live at the root; each app keeps only a
-platform-specific `README` in its folder.
+The shared `VISION.md`, `BRANDING.md`, `CLAUDE.md`, and `LICENSE` live at the root; each app
+keeps only a platform-specific `README` in its folder.
 
 ## Repository layout
 
@@ -34,7 +36,7 @@ platform-specific `README` in its folder.
 darwin/    macOS app (Swift) — sources, bin/ scripts, docs, project.yml
 windows/   Windows app (C#/WPF) — sources, build.ps1/dev.ps1, installer/
 .github/   CI + release workflows for both platforms (see below)
-VISION.md · CLAUDE.md · LICENSE   shared across both apps
+VISION.md · BRANDING.md · CLAUDE.md · LICENSE   shared across both apps
 ```
 
 ## CI and releases

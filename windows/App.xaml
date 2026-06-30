@@ -4,17 +4,74 @@
              xmlns:local="clr-namespace:ZenTab"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
-        <!-- ZenTab's single palette (Catppuccin Mocha). One right look, no knobs — define
-             colors here once and reference them everywhere (see VISION.md). -->
-        <SolidColorBrush x:Key="PanelBrush"           Color="#1E1E2E"/>  <!-- Base -->
-        <SolidColorBrush x:Key="ThumbPlaceholderBrush" Color="#181825"/> <!-- Mantle -->
-        <SolidColorBrush x:Key="TitleBrush"           Color="#A6ADC8"/>  <!-- Subtext0 (unselected) -->
-        <SolidColorBrush x:Key="TitleSelectedBrush"   Color="#CDD6F4"/>  <!-- Text (selected) -->
-        <SolidColorBrush x:Key="MutedBrush"           Color="#6C7086"/>  <!-- Overlay0 -->
-        <SolidColorBrush x:Key="SelectionWashBrush"   Color="#2ECDD6F4"/>
-        <SolidColorBrush x:Key="SelectionBorderBrush" Color="#B4B4BEFE"/> <!-- Lavender -->
-        <SolidColorBrush x:Key="ScrollThumbBrush"      Color="#33CDD6F4"/>
-        <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#55CDD6F4"/>
+        <!-- ZenTab's single palette — the one brand shared by both native apps. A faithful
+             transcription of the canonical tokens in website/src/theme.css (mirrored on macOS
+             in darwin/ZenTab/Overlay/OverlayTheme.swift). One right look, no knobs (VISION.md):
+             change a value in BRANDING.md / the website first, then mirror it here. WPF brush
+             colors are #AARRGGBB, so alpha is the leading byte. -->
+
+        <!-- Fonts — native stand-ins for the website's Schibsted Grotesk (UI) + JetBrains Mono
+             (keys/labels). Bundling the exact families would add binary fonts; the closest
+             always-present Windows faces are used instead, with universal fallbacks. -->
+        <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+        <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
+
+        <!-- Tile index chips: AlternationIndex (0-based) -> "1".."9" text, and visible only
+             for the first nine tiles (the keyboard 1-9 jump shortcuts). -->
+        <local:OneBasedIndexConverter x:Key="IndexText"/>
+        <local:IndexVisibilityConverter x:Key="IndexVis"/>
+
+        <!-- The ZenTab signature accent — the website accent token #5D6DFF ("Electric"). Used
+             like a single held note: it marks the one window in focus and nothing else. -->
+        <Color x:Key="AccentColor">#5D6DFF</Color>
+        <SolidColorBrush x:Key="AccentBrush" Color="#5D6DFF"/>
+        <!-- accent @ 0.16 — the selection wash behind a focused tile (website accentdim token). -->
+        <SolidColorBrush x:Key="SelectionWashBrush"   Color="#1A5D6DFF"/>  <!-- accent @ 0.10 -->
+        <!-- The focused tile's 2px ring is the solid accent. -->
+        <SolidColorBrush x:Key="SelectionBorderBrush" Color="#5D6DFF"/>
+
+        <!-- The frosted content card. The overlay window must stay opaque (DWM live thumbnails
+             can't render on a layered/transparent window), so where macOS layers a translucent
+             rgba(24,26,33,0.72) panel over a blurred backdrop, Windows paints that color solid —
+             the recede/blur comes from the separate DimWindow behind it. -->
+        <SolidColorBrush x:Key="PanelBrush"        Color="#181A21"/>       <!-- card fill (24,26,33) -->
+        <SolidColorBrush x:Key="CardBorderBrush"   Color="#1FFFFFFF"/>     <!-- white @ 0.12 hairline -->
+        <SolidColorBrush x:Key="DividerBrush"      Color="#14FFFFFF"/>     <!-- white @ 0.08 -->
+
+        <!-- Text. -->
+        <SolidColorBrush x:Key="TitleSelectedBrush" Color="#ECEDF1"/>      <!-- website tx token (primary) -->
+        <SolidColorBrush x:Key="TitleBrush"         Color="#9B9EA9"/>      <!-- website dim token (unselected) -->
+        <SolidColorBrush x:Key="MutedBrush"         Color="#5E616C"/>      <!-- website faint token -->
+        <SolidColorBrush x:Key="HeaderLabelBrush"   Color="#ECEDF1"/>      <!-- mode label -->
+        <SolidColorBrush x:Key="CountBrush"         Color="#5E616C"/>      <!-- "N windows" -->
+
+        <!-- The header key pill: accent text in an accent-outlined chip. -->
+        <SolidColorBrush x:Key="PillTextBrush"   Color="#5D6DFF"/>
+        <SolidColorBrush x:Key="PillBorderBrush" Color="#595D6DFF"/>       <!-- accent @ 0.35 -->
+
+        <!-- Footer hint row. -->
+        <SolidColorBrush x:Key="FooterKeyBrush"    Color="#9B9EA9"/>
+        <SolidColorBrush x:Key="FooterTextBrush"   Color="#5E616C"/>
+        <SolidColorBrush x:Key="FooterAccentBrush" Color="#5D6DFF"/>
+
+        <!-- Tiles. -->
+        <SolidColorBrush x:Key="TileFillBrush"        Color="#05FFFFFF"/>  <!-- white @ 0.02 (unselected) -->
+        <SolidColorBrush x:Key="ThumbPlaceholderBrush" Color="#0D0E13"/>   <!-- letterbox backing (near-black) -->
+        <SolidColorBrush x:Key="ThumbBorderBrush"     Color="#12FFFFFF"/>  <!-- white @ 0.07 -->
+
+        <!-- The 1…9 index chip (top-left of every tile). -->
+        <SolidColorBrush x:Key="IndexChipFillBrush"         Color="#B308090C"/> <!-- (8,9,12) @ 0.70 -->
+        <SolidColorBrush x:Key="IndexChipTextBrush"         Color="#99FFFFFF"/> <!-- white @ 0.60 -->
+        <SolidColorBrush x:Key="IndexChipTextSelectedBrush" Color="#FFFFFFFF"/>
+
+        <!-- Action chips (W · Q) on the selected tile. -->
+        <SolidColorBrush x:Key="ChipFillBrush"   Color="#C708090C"/>       <!-- (8,9,12) @ 0.78 -->
+        <SolidColorBrush x:Key="ChipBorderBrush" Color="#2EFFFFFF"/>       <!-- white @ 0.18 -->
+        <SolidColorBrush x:Key="ChipGlyphBrush"  Color="#FFFFFFFF"/>
+
+        <!-- Calm scrollbar thumb. -->
+        <SolidColorBrush x:Key="ScrollThumbBrush"      Color="#1FFFFFFF"/> <!-- white @ 0.12 -->
+        <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#38FFFFFF"/> <!-- white @ 0.22 -->
 
         <!-- Minimal, calm scrollbar: a track-less rounded thumb, no arrow buttons. -->
         <Style x:Key="CalmScrollBar" TargetType="ScrollBar">

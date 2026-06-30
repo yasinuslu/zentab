@@ -18,8 +18,8 @@
     <!-- Version is the single source of truth; build.ps1 / CI override it via -p:Version. -->
     <Version>0.1.0</Version>
 
-    <!-- Placeholder app icon (assets/zentab.ico). Sets the exe icon; also embedded below
-         so the tray can load it. Swap assets/zentab.ico for real art anytime. -->
+    <!-- The ZenTab brand mark (assets/zentab.ico, generated from assets/zentab.svg via
+         assets/make-icon.ps1). Sets the exe icon; also embedded below so the tray can load it. -->
     <ApplicationIcon>assets\zentab.ico</ApplicationIcon>
 
     <!-- PerMonitorV2 DPI awareness for correct multi-monitor thumbnail placement. -->
@@ -52,8 +52,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Dev-only config: copied to the build output (so `dotnet run` gets dev gestures)
-         but NEVER to a publish, so the portable exe and MSI always use the real Alt+Tab. -->
+    <!-- Portable / dev config override: copied to the build output (so `dotnet run` picks up
+         the safe dev chords in zentab.toml) but NEVER to a publish, so the portable exe and MSI
+         fall back to the real Alt+Tab / Alt+` / Ctrl+Alt+Tab (or %APPDATA%\zentab\config.toml). -->
     <None Update="zentab.toml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
     <!-- Embed the icon so the tray can load it (works inside the single-file exe). -->
     <EmbeddedResource Include="assets\zentab.ico" LogicalName="ZenTab.zentab.ico" />

@@ -16,8 +16,8 @@ silently implementing it. Do not reintroduce ideas it rules out (no Pro tier, no
 sprawl, no MRU reshuffling).
 
 **[`BRANDING.md`](BRANDING.md) is the authoritative visual identity** — the one brand both
-apps share (the always-dark "spotlight" scrim, the dim+blur recede, the ZenTab Jade accent,
-the card/tile/fade tokens). Change a brand value there first, then transcribe it into each
+apps share (the always-dark "spotlight" scrim, the dim+blur recede, the ZenTab Electric
+accent #5D6DFF, the card/tile/fade tokens). Change a brand value there first, then transcribe it into each
 app's theme code (macOS: `darwin/ZenTab/Overlay/OverlayTheme.swift`). Keep the two apps
 looking like the same product — don't fork the brand per OS.
 

@@ -53,13 +53,16 @@ re-summon-during-fade guards.
 
 ## Feel & performance (vs VISION.md)
 
-- 🔭 **No blur — the recede is a flat dim.** `DimWindow.cs:28` flat translucent color;
-  `OverlayWindow.xaml:6` opaque panel. VISION wants a GPU-backed acrylic/composition blur.
-  Biggest gap vs the stated visual identity. (Already on the README roadmap as "GPU blur".)
-- ⬜ **Dim is a software-composited full-virtual-screen layered window.** `DimWindow.cs`
+- ✅ **No blur — the recede was a flat dim.** Addressed in the macOS-parity pass: `DimWindow`
+  now enables a GPU acrylic blur via `Native.EnableAcrylicBlur` (`SetWindowCompositionAttribute`)
+  and paints the website spotlight scrim + radial-gradient dim on top. The overlay card stays
+  opaque so DWM thumbnails render; the blur lives on the dim layer.
+- ⬜ **Dim is a software-composited full-virtual-screen layered window.** `DimWindow`
   uses `AllowsTransparency=true` (WPF software layer) sized to all monitors, animating
   `Opacity` per frame — the CPU per-frame path VISION warns against; worst on the
-  multi-monitor setups this targets. Move the backdrop to a DWM/composition surface.
+  multi-monitor setups this targets. _Partially mitigated: a GPU acrylic blur now backs the
+  dim, but the window is still an `AllowsTransparency` layer animating Opacity; a full
+  DWM/composition surface remains the goal._
 - ⬜ **Hook shares the UI thread that does heavy summon work.** Enumeration, WPF layout, and
   `DwmRegisterThumbnail` run on the same thread as the `WH_KEYBOARD_LL` callback, so
   subsequent keystrokes can stall behind summon work (and Windows can silently drop a slow
@@ -70,9 +73,10 @@ re-summon-during-fade guards.
 - ⬜ **Quick tap pays full enumeration it doesn't need.** `SwitcherController.cs:112` reaches
   the MRU-previous target only after a full `Build`; the target is derivable from
   `_lastActive` alone. Make blind tap-toggle enumerate nothing.
-- 🔭 **200 ms hold before the fade begins.** `SwitcherController.cs:17`. Tension with "begin
-  the fade the moment the shortcut fires"; quick-tap invisibility forces *some* delay.
-  Consider gating quick-tap on "mouse not yet moved" (per spec wording) over a fixed timer.
+- 🔭 **Hold delay before the fade begins.** Now defaults to 150 ms and is configurable via
+  `hold_threshold_ms` (was a hardcoded 200 ms). Tension with "begin the fade the moment the
+  shortcut fires" remains; quick-tap invisibility forces *some* delay. Consider gating
+  quick-tap on "mouse not yet moved" (per spec wording) over a fixed timer.
 - ⬜ **Thumbnails register after the fade starts.** `OverlayWindow.xaml.cs:91-93` queues
   `PlaceThumbnails` at `Loaded`, so cards fade in empty then fill. Register before/at the
   first frame, or stagger.
@@ -121,8 +125,9 @@ seam, not a configurability leak.
 
 ## UI / visual (overlay)
 
-From a fresh visual-only review (UX/behavior explicitly out of scope). Palette is Catppuccin
-Mocha.
+From a fresh visual-only review (UX/behavior explicitly out of scope). _Most items below
+predate the macOS-parity pass, which moved the overlay onto the canonical ZenTab brand
+(see [`../../BRANDING.md`](../../BRANDING.md)) and rebuilt the chrome._
 
 - ✅ **App icon beside the title** (the requested feature). 18px, inline-left, centered as a
   group with the title `MaxWidth`-bounded so it still ellipsizes; the `Image` collapses when
@@ -141,5 +146,29 @@ Mocha.
   Base corrected to `#1E1E2E`.
 - ⬜ **Ragged last wrap row.** `WrapPanel` left-aligns a partial final row under a centered
   window. Deferred — true centered-wrap needs a custom panel; low value.
-- 🔭 **GPU blur backdrop** (also a feel/perf item above) remains the big visual TODO; the
-  recede is still a flat dim.
+- ✅ **GPU blur backdrop** (also the feel/perf item above) — added this pass: an acrylic blur
+  backs the dim (the card stays opaque for DWM thumbnails).
+- ✅ **Catppuccin palette → canonical brand.** The overlay now uses the website/macOS tokens
+  (accent Electric `#5D6DFF`), with the header (key pill, mode label, count), footer hint row,
+  1-9 index chips, and W/Q action chips.
+- 🔭 **Index/action chips in the tile footer, not over the thumbnail.** DWM live thumbnails
+  composite above WPF content, so chips placed over the thumbnail (as on macOS) would be
+  hidden; they sit in the footer instead. Revisit only if the backdrop moves to a composition
+  surface that lets us draw above the thumbnail.
+
+## Phase 2 — macOS parity (deferred)
+
+The macOS-parity pass closed the brand, overlay-chrome, icon, blur, W/Q-actions, and config
+gaps. Three scope items are deliberately deferred, mostly because they hinge on Windows'
+**undocumented Virtual Desktop COM APIs**, whose interface GUIDs change across Windows builds:
+
+- ⬜ **Cross-desktop window curation (bring here / send away).** macOS's summon/fling moves a
+  window across Spaces; the Windows equivalent needs `IVirtualDesktopManagerInternal` (per-build
+  GUIDs) to move a window to another virtual desktop. Feasible but brittle: needs a per-build
+  GUID probe and a graceful fallback. Until then the overlay has no Elsewhere / This-space zones.
+- ⬜ **Per-window everyday list (currently per-app).** VISION's everyday scope is per-window;
+  Windows lists one entry per app today (kept because it matches Windows habit). Independent of
+  virtual desktops, so this is the lower-risk half of Phase 2.
+- ⬜ **Minimized / cross-desktop windows in current-app & escape-hatch modes.** Today minimized
+  windows are excluded and `Alt+\`` reaches only the current desktop; the spec wants all
+  desktops/monitors, minimized included.

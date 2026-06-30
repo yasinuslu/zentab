@@ -62,13 +62,18 @@ public partial class OverlayWindow : Window
 
     public SwitchEntry? Selected => Cards.SelectedItem as SwitchEntry;
 
-    public void Show(IReadOnlyList<SwitchEntry> entries, int selectedIndex)
+    public void Show(IReadOnlyList<SwitchEntry> entries, int selectedIndex, SwitchMode mode, string keyGlyphs)
     {
         ClearThumbs();
         _entries = new List<SwitchEntry>(entries);
         Cards.ItemsSource = _entries;
         Cards.SelectedIndex = _entries.Count == 0 ? -1 : Math.Clamp(selectedIndex, 0, _entries.Count - 1);
         EmptyLabel.Visibility = _entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        // Header chrome: the trigger pill, the mode label, and the count.
+        KeyPillText.Text = keyGlyphs;
+        ModeLabel.Text = ModeLabelText(mode);
+        CountText.Text = CountLabelText(mode, _entries.Count);
 
         _dim.ShowDim();
 
@@ -123,6 +128,30 @@ public partial class OverlayWindow : Window
         int i = Cards.SelectedIndex < 0 ? 0 : Cards.SelectedIndex;
         Cards.SelectedIndex = ((i + delta) % n + n) % n;
         ScrollSelectionIntoView();
+    }
+
+    /// <summary>Select a tile by its 0-based index (the 1…9 keyboard jump). False if out of range.</summary>
+    public bool SelectIndex(int i)
+    {
+        if (i < 0 || i >= _entries.Count) return false;
+        Cards.SelectedIndex = i;
+        ScrollSelectionIntoView();
+        return true;
+    }
+
+    private static string ModeLabelText(SwitchMode mode) => mode switch
+    {
+        SwitchMode.Apps => "Other apps",
+        SwitchMode.AppWindows => "Current app",
+        SwitchMode.Everything => "Everything",
+        _ => string.Empty,
+    };
+
+    private static string CountLabelText(SwitchMode mode, int n)
+    {
+        // Apps mode lists apps (one entry per app); the other modes list windows.
+        string noun = mode == SwitchMode.Apps ? "app" : "window";
+        return $"{n} {noun}{(n == 1 ? string.Empty : "s")}";
     }
 
     /// <summary>Drop the current selection in place (after closing a window); keep the panel up.</summary>

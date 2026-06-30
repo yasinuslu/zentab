@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ZenTab brand mark — the canonical icon, shared with macOS and the website
+     (website/src/pages/Brand.tsx). A dark rounded-square body, a steady white
+     "switcher" frame, and one Electric (#5D6DFF) tile offset into the corner: the
+     one window in focus. This SVG is the source for assets/zentab.ico
+     (see assets/make-icon.ps1 / the README for how it's regenerated). -->
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1A1D28"/>
+      <stop offset="1" stop-color="#0D0E13"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7282FF"/>
+      <stop offset="1" stop-color="#5160FF"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+  </defs>
+
+  <!-- Dark squircle body. -->
+  <rect x="72" y="72" width="880" height="880" rx="200" ry="200" fill="url(#body)"/>
+
+  <!-- The steady switcher frame (outline). -->
+  <rect x="250" y="250" width="524" height="524" rx="132" ry="132"
+        fill="none" stroke="#FFFFFF" stroke-opacity="0.82" stroke-width="34"/>
+
+  <!-- The focused tile: a soft accent glow, then the Electric tile in the corner. -->
+  <rect x="452" y="452" width="322" height="322" rx="104" ry="104"
+        fill="#5D6DFF" fill-opacity="0.55" filter="url(#glow)"/>
+  <rect x="452" y="452" width="322" height="322" rx="104" ry="104" fill="url(#tile)"/>
+</svg>

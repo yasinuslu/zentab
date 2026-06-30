@@ -1,7 +1,11 @@
 #!/usr/bin/env pwsh
-# Generates a PLACEHOLDER ZenTab icon (assets/zentab.ico) + a 256px PNG preview.
-# This is intentionally temporary art — a calm indigo tile with a "Z". Replace
-# assets/zentab.ico with real art later; the build picks it up automatically.
+# Generates the ZenTab app icon (assets/zentab.ico) + a 256px PNG preview.
+#
+# This draws the canonical ZenTab brand mark — a dark rounded-square body, the steady white
+# "switcher" frame, and one Electric (#5D6DFF) tile offset into the corner (the window in
+# focus). It mirrors the vector design source assets/zentab.svg (shared with macOS and the
+# website). The committed assets/zentab.ico was produced from that SVG; this script is the
+# Windows-native way to regenerate a faithful raster of the same mark.
 #
 #   ./assets/make-icon.ps1
 param(
@@ -11,47 +15,63 @@ param(
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
 
-# Render the design at an arbitrary size and return PNG bytes.
+# A rounded-rectangle path (corner arcs), x/y/size/radius in pixels.
+function New-RoundedPath([single]$x, [single]$y, [single]$s, [single]$r) {
+    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $d = $r * 2
+    $path.AddArc($x, $y, $d, $d, 180, 90)
+    $path.AddArc($x + $s - $d, $y, $d, $d, 270, 90)
+    $path.AddArc($x + $s - $d, $y + $s - $d, $d, $d, 0, 90)
+    $path.AddArc($x, $y + $s - $d, $d, $d, 90, 90)
+    $path.CloseFigure()
+    return $path
+}
+
+# Render the brand mark at an arbitrary size and return PNG bytes.
 function New-IconPng([int]$size) {
     $bmp = New-Object System.Drawing.Bitmap $size, $size
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode     = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-    $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
     $g.Clear([System.Drawing.Color]::Transparent)
 
-    # Rounded-square tile with a soft vertical indigo gradient.
-    $pad    = [int]($size * 0.06)
-    $radius = [int]($size * 0.22)
-    $rect   = New-Object System.Drawing.Rectangle $pad, $pad, ($size - 2 * $pad), ($size - 2 * $pad)
-    $path   = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $d      = $radius * 2
-    $path.AddArc($rect.X, $rect.Y, $d, $d, 180, 90)
-    $path.AddArc($rect.Right - $d, $rect.Y, $d, $d, 270, 90)
-    $path.AddArc($rect.Right - $d, $rect.Bottom - $d, $d, $d, 0, 90)
-    $path.AddArc($rect.X, $rect.Bottom - $d, $d, $d, 90, 90)
-    $path.CloseFigure()
+    # Geometry as fractions of the canvas (matches assets/zentab.svg's 1024 viewBox).
+    $bx = [single]($size * 0.0703); $bs = [single]($size * 0.8594); $brad = [single]($size * 0.1953)
+    $fx = [single]($size * 0.2441); $fs = [single]($size * 0.5117); $frad = [single]($size * 0.1289)
+    $tx = [single]($size * 0.4414); $ts = [single]($size * 0.3145); $trad = [single]($size * 0.1016)
 
-    $top    = [System.Drawing.Color]::FromArgb(255, 99, 102, 241)   # indigo-500
-    $bottom = [System.Drawing.Color]::FromArgb(255, 55, 48, 163)    # indigo-800
-    $brush  = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, $top, $bottom, 90
-    $g.FillPath($brush, $path)
+    # Dark squircle body, vertical gradient #1A1D28 -> #0D0E13.
+    $bodyRect  = New-Object System.Drawing.RectangleF $bx, $bx, $bs, $bs
+    $bodyPath  = New-RoundedPath $bx $bx $bs $brad
+    $bodyBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush `
+        $bodyRect, ([System.Drawing.Color]::FromArgb(255, 26, 29, 40)), ([System.Drawing.Color]::FromArgb(255, 13, 14, 19)), 90
+    $g.FillPath($bodyBrush, $bodyPath)
 
-    # "Z" glyph, near-white, centered.
-    $fontSize = [single]($size * 0.52)
-    $font  = New-Object System.Drawing.Font "Segoe UI", $fontSize, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
-    $fg    = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 245, 245, 250))
-    $fmt   = New-Object System.Drawing.StringFormat
-    $fmt.Alignment     = [System.Drawing.StringAlignment]::Center
-    $fmt.LineAlignment = [System.Drawing.StringAlignment]::Center
-    $textRect = New-Object System.Drawing.RectangleF 0, ([single](-$size * 0.02)), $size, $size
-    $g.DrawString("Z", $font, $fg, $textRect, $fmt)
+    # The steady switcher frame (white outline @ 0.82).
+    $framePath = New-RoundedPath $fx $fx $fs $frad
+    $framePen  = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(209, 255, 255, 255)), ([single]($size * 0.0332))
+    $g.DrawPath($framePen, $framePath)
+
+    # Soft accent glow behind the focused tile (System.Drawing has no blur; approximate with a
+    # larger, faint accent rounded-rect).
+    $grow = [single]($size * 0.035)
+    $glowPath  = New-RoundedPath ($tx - $grow) ($tx - $grow) ($ts + 2 * $grow) ($trad + $grow)
+    $glowBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(70, 93, 109, 255))
+    $g.FillPath($glowBrush, $glowPath)
+
+    # The Electric tile, diagonal gradient #7282FF -> #5160FF.
+    $tileRect  = New-Object System.Drawing.RectangleF $tx, $tx, $ts, $ts
+    $tilePath  = New-RoundedPath $tx $tx $ts $trad
+    $tileBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush `
+        $tileRect, ([System.Drawing.Color]::FromArgb(255, 114, 130, 255)), ([System.Drawing.Color]::FromArgb(255, 81, 96, 255)), 45
+    $g.FillPath($tileBrush, $tilePath)
 
     $ms = New-Object System.IO.MemoryStream
     $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
 
-    $fmt.Dispose(); $fg.Dispose(); $font.Dispose(); $brush.Dispose()
-    $path.Dispose(); $g.Dispose(); $bmp.Dispose()
+    $tileBrush.Dispose(); $glowBrush.Dispose(); $framePen.Dispose(); $bodyBrush.Dispose()
+    $tilePath.Dispose(); $glowPath.Dispose(); $framePath.Dispose(); $bodyPath.Dispose()
+    $g.Dispose(); $bmp.Dispose()
     return $ms.ToArray()
 }
 

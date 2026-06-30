@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Regenerate ZenTab's brand artwork from code (branding/GenerateBranding.swift):
+#   - the app icon            → ZenTab/Assets.xcassets/AppIcon.appiconset/
+#   - the DMG volume icon      → branding/dmg/VolumeIcon.icns
+#   - the DMG background        → branding/dmg/background.tiff (1x + @2x)
+#
+# The .swift file is the source of truth; everything here is generated and
+# committed so a release build (and CI) never needs to run the generator.
+# Run this after changing the mark or the brand palette, then commit the output.
+source "$(dirname "$0")/lib.sh"
+
+GEN="branding/GenerateBranding.swift"
+ICONSET_DST="ZenTab/Assets.xcassets/AppIcon.appiconset"
+DMG_DST="branding/dmg"
+
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+echo "Rendering artwork (swift)..."
+swift "$GEN" "$TMP"
+
+# --- App icon: asset catalog ------------------------------------------------
+# Copy the rendered PNGs in and write the macOS AppIcon Contents.json. The
+# iconset uses Apple's canonical names so the @2x mapping is unambiguous.
+echo "Assembling ${ICONSET_DST}..."
+rm -rf "$ICONSET_DST"
+mkdir -p "$ICONSET_DST"
+cp "$TMP/ZenTab.iconset/"*.png "$ICONSET_DST/"
+
+cat > "$ICONSET_DST/Contents.json" <<'JSON'
+{
+  "images" : [
+    { "idiom" : "mac", "size" : "16x16",   "scale" : "1x", "filename" : "icon_16x16.png" },
+    { "idiom" : "mac", "size" : "16x16",   "scale" : "2x", "filename" : "icon_16x16@2x.png" },
+    { "idiom" : "mac", "size" : "32x32",   "scale" : "1x", "filename" : "icon_32x32.png" },
+    { "idiom" : "mac", "size" : "32x32",   "scale" : "2x", "filename" : "icon_32x32@2x.png" },
+    { "idiom" : "mac", "size" : "128x128", "scale" : "1x", "filename" : "icon_128x128.png" },
+    { "idiom" : "mac", "size" : "128x128", "scale" : "2x", "filename" : "icon_128x128@2x.png" },
+    { "idiom" : "mac", "size" : "256x256", "scale" : "1x", "filename" : "icon_256x256.png" },
+    { "idiom" : "mac", "size" : "256x256", "scale" : "2x", "filename" : "icon_256x256@2x.png" },
+    { "idiom" : "mac", "size" : "512x512", "scale" : "1x", "filename" : "icon_512x512.png" },
+    { "idiom" : "mac", "size" : "512x512", "scale" : "2x", "filename" : "icon_512x512@2x.png" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}
+JSON
+
+# --- DMG artwork ------------------------------------------------------------
+echo "Building ${DMG_DST} (volume icon + background)..."
+mkdir -p "$DMG_DST"
+
+# Volume icon: compile the same iconset into an .icns the installer mounts with.
+iconutil -c icns "$TMP/ZenTab.iconset" -o "$DMG_DST/VolumeIcon.icns"
+
+# Background: pack 1x + @2x into one HiDPI-aware TIFF so Retina Macs get the
+# sharp art and others get the 1x. (tiffutil is built into macOS.)
+tiffutil -cathidpicheck \
+  "$TMP/dmg/background.png" "$TMP/dmg/background@2x.png" \
+  -out "$DMG_DST/background.tiff" >/dev/null
+
+echo
+echo "Done. Generated:"
+echo "  $ICONSET_DST/ (10 PNGs + Contents.json)"
+echo "  $DMG_DST/VolumeIcon.icns"
+echo "  $DMG_DST/background.tiff"
+echo
+echo "Next: bin/generate (so the .xcodeproj picks up the asset), then commit."

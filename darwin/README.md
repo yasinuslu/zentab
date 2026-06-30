@@ -157,7 +157,8 @@ Thin wrappers around `xcodebuild` so the terminal and CI run identical commands:
 | `bin/test`              | Build + run the test suite                                                                       |
 | `bin/lint`              | SwiftLint (config: `.swiftlint.yml`)                                                             |
 | `bin/format`            | Format all Swift with `swift-format` (config: `.swift-format`)                                   |
-| `bin/release <version>` | Build a Release `.app` and package `dist/*.dmg` + `*.zip`                                         |
+| `bin/branding`          | Regenerate the app icon + DMG artwork from `branding/GenerateBranding.swift` (then `bin/generate`) |
+| `bin/release <version>` | Build a Release `.app` and package a branded `dist/*.dmg` + `*.zip`                              |
 
 > Heads up: a `LD=ld` export in some Nix/home-manager shells makes raw `xcodebuild` use
 > the wrong linker. The `bin/*` scripts clear it automatically, so prefer them over calling
@@ -207,6 +208,7 @@ ZenTab/
   ZenTab.entitlements           App Sandbox OFF + disable-library-validation
 ZenTabTests/  Swift Testing unit tests (the pure types above)
 bin/          CLI helpers (also used by CI)
+branding/     GenerateBranding.swift (the app icon + DMG art, as code) + generated dmg/ assets
 .github/workflows/  ci.yml (build+test), release.yml (tagged releases)
 project.yml   the source of truth; ZenTab.xcodeproj is generated from it
 ```
@@ -222,6 +224,12 @@ project.yml   the source of truth; ZenTab.xcodeproj is generated from it
 - **App Sandbox is OFF** on purpose (the switcher needs private SkyLight/CGS + AX SPIs).
   Hardened runtime stays on with `disable-library-validation` so the binary can load
   `SkyLight.framework`. See `ZenTab.entitlements`.
+- **The brand is code, not binary blobs.** `branding/GenerateBranding.swift` draws the app
+  icon (the mark from the [brand page](../website/src/pages/Brand.tsx): a dark squircle, an
+  outlined frame, one Electric `#5D6DFF` tile in focus) and the installer DMG art straight
+  from the brand palette. `bin/branding` renders every size fresh (no upscaling), writes the
+  `AppIcon.appiconset`, the volume `.icns`, and a Retina DMG background, then you `bin/generate`
+  and commit. Change the mark or palette there, never by hand-editing a PNG.
 
 ## The four non-negotiables
 

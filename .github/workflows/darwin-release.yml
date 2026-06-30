@@ -1,19 +1,25 @@
-name: Release
+name: darwin Release
 
-# Push a version tag to cut a release:
-#   git tag v0.1.0 && git push origin v0.1.0
+# Cut a macOS release by pushing a darwin-namespaced version tag:
+#   git tag darwin-v0.1.0 && git push origin darwin-v0.1.0
+# (The tag is prefixed because this monorepo also ships a Windows app under its
+# own windows-v* tags — see windows-release.yml.)
 # This builds a Release .app, packages a .dmg + .zip, and publishes a GitHub
 # Release with both attached.
 #
 # NOTE: builds are ad-hoc signed (not notarized), so users see a Gatekeeper
-# warning on first launch. See docs/HUMAN-TODO.md to add Developer ID signing
-# + notarization once you have an Apple Developer account.
+# warning on first launch. See darwin/docs/HUMAN-TODO.md to add Developer ID
+# signing + notarization once you have an Apple Developer account.
 on:
   push:
-    tags: ["v*"]
+    tags: ["darwin-v*"]
 
 permissions:
   contents: write # required to create the GitHub Release
+
+defaults:
+  run:
+    working-directory: darwin
 
 jobs:
   release:
@@ -32,7 +38,7 @@ jobs:
 
       - name: Package app (.dmg + .zip)
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${GITHUB_REF_NAME#darwin-v}"
           bin/release "$VERSION"
 
       - name: Publish GitHub Release
@@ -41,7 +47,7 @@ jobs:
           draft: false
           generate_release_notes: true
           body: |
-            ### Install
+            ### Install (macOS)
             ZenTab is not yet notarized, so macOS Gatekeeper warns on first launch.
 
             1. Download `ZenTab-*.dmg`, open it, and drag **ZenTab** into Applications.
@@ -51,5 +57,5 @@ jobs:
                ```
                On macOS 15+ you may instead need **System Settings → Privacy & Security → Open Anyway**.
           files: |
-            dist/*.dmg
-            dist/*.zip
+            darwin/dist/*.dmg
+            darwin/dist/*.zip

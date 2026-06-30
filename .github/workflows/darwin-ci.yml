@@ -1,14 +1,25 @@
-name: CI
+name: darwin CI
 
-# Build + test on every PR and every push to main.
+# Build + test the macOS app (darwin/) on every PR and every push to main that
+# touches it. Path-scoped so Windows-only changes don't spin up a Mac runner.
 on:
   push:
     branches: [main]
+    paths:
+      - "darwin/**"
+      - ".github/workflows/darwin-ci.yml"
   pull_request:
+    paths:
+      - "darwin/**"
+      - ".github/workflows/darwin-ci.yml"
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: darwin-ci-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: darwin
 
 jobs:
   test:

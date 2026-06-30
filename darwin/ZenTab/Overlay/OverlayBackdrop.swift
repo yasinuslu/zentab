@@ -85,9 +85,15 @@ private final class BackdropPanel: NSPanel {
     blur.autoresizingMask = [.width, .height]
     blur.wantsLayer = true
 
-    let dim = CALayer()
+    // The website's atmosphere baked into the scrim: a cool near-black radial gradient that
+    // lifts toward the top-left, near-opaque so the spotlight reads the same dark over any
+    // wallpaper. See OverlayTheme.Backdrop.
+    let dim = CAGradientLayer()
+    dim.type = .radial
     dim.frame = blur.bounds
-    dim.backgroundColor = OverlayTheme.Backdrop.dim.cgColor
+    dim.colors = [OverlayTheme.Backdrop.dimInner.cgColor, OverlayTheme.Backdrop.dimOuter.cgColor]
+    dim.startPoint = OverlayTheme.Backdrop.dimCenter
+    dim.endPoint = OverlayTheme.Backdrop.dimEdge
     dim.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
     blur.layer?.addSublayer(dim)
 

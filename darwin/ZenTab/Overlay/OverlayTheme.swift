@@ -34,8 +34,24 @@ enum OverlayTheme {
   enum Backdrop {
     /// A dark, GPU-composited blur behind everything; the dim layer rides on top of it.
     static let material: NSVisualEffectView.Material = .fullScreenUI
-    /// Website `rgba(6,7,10,.55)`: the world clearly recedes but stays legible.
-    static let dim = NSColor(srgbRed: 6 / 255, green: 7 / 255, blue: 10 / 255, alpha: 0.55)
+    /// The website scrim is a flat `rgba(6,7,10,.55)`, but its *look* — a cool, atmospheric
+    /// near-black that lifts slightly toward the top-left — comes from the dark desktop showing
+    /// through it. A real Mac has no such designed desktop: the user's wallpaper might be bright,
+    /// and a flat 0.55 dim then reads as a washed-out gray, nothing like the website.
+    ///
+    /// So we bake the website's *composite* backdrop (its desktop gradient seen through the
+    /// scrim) straight into the dim as a radial gradient, and drive it nearly opaque. The
+    /// spotlight then recedes to the same dark regardless of wallpaper — only a sliver of the
+    /// blurred world bleeds through for life (VISION: the world recedes but stays legible).
+    /// `dimInner` is the lifted top-left tone (≈ website `#1f3550` under the scrim); `dimOuter`
+    /// is the near-black the corners sink to (≈ website `#0c1119` under the scrim).
+    static let dimInner = NSColor(srgbRed: 0x12 / 255, green: 0x1C / 255, blue: 0x29 / 255, alpha: 0.82)
+    static let dimOuter = NSColor(srgbRed: 0x06 / 255, green: 0x07 / 255, blue: 0x0A / 255, alpha: 0.86)
+    /// Radial-gradient geometry, in the panel's unit space (origin bottom-left, y up). The bright
+    /// origin sits high and to the left like the website; the end point pushes the dark tone past
+    /// the far corner so it fills the whole scrim.
+    static let dimCenter = CGPoint(x: 0.32, y: 0.82)
+    static let dimEdge = CGPoint(x: 1.15, y: -0.15)
   }
 
   // MARK: The frosted content card (one panel holds everything)

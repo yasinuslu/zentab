@@ -6,8 +6,9 @@
     - registers ZenTab to start at login (HKLM ...\Run)
   Build with build-installer.ps1, which supplies the PublishDir variable.
 
-  Note: the installed app reads no zentab.toml, so it uses the real
-  Alt+Tab / Alt+` / Ctrl+Alt+Tab gestures (dev mode is a build-tree-only aid).
+  Note: the installed app ships no zentab.toml, so it uses the real
+  Alt+Tab / Alt+` / Ctrl+Alt+Tab gestures unless the user adds a
+  %APPDATA%\zentab\config.toml (the dev zentab.toml is a build-tree-only aid).
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <!-- Version is supplied by build.ps1 (-d Version=...); falls back to 0.1.0 for a bare `wix build`. -->
@@ -24,10 +25,10 @@
                   DowngradeErrorMessage="A newer version of ZenTab is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="none" />
 
-    <!-- A tiny standalone .ico (~12 KB) for Programs &amp; Features and the shortcut. -->
+    <!-- A small standalone .ico (~25 KB) for Programs &amp; Features and the shortcut. -->
     <Icon Id="ZenTab.ico" SourceFile="$(var.IconFile)" />
     <Property Id="ARPPRODUCTICON" Value="ZenTab.ico" />
-    <Property Id="ARPHELPLINK" Value="https://github.com/yasinuslu/zentab-windows" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/yasinuslu/zentab" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="ZenTab">

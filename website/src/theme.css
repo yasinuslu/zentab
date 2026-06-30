@@ -1,0 +1,122 @@
+/*
+ * ZenTab brand tokens + global base.
+ * Mirrors BRANDING.md and the design source in website/design/.
+ * The CSS custom properties are ALSO repeated inline on each page root
+ * (faithful to the Claude Design source), so pages render correctly even
+ * outside the .zt wrapper. Keeping them here too lets shared utilities use them.
+ */
+:root {
+  --bg: #0b0c0f;
+  --bg2: #101218;
+  --card: rgba(255, 255, 255, 0.025);
+  --cardhi: rgba(255, 255, 255, 0.05);
+  --bd: rgba(255, 255, 255, 0.075);
+  --bdhi: rgba(255, 255, 255, 0.14);
+  --tx: #ecedf1;
+  --dim: #9b9ea9;
+  --faint: #5e616c;
+  --accent: #5d6dff;
+  --accentdim: rgba(93, 109, 255, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #0b0c0f;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-family: "Schibsted Grotesk", sans-serif;
+}
+
+::selection {
+  background: rgba(93, 109, 255, 0.32);
+  color: #fff;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---- keyframes (union of all three design files) ---- */
+@keyframes ztUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ztFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ztDrift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(18px, -14px); }
+}
+@keyframes ztPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+@keyframes ztGlow {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+@keyframes ovIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes ovBack {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ovToast {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes ovUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- hover utilities (replace the design's `style-hover` attribute) ---- */
+.zt-link {
+  transition: color 0.2s;
+}
+.zt-link:hover {
+  color: var(--tx);
+}
+.zt-btn-primary {
+  transition: transform 0.2s;
+}
+.zt-btn-primary:hover {
+  transform: translateY(-1px);
+}
+.zt-cta:hover {
+  transform: translateY(-2px);
+}
+.zt-card-hover {
+  transition: all 0.2s;
+}
+.zt-card-hover:hover {
+  border-color: var(--bdhi);
+  transform: translateY(-2px);
+}
+.zt-swatch:hover {
+  border-color: var(--bdhi);
+}
+.zt-menu-item {
+  transition: background 0.12s;
+}
+.zt-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.zt-soft:hover {
+  border-color: var(--bdhi);
+  color: var(--tx);
+}

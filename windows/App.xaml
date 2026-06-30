@@ -21,11 +21,11 @@
         <local:OneBasedIndexConverter x:Key="IndexText"/>
         <local:IndexVisibilityConverter x:Key="IndexVis"/>
 
-        <!-- The ZenTab signature accent — website --accent #5D6DFF ("Electric"). Used like a
-             single held note: it marks the one window in focus and nothing else. -->
+        <!-- The ZenTab signature accent — the website accent token #5D6DFF ("Electric"). Used
+             like a single held note: it marks the one window in focus and nothing else. -->
         <Color x:Key="AccentColor">#5D6DFF</Color>
         <SolidColorBrush x:Key="AccentBrush" Color="#5D6DFF"/>
-        <!-- accent @ 0.16 — the selection wash behind a focused tile (website --accentdim). -->
+        <!-- accent @ 0.16 — the selection wash behind a focused tile (website accentdim token). -->
         <SolidColorBrush x:Key="SelectionWashBrush"   Color="#1A5D6DFF"/>  <!-- accent @ 0.10 -->
         <!-- The focused tile's 2px ring is the solid accent. -->
         <SolidColorBrush x:Key="SelectionBorderBrush" Color="#5D6DFF"/>
@@ -39,9 +39,9 @@
         <SolidColorBrush x:Key="DividerBrush"      Color="#14FFFFFF"/>     <!-- white @ 0.08 -->
 
         <!-- Text. -->
-        <SolidColorBrush x:Key="TitleSelectedBrush" Color="#ECEDF1"/>      <!-- website --tx (primary) -->
-        <SolidColorBrush x:Key="TitleBrush"         Color="#9B9EA9"/>      <!-- website --dim (unselected) -->
-        <SolidColorBrush x:Key="MutedBrush"         Color="#5E616C"/>      <!-- website --faint -->
+        <SolidColorBrush x:Key="TitleSelectedBrush" Color="#ECEDF1"/>      <!-- website tx token (primary) -->
+        <SolidColorBrush x:Key="TitleBrush"         Color="#9B9EA9"/>      <!-- website dim token (unselected) -->
+        <SolidColorBrush x:Key="MutedBrush"         Color="#5E616C"/>      <!-- website faint token -->
         <SolidColorBrush x:Key="HeaderLabelBrush"   Color="#ECEDF1"/>      <!-- mode label -->
         <SolidColorBrush x:Key="CountBrush"         Color="#5E616C"/>      <!-- "N windows" -->
 

@@ -2,7 +2,9 @@
 
 The alt-tab I always wanted: opinionated, instant, and the same on every OS I refuse to
 leave. One window switcher, one product vision, two native implementations that live
-together in this repository.
+together in this repository. Born from years of a great Linux switching experience that
+neither macOS nor Windows ever matched — the [full origin story](darwin/README.md#why-zentab-exists)
+is in the macOS readme.
 
 | Platform | Folder | Stack | Status |
 | --- | --- | --- | --- |

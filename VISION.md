@@ -8,11 +8,17 @@
 
 ZenTab is **one product with two native implementations**: a macOS app (Swift / AppKit,
 in [`darwin/`](darwin/)) and a Windows app (C# / WPF on .NET 10, in [`windows/`](windows/)).
-Same philosophy, same branding, native guts on each OS. It is *inspired by*
-[alt-tab-macos](https://github.com/lwouis/alt-tab-macos) but takes the **opposite design
-philosophy**: where alt-tab answers every question with "make it a setting" (up to 9
-shortcuts, each with its own copy of every filter), ZenTab picks one behavior per axis and
-**deletes the knob**. The interface is only a means; the goal is a calm, focused switch.
+Same philosophy, same branding, native guts on each OS.
+
+It exists because window-switching felt right on Linux for years (a handful of GNOME
+extensions just nailed it) and never on macOS or Windows.
+[alt-tab-macos](https://github.com/lwouis/alt-tab-macos) came closest, but needed heavy
+configuration that wouldn't reliably persist across reinstalls. So ZenTab takes the
+**opposite design philosophy**: where alt-tab answers every question with "make it a
+setting" (up to 9 shortcuts, each with its own copy of every filter), ZenTab picks one
+behavior per axis and **deletes the knob**, keeping the little that's left in one file you
+own. The interface is only a means; the goal is a calm, focused switch.
+(The fuller story is in [`darwin/README.md`](darwin/README.md).)
 
 ## What "focus" means here
 

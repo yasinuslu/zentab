@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# Build (Debug) and launch ZenTab with the PRODUCTION shortcut suite: it owns Cmd+Tab
-# (other apps), Cmd+` (this app), and Option+Tab (everything), replacing the native
-# macOS switchers while it runs — exactly what the shipped app does. The native
-# shortcuts are handed back when ZenTab quits (and restored if it's killed/crashes).
+# Build (Debug) and launch ZenTabPreview — the production-shortcut variant: it owns
+# Cmd+Tab (other apps), Cmd+` (this app), and Option+Tab (everything), replacing the
+# native macOS switchers while it runs — exactly what the shipped app does. The native
+# shortcuts are handed back when it quits (and restored if it's killed/crashes).
 #
-# Watch the menu bar icon: a calm rectangle means ZenTab owns the shortcut; a warning
+# It builds under its OWN bundle id (org.nepjua.ZenTabPreview) and app name, separate
+# from both an installed release ZenTab and the bin/run dev build, so their permissions
+# and menu-bar instances never collapse into each other.
+#
+# Watch the menu bar icon: a calm rectangle means it owns the shortcut; a warning
 # triangle means it doesn't (open the menu for why). Needs Accessibility permission.
 source "$(dirname "$0")/lib.sh"
 
-build_and_launch -profile production
+build_and_launch ZenTabPreview org.nepjua.ZenTabPreview -profile production

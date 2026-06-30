@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-# Build (Debug) and launch ZenTab with the SAFE development shortcuts (Ctrl+Opt+…),
-# so iterating on the app never hijacks your real Cmd+Tab. Use bin/run-prod to launch
-# the production Cmd+Tab suite. A CLI alternative to ⌘R in Xcode.
+# Build (Debug) and launch ZenTabDev — the development variant with the SAFE
+# shortcuts (Ctrl+Opt+…), so iterating on the app never hijacks your real Cmd+Tab.
+# Use bin/run-prod for the production Cmd+Tab suite. A CLI alternative to ⌘R in Xcode.
+#
+# It builds under its OWN bundle id (org.nepjua.ZenTabDev) and app name, so it keeps
+# its own Accessibility / Screen-Recording permissions and never collapses into an
+# installed release ZenTab or the bin/run-prod preview build.
 source "$(dirname "$0")/lib.sh"
 
-build_and_launch -profile dev
+build_and_launch ZenTabDev org.nepjua.ZenTabDev -profile dev

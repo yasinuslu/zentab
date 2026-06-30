@@ -56,33 +56,57 @@ xcb() {
 }
 
 # Path to the built Debug .app bundle. Reads it from xcodebuild's resolved settings
-# (captured separately from the build so its output never pollutes the path).
+# (captured separately from the build so its output never pollutes the path). Any
+# extra args are forwarded to xcodebuild — pass the same identity overrides as the
+# build so the resolved name/path matches the variant that was just built.
 debug_app_path() {
   local settings dir name
   settings="$(xcodebuild -project "$PROJECT" -scheme "$SCHEME" \
-    -configuration Debug -destination "$DESTINATION" -showBuildSettings 2>/dev/null)"
+    -configuration Debug -destination "$DESTINATION" "$@" -showBuildSettings 2>/dev/null)"
   dir="$(printf '%s\n' "$settings" | sed -n 's/^ *BUILT_PRODUCTS_DIR = //p' | head -1)"
   name="$(printf '%s\n' "$settings" | sed -n 's/^ *FULL_PRODUCT_NAME = //p' | head -1)"
   printf '%s/%s\n' "$dir" "$name"
 }
 
-# Build (Debug), then quit any running instance and relaunch, passing the given args
-# through to the app (e.g. `-profile dev`). We must relaunch — `open` only forwards
-# `--args` to a fresh process, so a switch of launch profile needs the old one gone.
-# Quitting via SIGTERM also triggers the app's restore of the native Cmd+Tab.
+# Build (Debug) a named dev variant, then quit any running copy of *that* variant and
+# relaunch it, forwarding the trailing args to the app (e.g. `-profile dev`).
+#
+#   build_and_launch <ProductName> <bundle.id> [app args...]
+#
+# Each variant is built under its own PRODUCT_NAME and PRODUCT_BUNDLE_IDENTIFIER so the
+# dev (bin/run) and preview (bin/run-prod) builds are genuinely separate apps from each
+# other and from an installed release ZenTab: distinct bundle ids mean macOS scopes
+# Accessibility / Screen-Recording / Input-Monitoring grants per variant (no permission
+# clobbering), and distinct product names mean distinct .app bundles, distinct menu-bar
+# instances, and a distinct process name — so the pkill below only ever replaces this
+# same variant and never reaches your installed ZenTab. project.yml stays canonical for
+# the shipping app; these overrides exist only for the local dev/preview builds.
+#
+# We must relaunch — `open` only forwards `--args` to a fresh process, so a switch of
+# launch profile needs the old one gone. Quitting via SIGTERM also triggers the app's
+# restore of the native Cmd+Tab.
 build_and_launch() {
+  local product="$1" bundle="$2"
+  shift 2
+
+  local -a identity=(
+    PRODUCT_NAME="$product"
+    PRODUCT_BUNDLE_IDENTIFIER="$bundle"
+    INFOPLIST_KEY_CFBundleDisplayName="$product"
+  )
+
   xcb build \
     -project "$PROJECT" -scheme "$SCHEME" \
     -configuration Debug -destination "$DESTINATION" \
-    CODE_SIGNING_ALLOWED=NO
+    CODE_SIGNING_ALLOWED=NO "${identity[@]}"
 
   local app
-  app="$(debug_app_path)"
+  app="$(debug_app_path "${identity[@]}")"
 
-  if pgrep -x ZenTab >/dev/null 2>&1; then
-    pkill -x ZenTab 2>/dev/null || true
+  if pgrep -x "$product" >/dev/null 2>&1; then
+    pkill -x "$product" 2>/dev/null || true
     for _ in $(seq 1 30); do
-      pgrep -x ZenTab >/dev/null 2>&1 || break
+      pgrep -x "$product" >/dev/null 2>&1 || break
       sleep 0.1
     done
   fi

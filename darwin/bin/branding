@@ -11,6 +11,7 @@ source "$(dirname "$0")/lib.sh"
 
 GEN="branding/GenerateBranding.swift"
 ICONSET_DST="ZenTab/Assets.xcassets/AppIcon.appiconset"
+MENUBAR_DST="ZenTab/Assets.xcassets/MenuBarIcon.imageset"
 DMG_DST="branding/dmg"
 
 TMP="$(mktemp -d)"
@@ -45,6 +46,22 @@ cat > "$ICONSET_DST/Contents.json" <<'JSON'
 }
 JSON
 
+# --- Menu-bar glyph: template imageset --------------------------------------
+echo "Assembling ${MENUBAR_DST}..."
+rm -rf "$MENUBAR_DST"
+mkdir -p "$MENUBAR_DST"
+cp "$TMP/menubar.png" "$TMP/menubar@2x.png" "$MENUBAR_DST/"
+cat > "$MENUBAR_DST/Contents.json" <<'JSON'
+{
+  "images" : [
+    { "idiom" : "universal", "scale" : "1x", "filename" : "menubar.png" },
+    { "idiom" : "universal", "scale" : "2x", "filename" : "menubar@2x.png" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 },
+  "properties" : { "template-rendering-intent" : "template" }
+}
+JSON
+
 # --- DMG artwork ------------------------------------------------------------
 echo "Building ${DMG_DST} (volume icon + background)..."
 mkdir -p "$DMG_DST"
@@ -61,6 +78,7 @@ tiffutil -cathidpicheck \
 echo
 echo "Done. Generated:"
 echo "  $ICONSET_DST/ (10 PNGs + Contents.json)"
+echo "  $MENUBAR_DST/ (template glyph, 1x + 2x)"
 echo "  $DMG_DST/VolumeIcon.icns"
 echo "  $DMG_DST/background.tiff"
 echo

@@ -32,10 +32,18 @@ enum CaptureHealth: Equatable {
 
   var isCapturing: Bool { self == .capturing }
 
-  /// SF Symbol for the menu bar item: a calm rectangle when we own the shortcut, a
-  /// warning triangle the instant we don't.
-  var menuBarSymbol: String {
-    isCapturing ? "rectangle.on.rectangle" : "exclamationmark.triangle.fill"
+  /// What the menu bar item shows.
+  enum MenuBarIcon: Equatable {
+    /// The ZenTab mark (template asset in the catalog) — we own the shortcut.
+    case brand
+    /// An SF Symbol — used to flag that we don't (e.g. a warning triangle).
+    case symbol(String)
+  }
+
+  /// The ZenTab mark when we own the shortcut, a warning triangle the instant we
+  /// don't.
+  var menuBarIcon: MenuBarIcon {
+    isCapturing ? .brand : .symbol("exclamationmark.triangle.fill")
   }
 
   /// One-line status shown in the menu bar dropdown.

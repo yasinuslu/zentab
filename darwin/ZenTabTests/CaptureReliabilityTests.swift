@@ -84,13 +84,13 @@ struct CaptureHealthTests {
       accessibilityTrusted: true, tapEnabled: true, stillEnabled: [])
     #expect(health == .capturing)
     #expect(health.isCapturing)
-    #expect(health.menuBarSymbol == "rectangle.on.rectangle")
+    #expect(health.menuBarIcon == .brand)
   }
 
   @Test("Any non-capturing state shows the warning icon")
   func warningIconWhenNotCapturing() {
-    #expect(CaptureHealth.noAccessibility.menuBarSymbol == "exclamationmark.triangle.fill")
-    #expect(CaptureHealth.tapDisabled.menuBarSymbol == "exclamationmark.triangle.fill")
+    #expect(CaptureHealth.noAccessibility.menuBarIcon == .symbol("exclamationmark.triangle.fill"))
+    #expect(CaptureHealth.tapDisabled.menuBarIcon == .symbol("exclamationmark.triangle.fill"))
     #expect(!CaptureHealth.tapDisabled.isCapturing)
   }
 }

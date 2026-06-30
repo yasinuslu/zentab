@@ -19,7 +19,13 @@ struct ZenTabApp: App {
     MenuBarExtra {
       MenuBarContent(model: model)
     } label: {
-      Image(systemName: model.captureHealth.menuBarSymbol)
+      switch model.captureHealth.menuBarIcon {
+      case .brand:
+        // The ZenTab mark, a template asset macOS tints for the menu bar.
+        Image("MenuBarIcon")
+      case .symbol(let name):
+        Image(systemName: name)
+      }
     }
   }
 }

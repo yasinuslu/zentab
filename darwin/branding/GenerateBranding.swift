@@ -212,6 +212,51 @@ func drawBackground(_ ctx: CGContext, _ w: CGFloat, _ h: CGFloat) {
     mono: false, kern: 0.2 * scale)
 }
 
+// MARK: - Menu-bar glyph
+
+// The same mark, reduced to one ink for the menu bar (brand "menu-bar glyph"):
+// an outlined frame with the focused tile in the corner. Solid black on a clear
+// canvas so it ships as a template image — macOS tints it for light/dark menu
+// bars and selection. A hairline gap is knocked out around the tile so the two
+// shapes stay legible at ~16px in a single color.
+func drawMenuBarGlyph(_ ctx: CGContext, _ n: CGFloat) {
+  let ink = c(0, 0, 0, 1)
+  let pad = n * 0.06
+  let mark = n - 2 * pad
+  let ox = pad, oy = pad
+  let markRect = CGRect(x: ox, y: oy, width: mark, height: mark)
+
+  // Frame outline.
+  let fw = max(1, mark * 0.085)
+  let frameRadius = mark * 0.27
+  ctx.saveGState()
+  ctx.addPath(roundRect(markRect.insetBy(dx: fw / 2, dy: fw / 2), frameRadius - fw / 2))
+  ctx.setStrokeColor(ink)
+  ctx.setLineWidth(fw)
+  ctx.strokePath()
+  ctx.restoreGState()
+
+  // Focused tile, flush to the bottom-right corner.
+  let tile = mark * 0.68
+  let tileRect = CGRect(x: ox + mark - tile, y: oy, width: tile, height: tile)
+  let tileRadius = tile * 0.30
+  let gap = max(1, mark * 0.05)
+
+  // Knock a clear gap out of the frame where the tile sits…
+  ctx.saveGState()
+  ctx.setBlendMode(.clear)
+  ctx.addPath(roundRect(tileRect.insetBy(dx: -gap, dy: -gap), tileRadius + gap))
+  ctx.fillPath()
+  ctx.restoreGState()
+
+  // …then lay the tile in.
+  ctx.saveGState()
+  ctx.addPath(roundRect(tileRect, tileRadius))
+  ctx.setFillColor(ink)
+  ctx.fillPath()
+  ctx.restoreGState()
+}
+
 // MARK: - Main
 
 let out = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "./branding-out"
@@ -243,6 +288,13 @@ for (name, mult) in [("background", 1), ("background@2x", 2)] {
   let ctx = makeContext(w, h)
   drawBackground(ctx, CGFloat(w), CGFloat(h))
   writePNG(ctx, to: dmgURL.appendingPathComponent("\(name).png"))
+}
+
+// Menu-bar glyph: an ~18pt template image (1x + 2x).
+for (name, px) in [("menubar", 18), ("menubar@2x", 36)] {
+  let ctx = makeContext(px, px)
+  drawMenuBarGlyph(ctx, CGFloat(px))
+  writePNG(ctx, to: outURL.appendingPathComponent("\(name).png"))
 }
 
 print("ZenTab branding artwork written to \(outURL.path)")

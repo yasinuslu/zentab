@@ -1,0 +1,62 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- WinForms is enabled only for the tray icon (NotifyIcon). -->
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <!-- Product / version metadata (stamped into ZenTab.exe and the installer). -->
+    <AssemblyName>ZenTab</AssemblyName>
+    <Product>ZenTab</Product>
+    <Company>yasinuslu</Company>
+    <Authors>yasinuslu</Authors>
+    <Description>An opinionated Alt+Tab alternative for Windows — feel and performance over configurability.</Description>
+    <!-- Version is the single source of truth; build.ps1 / CI override it via -p:Version. -->
+    <Version>0.1.0</Version>
+
+    <!-- Placeholder app icon (assets/zentab.ico). Sets the exe icon; also embedded below
+         so the tray can load it. Swap assets/zentab.ico for real art anytime. -->
+    <ApplicationIcon>assets\zentab.ico</ApplicationIcon>
+
+    <!-- PerMonitorV2 DPI awareness for correct multi-monitor thumbnail placement. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- Safe size trims: ZenTab has no culture-sensitive UI, so drop ICU and the
+         localized framework satellite assemblies. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
+    <!-- WFO0003: WinForms wants DPI set via ApplicationHighDpiMode, but this is a WPF app
+         (WinForms is only the tray icon), and the app.manifest is the canonical way for WPF
+         to declare PerMonitorV2. Intentional. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <!-- Publish settings: only apply when a RID is supplied (dotnet publish -r win-x64),
+       so plain `dotnet build` / `dotnet run` stay framework-dependent and fast. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- Compress the single file; the MSI stores it as-is (CompressionLevel=none) so the
+         CAB doesn't try (and fail) to re-compress an already-compressed payload. -->
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- No symbols in a release publish: keeps the publish dir to a single shippable exe
+         (a bare ZenTab.exe is the portable artifact). `dotnet build`/`run` stay debuggable. -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Dev-only config: copied to the build output (so `dotnet run` gets dev gestures)
+         but NEVER to a publish, so the portable exe and MSI always use the real Alt+Tab. -->
+    <None Update="zentab.toml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <!-- Embed the icon so the tray can load it (works inside the single-file exe). -->
+    <EmbeddedResource Include="assets\zentab.ico" LogicalName="ZenTab.zentab.ico" />
+  </ItemGroup>
+
+</Project>

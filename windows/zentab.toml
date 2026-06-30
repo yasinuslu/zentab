@@ -1,0 +1,27 @@
+# ZenTab configuration
+#
+# This is a DEVELOPER aid, NOT user-facing configurability. ZenTab is intentionally
+# opinionated and not configurable (see VISION.md) — the only reason this file exists
+# is so the switcher can be tested while developing without hijacking the real
+# Alt+Tab / Alt+` / Ctrl+Alt+Tab and clobbering Windows' own keybindings.
+#
+# When [dev].enabled is false (the default, and the only "shipping" behavior),
+# everything below is ignored and the hard-coded gestures are used.
+
+[dev]
+# Turn on the alternate dev shortcuts below. (On for now while developing; set to
+# false to use the real Alt+Tab / Alt+` / Ctrl+Alt+Tab.)
+enabled = true
+
+# The held modifier. Release it to commit, exactly like releasing Alt in normal mode.
+# Combine with "+": one or more of  alt  ctrl  shift  win
+modifier = "ctrl+alt"
+
+# Trigger keys, pressed while the modifier is held. Names: Tab, F1..F24, a letter,
+# a digit, or `  (backtick). Each maps to one of the three hard-coded modes.
+#
+# So: hold Ctrl+Alt, tap Tab to summon apps and keep tapping to cycle (Shift+Tab to go
+# back), then release Ctrl+Alt to switch — the same feel as Alt+Tab, just a safe modifier.
+apps        = "Tab"  # like Alt+Tab        — apps on the current monitor
+app_windows = "`"    # like Alt+`          — windows of the current app
+everything  = "F1"   # like Ctrl+Alt+Tab   — everything, all monitors, all desktops

@@ -7,9 +7,9 @@ Same vision and branding, native guts on each OS.
 ## Read this first
 
 **[`VISION.md`](VISION.md) is the authoritative product direction. Read it before proposing
-or building anything**, on either platform. It defines the three-mode model, the
-tap-vs-hold / stable-list behavior, the "universes are separate" principle, and the
-non-negotiable pillars (feel + performance, opinionated and minimal, config-as-a-TOML-file,
+or building anything**, on either platform. It defines the three-mode model and its scopes,
+the tap-vs-hold / stable-list behavior, and the non-negotiable pillars (feel + performance,
+opinionated and minimal, config-as-a-TOML-file,
 free forever). ZenTab is **very opinionated**: the default answer to "should this be a
 setting?" is **no**. When a request conflicts with VISION.md, surface the tension instead of
 silently implementing it. Do not reintroduce ideas it rules out (no Pro tier, no settings

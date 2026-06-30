@@ -23,13 +23,9 @@ All of these at once:
 - **Calm, not stimulating** — quiet, unhurried, no jarring motion or loud chrome.
 - **Attention directed in the moment** — while you choose, the rest of the world recedes.
 
-### Universes are separate
-
-A virtual desktop — a **Space** on macOS, a **virtual desktop** on Windows — is a whole
-separate universe. Switching desktops means switching your *entire world*, on purpose.
-Reaching into another universe to grab a single window is, by design, the wrong move:
-there's a reason you put something over there. This is why the everyday modes stay tightly
-scoped and only the global escape hatch crosses universes.
+Both OSes have the same building block — a **desktop** (a *Space* on macOS, a *virtual
+desktop* on Windows) — so the model below reads identically on each; only the terminology
+and trigger keys differ.
 
 ## The three-mode model (the heart)
 
@@ -38,14 +34,17 @@ configurable (in the TOML file); the modes themselves are the opinion ZenTab shi
 
 | Mode | Shows | Scope |
 | --- | --- | --- |
-| **Everyday switch** | what's live right here | current monitor + current universe |
-| **Current-app windows** | every window of the foreground app | the current universe, all monitors |
-| **Global escape hatch** | *everything* — the "I lost something" valve | all apps, all monitors, all universes |
+| **Everyday switch** | every window here — all apps, the current app included | current monitor + current desktop (real on-screen windows only) |
+| **Current-app windows** | every window of the active app, gathered from wherever it is | all desktops + all monitors (incl. minimized, hidden, fullscreen; the app listed last if it has no window) |
+| **Global escape hatch** | *everything* — the "I lost something" valve | all apps, all desktops, all monitors |
 
-The everyday switch is the fast one you reach for constantly: what's in front of you, here
-and now. Current-app windows fans through one app's windows without hunting. The escape
-hatch is the only mode that crosses universes — the pressure-release valve for the rare
-moment you've misplaced something.
+The everyday switch is the fast one you reach for constantly: what's live right here, on
+this monitor and this desktop. The current app's windows are *in* that list (hiding them is
+disorienting), but the selection starts on the most-recent **other** window, so a quick tap
+still switches away from where you are. Current-app mode is the companion for one app: every
+window of the active app, gathered from wherever it is — other desktops, other monitors,
+minimized — so you can fan through them without hunting. The escape hatch is the only fully
+global mode: the pressure-release valve for reaching anything, anywhere.
 
 **Native key bindings** (defaults — the trigger keys, and only the keys, are configurable):
 
@@ -57,9 +56,10 @@ moment you've misplaced something.
 
 > `Shift` is reserved everywhere for reverse navigation, so it never appears in a trigger.
 
-Each platform expresses the model in its native idiom, and a couple of scope details follow
-local convention (e.g. the granularity of the everyday list — see each platform's notes
-below). The *intent* is identical.
+Each platform expresses the model in its native keys. The behavior and scopes above are the
+spec for both; where an implementation lags today (e.g. Windows' everyday list is per-app
+for now, not per-window), that's an implementation gap to close — see **Status** — not a
+competing opinion.
 
 ## Interaction
 
@@ -122,8 +122,9 @@ fullscreen, or hide. Window management is the OS's job.
 
 ## Deliberately out of scope
 
-- **Switching universes** — left to the OS (`Win + Ctrl + ←/→`, macOS Mission Control).
-  ZenTab switches *within* the current universe, plus the global escape hatch.
+- **Switching desktops** — moving between Spaces / virtual desktops is the OS's job
+  (Mission Control, `Win + Ctrl + ←/→`). ZenTab switches *windows*, not desktops — even
+  when current-app or escape-hatch mode reaches across desktops to focus one.
 - **Active single-tasking mechanisms** — no clutter warnings, no forced receding of other
   windows. The tight scoping *is* the nudge.
 - **Configurability** — there is intentionally almost nothing to configure beyond the
@@ -150,12 +151,12 @@ fullscreen, or hide. Window management is the OS's job.
 ### Windows (`windows/`)
 
 - **C# / WPF on .NET 10** with a thin Win32/DWM interop layer (`Native.cs`). Resident in
-  the tray (no main window). The everyday Alt+Tab list is **per-app** (one entry per app),
-  following Windows convention; the current-app and escape-hatch modes show windows.
+  the tray (no main window). The everyday Alt+Tab list is **per-app today** (one entry per
+  app) — a known gap from the per-window spec above, kept for now because it matches the
+  Windows habit; closing it is tracked in Status.
 - **Replaces native Alt+Tab entirely** via a low-level keyboard hook. **Live thumbnails via
   DWM**; the world behind the overlay **dims + blurs** (all monitors) to spotlight the
-  choices. **Minimized windows are excluded** — you put them away on purpose; the taskbar
-  brings them back.
+  choices.
 - Ships as a self-contained portable exe + WiX MSI.
 
 ## Status
@@ -168,16 +169,6 @@ fullscreen, or hide. Window management is the OS's job.
   across Spaces/monitors, and recency for the tap toggle.
 - **Windows** — overlay, keyboard hook, per-app Alt+Tab, live thumbnails, and packaging
   (portable exe + MSI + checksums) are in place. See `windows/docs/review-notes.md` for the
-  open backlog.
-
-## Open edges (leaning a certain way, not yet locked)
-
-- **Cross-universe reconciliation.** The "universes are separate" principle says everyday
-  modes never cross desktops, but macOS's current-app mode (`Cmd+\``) historically gathers
-  an app's windows from *all* Spaces. Decide whether macOS conforms to the principle or
-  whether current-app mode is a deliberate exception on both platforms.
-- **Everyday-list granularity.** macOS is per-window, Windows is per-app today. Confirm this
-  stays a deliberate per-platform choice (native convention) rather than unifying.
-- **Stable-order key.** Launch/creation order (truly stable) vs. anything Z-order-derived
-  (shuffles as you use windows). _Leaning: launch/creation order._
-- **Dim+blur reach.** _Leaning: all monitors recede, not just the active one._
+  open backlog. **Gaps from the spec above:** the everyday list is per-app (should be
+  per-window), `Alt+\`` reaches only the current desktop (should reach all), and minimized
+  windows are excluded from current-app/escape-hatch modes (should be included).

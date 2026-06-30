@@ -6,3 +6,6 @@
 
 # Editor / OS junk
 *.swp
+
+# direnv local cache (.envrc itself IS committed)
+.direnv/

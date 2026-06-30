@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 
 namespace ZenTab;
 
 /// <summary>
-/// A held modifier set + per-mode trigger keys. Most-specific trigger (most modifiers)
-/// wins, and the overlay commits when the modifier set is released.
+/// A per-mode set of trigger chords (modifiers + key) plus the modifiers whose release
+/// commits the overlay. Most-specific trigger (most modifiers) wins when several match a
+/// keystroke, and the overlay commits when any held trigger modifier is released.
 /// </summary>
 public sealed class HotkeyProfile
 {
@@ -17,64 +19,109 @@ public sealed class HotkeyProfile
     public required string[] CommitMods { get; init; }
     public required string Description { get; init; }
 
-    /// <summary>The shipping scheme: Alt+Tab / Alt+` / Ctrl+Alt+Tab. Hard-coded (see VISION.md).</summary>
-    public static HotkeyProfile Normal { get; } = new()
+    /// <summary>The trigger chord for a mode, formatted for display (e.g. "Ctrl+Alt+Tab").</summary>
+    public string KeyDisplay(SwitchMode mode)
     {
-        Triggers = new[]
-        {
-            new Trigger(new[] { "ctrl", "alt" }, Native.VK_TAB, SwitchMode.Everything),
-            new Trigger(new[] { "alt" }, Native.VK_TAB, SwitchMode.Apps),
-            new Trigger(new[] { "alt" }, Native.VK_OEM_3, SwitchMode.AppWindows),
-        },
-        CommitMods = new[] { "alt" },
-        Description = "Alt+Tab / Alt+` / Ctrl+Alt+Tab",
+        var t = Triggers.FirstOrDefault(x => x.Mode == mode);
+        return t is null ? string.Empty : Display(t);
+    }
+
+    /// <summary>Canonical Windows-order, plus-joined chord text (e.g. "Ctrl+Alt+Tab").</summary>
+    public static string Display(Trigger t)
+    {
+        var parts = t.Mods.OrderBy(ModOrder).Select(ModName).Append(KeyName(t.Key));
+        return string.Join("+", parts);
+    }
+
+    private static int ModOrder(string mod) => mod switch
+    {
+        "ctrl" => 0, "alt" => 1, "shift" => 2, "win" => 3, _ => 9,
+    };
+
+    private static string ModName(string mod) => mod switch
+    {
+        "ctrl" => "Ctrl", "alt" => "Alt", "shift" => "Shift", "win" => "Win", _ => mod,
+    };
+
+    private static string KeyName(int vk) => vk switch
+    {
+        Native.VK_TAB => "Tab",
+        Native.VK_OEM_3 => "`",
+        Native.VK_ESCAPE => "Esc",
+        Native.VK_LEFT => "Left",
+        Native.VK_RIGHT => "Right",
+        >= 0x70 and <= 0x87 => "F" + (vk - 0x70 + 1), // F1..F24
+        >= 0x41 and <= 0x5A => ((char)vk).ToString(), // A..Z
+        >= 0x30 and <= 0x39 => ((char)vk).ToString(), // 0..9
+        _ => "?",
     };
 }
 
 /// <summary>
-/// ZenTab configuration. This is a DEVELOPER aid, not user-facing configurability
-/// (ZenTab is intentionally not configurable — see VISION.md). It exists only so the
-/// switcher can be tested without hijacking the real Alt+Tab while developing.
+/// ZenTab configuration — a single TOML file (see VISION.md: "config is a file"). ZenTab is
+/// intentionally opinionated and almost nothing is configurable: the only knobs are the three
+/// trigger chords and the hold threshold. The switching behavior itself is fixed.
+///
+/// Read, in priority order, from:
+///   1. <c>zentab.toml</c> beside the exe or in the working directory — a portable / dev
+///      override (the source tree ships one with safe chords so development never hijacks the
+///      real Alt+Tab; it is excluded from the published exe and MSI).
+///   2. <c>%APPDATA%\zentab\config.toml</c> — the standard per-user config.
+///   3. Built-in defaults (the shipping scheme below) when no file is present.
 /// </summary>
 public sealed class ZenConfig
 {
-    public bool DevEnabled { get; set; }
-    public string Modifier { get; set; } = "ctrl+alt";
-    public string Apps { get; set; } = "F1";
-    public string AppWindows { get; set; } = "F2";
-    public string Everything { get; set; } = "F3";
+    // The three trigger chords, exactly as written in [keys]. Defaults are the shipping
+    // scheme — Alt+Tab / Alt+` / Ctrl+Alt+Tab (VISION.md). Shift is reserved everywhere for
+    // reverse navigation, so it never appears in a trigger.
+    public string OtherApps { get; set; } = "alt+tab";
+    public string CurrentApp { get; set; } = "alt+`";
+    public string Everything { get; set; } = "ctrl+alt+tab";
+
+    // [behavior] hold_threshold_ms — how long the trigger must be held before the overlay
+    // appears; a quicker tap-and-release switches invisibly. Default 150 (matches macOS).
+    public int HoldThresholdMs { get; set; } = 150;
 
     public HotkeyProfile BuildProfile()
     {
-        if (!DevEnabled) return HotkeyProfile.Normal;
+        var triggers = new List<HotkeyProfile.Trigger>
+        {
+            ParseChord(OtherApps, SwitchMode.Apps, "alt+tab"),
+            ParseChord(CurrentApp, SwitchMode.AppWindows, "alt+`"),
+            ParseChord(Everything, SwitchMode.Everything, "ctrl+alt+tab"),
+        };
 
-        var mods = ParseMods(Modifier);
+        // Releasing any modifier that took part in a trigger commits the selection.
+        var commit = triggers.SelectMany(t => t.Mods).Distinct().ToArray();
+
         return new HotkeyProfile
         {
-            Triggers = new[]
-            {
-                new HotkeyProfile.Trigger(mods, ParseKey(Apps), SwitchMode.Apps),
-                new HotkeyProfile.Trigger(mods, ParseKey(AppWindows), SwitchMode.AppWindows),
-                new HotkeyProfile.Trigger(mods, ParseKey(Everything), SwitchMode.Everything),
-            },
-            CommitMods = mods,
-            Description = $"DEV: {Modifier}+{{ {Apps} / {AppWindows} / {Everything} }}",
+            Triggers = triggers,
+            CommitMods = commit.Length > 0 ? commit : new[] { "alt" },
+            Description = string.Join("  /  ", triggers.Select(HotkeyProfile.Display)),
         };
     }
 
-    /// <summary>Load zentab.toml from the exe directory or the working dir; defaults if absent.</summary>
     public static ZenConfig Load()
     {
-        foreach (var dir in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory })
+        foreach (var path in CandidatePaths())
         {
-            var path = Path.Combine(dir, "zentab.toml");
-            if (File.Exists(path))
-            {
-                try { return Parse(File.ReadAllLines(path)); }
-                catch { /* malformed config falls back to defaults */ }
-            }
+            if (path is null || !File.Exists(path)) continue;
+            try { return Parse(File.ReadAllLines(path)); }
+            catch { /* malformed config falls back to the next candidate / defaults */ }
         }
         return new ZenConfig();
+    }
+
+    private static IEnumerable<string?> CandidatePaths()
+    {
+        // 1. Portable / dev override beside the exe or in the working directory.
+        yield return Path.Combine(AppContext.BaseDirectory, "zentab.toml");
+        yield return Path.Combine(Environment.CurrentDirectory, "zentab.toml");
+
+        // 2. The standard per-user config: %APPDATA%\zentab\config.toml.
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        yield return string.IsNullOrEmpty(appData) ? null : Path.Combine(appData, "zentab", "config.toml");
     }
 
     private static ZenConfig Parse(string[] lines)
@@ -97,14 +144,21 @@ public sealed class ZenConfig
             string key = line[..eq].Trim().ToLowerInvariant();
             string value = Unquote(line[(eq + 1)..].Trim());
 
-            if (section != "dev") continue;
-            switch (key)
+            switch (section)
             {
-                case "enabled": cfg.DevEnabled = value.Equals("true", StringComparison.OrdinalIgnoreCase); break;
-                case "modifier": cfg.Modifier = value; break;
-                case "apps": cfg.Apps = value; break;
-                case "app_windows": cfg.AppWindows = value; break;
-                case "everything": cfg.Everything = value; break;
+                case "keys":
+                    switch (key)
+                    {
+                        case "other_apps": cfg.OtherApps = value; break;
+                        case "current_app": cfg.CurrentApp = value; break;
+                        case "everything": cfg.Everything = value; break;
+                    }
+                    break;
+                case "behavior":
+                    if (key == "hold_threshold_ms"
+                        && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int ms))
+                        cfg.HoldThresholdMs = Math.Clamp(ms, 0, 2000);
+                    break;
             }
         }
         return cfg;
@@ -124,29 +178,59 @@ public sealed class ZenConfig
     private static string Unquote(string s) =>
         s.Length >= 2 && s[0] == '"' && s[^1] == '"' ? s[1..^1] : s;
 
-    private static string[] ParseMods(string spec)
+    /// <summary>Parse "ctrl+alt+tab" into a trigger; fall back to the default chord if invalid.</summary>
+    private static HotkeyProfile.Trigger ParseChord(string spec, SwitchMode mode, string fallback)
     {
-        var parts = spec.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var mods = new List<string>();
-        foreach (var p in parts)
-        {
-            var m = p.ToLowerInvariant();
-            if (m is "alt" or "ctrl" or "control" or "shift" or "win")
-                mods.Add(m == "control" ? "ctrl" : m);
-        }
-        return mods.Count > 0 ? mods.ToArray() : new[] { "ctrl", "alt" };
+        if (!TryParseChord(spec, out var mods, out int key))
+            TryParseChord(fallback, out mods, out key);
+        return new HotkeyProfile.Trigger(mods, key, mode);
     }
 
-    /// <summary>Map a key name (F1, Tab, A, `, ...) to a virtual-key code.</summary>
+    private static bool TryParseChord(string spec, out string[] mods, out int key)
+    {
+        mods = Array.Empty<string>();
+        key = 0;
+
+        var parts = spec.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return false;
+
+        var modList = new List<string>();
+        string? keyToken = null;
+        foreach (var p in parts)
+        {
+            switch (p.ToLowerInvariant())
+            {
+                case "alt": case "option": case "opt": AddMod(modList, "alt"); break;
+                case "ctrl": case "control": AddMod(modList, "ctrl"); break;
+                case "win": case "super": case "cmd": case "meta": AddMod(modList, "win"); break;
+                case "shift": break; // reserved for reverse navigation — never part of a trigger
+                default: keyToken = p; break; // the last non-modifier token is the key
+            }
+        }
+
+        if (keyToken is null) return false;
+        key = ParseKey(keyToken);
+        mods = modList.ToArray();
+        return true;
+    }
+
+    private static void AddMod(List<string> mods, string mod)
+    {
+        if (!mods.Contains(mod)) mods.Add(mod);
+    }
+
+    /// <summary>Map a key name (Tab, F1, A, `, ...) to a virtual-key code.</summary>
     private static int ParseKey(string name)
     {
         name = name.Trim();
-        if (name.Length == 0) return Native.VK_F1;
+        if (name.Length == 0) return Native.VK_TAB;
         switch (name.ToLowerInvariant())
         {
             case "tab": return Native.VK_TAB;
             case "`": case "backtick": case "tilde": return Native.VK_OEM_3;
             case "esc": case "escape": return Native.VK_ESCAPE;
+            case "left": return Native.VK_LEFT;
+            case "right": return Native.VK_RIGHT;
         }
 
         // Function keys F1..F24
@@ -159,6 +243,6 @@ public sealed class ZenConfig
         char c = char.ToUpperInvariant(name[0]);
         if (c is >= 'A' and <= 'Z' or >= '0' and <= '9') return c;
 
-        return Native.VK_F1; // safe fallback
+        return Native.VK_TAB; // safe fallback
     }
 }

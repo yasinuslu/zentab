@@ -8,14 +8,12 @@ namespace ZenTab;
 /// Glues the keyboard hook, the warm window state, and the overlay together:
 /// summon → cycle → commit / cancel / close / quit.
 ///
-/// Like native Alt+Tab, a quick tap (press and release within <see cref="ShowDelayMs"/>)
+/// Like native Alt+Tab, a quick tap (press and release within the configured hold threshold)
 /// switches straight to the MRU-previous window without ever flashing the overlay; the
 /// overlay only appears if you keep holding, or tap again to start cycling.
 /// </summary>
 public sealed class SwitcherController : IDisposable
 {
-    private const int ShowDelayMs = 200;
-
     private readonly KeyboardHook _hook;
     private readonly WindowService _windows;
     private readonly OverlayWindow _overlay;
@@ -27,6 +25,7 @@ public sealed class SwitcherController : IDisposable
     private bool _visible;
     private List<SwitchEntry> _armedEntries = new();
     private int _armedIndex;
+    private SwitchMode _armedMode;
 
     public HotkeyProfile Profile { get; }
 
@@ -39,7 +38,8 @@ public sealed class SwitcherController : IDisposable
 
         _armTimer = new DispatcherTimer(DispatcherPriority.Normal, dispatcher)
         {
-            Interval = TimeSpan.FromMilliseconds(ShowDelayMs),
+            // Hold past this to reveal the overlay; release sooner = invisible quick-tap.
+            Interval = TimeSpan.FromMilliseconds(config.HoldThresholdMs),
         };
         _armTimer.Tick += (_, _) => Reveal();
 
@@ -48,6 +48,7 @@ public sealed class SwitcherController : IDisposable
         _hook.Cancel += Cancel;
         _hook.CloseWindow += () => CloseOrQuit(quitApp: false);
         _hook.QuitApp += () => CloseOrQuit(quitApp: true);
+        _hook.Jump += JumpTo;
         _overlay.Committed += CommitTo;
     }
 
@@ -88,6 +89,7 @@ public sealed class SwitcherController : IDisposable
 
         _armedEntries = entries;
         _armedIndex = initial;
+        _armedMode = mode;
         _armed = true;
         _armTimer.Start();
     }
@@ -97,7 +99,7 @@ public sealed class SwitcherController : IDisposable
         if (!_armed) return;
         _armTimer.Stop();
         _armed = false;
-        _overlay.Show(_armedEntries, _armedIndex);
+        _overlay.Show(_armedEntries, _armedIndex, _armedMode, Profile.KeyDisplay(_armedMode));
         _visible = true;
     }
 
@@ -123,6 +125,13 @@ public sealed class SwitcherController : IDisposable
         if (!_visible) return;
         Hide();
         if (entry is not null) Native.Activate(entry.Primary);
+    }
+
+    /// <summary>1…9 jump: select that tile and commit to it (no-op until the overlay is up).</summary>
+    private void JumpTo(int index)
+    {
+        if (!_visible) return;
+        if (_overlay.SelectIndex(index)) CommitTo(_overlay.Selected);
     }
 
     private void Cancel()

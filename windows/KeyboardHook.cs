@@ -25,11 +25,14 @@ public sealed class KeyboardHook : IDisposable
     /// <summary>Escape — dismiss without switching.</summary>
     public event Action? Cancel;
 
-    /// <summary>Delete — close the selected window.</summary>
+    /// <summary>W — close the selected window.</summary>
     public event Action? CloseWindow;
 
-    /// <summary>Shift+Delete — quit the selected app (close all its windows).</summary>
+    /// <summary>Q — quit the selected app (close all its windows).</summary>
     public event Action? QuitApp;
+
+    /// <summary>A digit 1-9 was pressed while the overlay is up — jump to and commit that tile.</summary>
+    public event Action<int>? Jump;
 
     /// <summary>True while the overlay is up — enables capture of Esc/Del/arrows and commit-on-release.</summary>
     public bool Capturing { get; set; }
@@ -87,15 +90,29 @@ public sealed class KeyboardHook : IDisposable
 
             if (Capturing)
             {
+                // 1-9 jump straight to that tile (the index chips). Leave Capturing on; the
+                // jump commits and hides the overlay itself, and if we're still in the pre-
+                // reveal "armed" window it's a no-op so release-to-commit still works.
+                if (vk is >= 0x31 and <= 0x39) // '1'..'9'
+                {
+                    int idx = vk - 0x31;
+                    Post(() => Jump?.Invoke(idx));
+                    return true;
+                }
+
                 switch (vk)
                 {
                     case Native.VK_ESCAPE:
                         Capturing = false;
                         Post(() => Cancel?.Invoke());
                         return true;
-                    case Native.VK_DELETE:
-                        if (Native.IsKeyDown(Native.VK_SHIFT)) Post(() => QuitApp?.Invoke());
-                        else Post(() => CloseWindow?.Invoke());
+                    // In-overlay actions, per VISION.md: W closes the window, Q quits the app.
+                    // Nothing else — window management is the OS's job.
+                    case Native.VK_W:
+                        Post(() => CloseWindow?.Invoke());
+                        return true;
+                    case Native.VK_Q:
+                        Post(() => QuitApp?.Invoke());
                         return true;
                     case Native.VK_TAB:
                     case Native.VK_LEFT:

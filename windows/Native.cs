@@ -107,6 +107,72 @@ internal static class Native
         DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
     }
 
+    // ---- Acrylic / blur-behind (the spotlight backdrop) -----------------------
+    // Undocumented SetWindowCompositionAttribute — the GPU-composited blur the dim layer rides
+    // on (VISION.md: "GPU, not CPU, for visuals"). Supported on Win10 1803+ and Win11.
+
+    [DllImport("user32.dll")]
+    public static extern int SetWindowCompositionAttribute(nint hWnd, ref WINDOWCOMPOSITIONATTRIBDATA data);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct WINDOWCOMPOSITIONATTRIBDATA
+    {
+        public int Attribute;
+        public nint Data;
+        public int SizeOfData;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ACCENT_POLICY
+    {
+        public int AccentState;
+        public int AccentFlags;
+        public uint GradientColor; // 0xAABBGGRR
+        public int AnimationId;
+    }
+
+    public const int WCA_ACCENT_POLICY = 19;
+    public const int ACCENT_DISABLED = 0;
+    public const int ACCENT_ENABLE_BLURBEHIND = 3;
+    public const int ACCENT_ENABLE_ACRYLICBLURBEHIND = 4;
+
+    /// <summary>
+    /// Turn on a GPU acrylic (frosted) blur behind a window, tinted by <paramref name="tintAbgr"/>
+    /// (0xAABBGGRR; the alpha is the tint strength). Best-effort and undocumented, so any failure
+    /// is swallowed — the window then just shows its own painted dim, no blur.
+    /// </summary>
+    public static void EnableAcrylicBlur(nint hWnd, uint tintAbgr)
+    {
+        var accent = new ACCENT_POLICY
+        {
+            AccentState = ACCENT_ENABLE_ACRYLICBLURBEHIND,
+            AccentFlags = 0,
+            GradientColor = tintAbgr,
+            AnimationId = 0,
+        };
+
+        nint ptr = Marshal.AllocHGlobal(Marshal.SizeOf<ACCENT_POLICY>());
+        try
+        {
+            Marshal.StructureToPtr(accent, ptr, false);
+            var data = new WINDOWCOMPOSITIONATTRIBDATA
+            {
+                Attribute = WCA_ACCENT_POLICY,
+                Data = ptr,
+                SizeOfData = Marshal.SizeOf<ACCENT_POLICY>(),
+            };
+            SetWindowCompositionAttribute(hWnd, ref data);
+        }
+        catch
+        {
+            // Undocumented API — never let a backdrop failure break summoning.
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(ptr);
+        }
+    }
+
     // ---- Monitors / cursor ----------------------------------------------------
     [DllImport("user32.dll")]
     public static extern nint MonitorFromWindow(nint hWnd, uint dwFlags);
@@ -250,6 +316,8 @@ internal static class Native
     public const int VK_RIGHT = 0x27;
     public const int VK_OEM_3 = 0xC0; // backtick / tilde
     public const int VK_F1 = 0x70;
+    public const int VK_W = 0x57; // close the selected window (in-overlay action)
+    public const int VK_Q = 0x51; // quit the selected app (in-overlay action)
 
     public static bool IsKeyDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 

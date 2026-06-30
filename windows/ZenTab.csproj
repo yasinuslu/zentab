@@ -52,8 +52,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Dev-only config: copied to the build output (so `dotnet run` gets dev gestures)
-         but NEVER to a publish, so the portable exe and MSI always use the real Alt+Tab. -->
+    <!-- Portable / dev config override: copied to the build output (so `dotnet run` picks up
+         the safe dev chords in zentab.toml) but NEVER to a publish, so the portable exe and MSI
+         fall back to the real Alt+Tab / Alt+` / Ctrl+Alt+Tab (or %APPDATA%\zentab\config.toml). -->
     <None Update="zentab.toml" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
     <!-- Embed the icon so the tray can load it (works inside the single-file exe). -->
     <EmbeddedResource Include="assets\zentab.ico" LogicalName="ZenTab.zentab.ico" />

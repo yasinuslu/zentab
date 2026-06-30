@@ -1,5 +1,12 @@
 import AppKit
 
+// The ObjC runtime entries used to build + perform the bridged operation object. The C
+// `objc_getClass` returns the raw Class pointer directly — going through `NSClassFromString`
+// + `unsafeBitCast` yields a *wrong* pointer and crashes `objc_msgSend`, so we bind the C
+// symbols. (Same approach the spike proved GREEN.) `objc_msgSend` is resolved via `dlsym`.
+@_silgen_name("objc_getClass") private func sm_objc_getClass(_ name: UnsafePointer<CChar>) -> UnsafeRawPointer?
+@_silgen_name("sel_registerName") private func sm_sel_registerName(_ name: UnsafePointer<CChar>) -> UnsafeRawPointer?
+
 /// Which way `fling` sends a window off the current Space. Kept here (a Foundation-only
 /// value) so the pure `OverlaySession` reducer can carry it without importing AppKit.
 /// `away` (↑) means "any adjacent Space", preferring the right then the left.
@@ -68,34 +75,31 @@ enum SpaceMover {
 
   // MARK: - The proven move (bridged WindowServer operation)
 
-  // RTLD_DEFAULT (-2) resolves objc_msgSend from the already-linked libobjc. Resolved once;
-  // an immutable function pointer, hence safe to share across actors.
-  nonisolated(unsafe) private static let msgSend =
-    dlsym(UnsafeMutableRawPointer(bitPattern: -2), "objc_msgSend")
-
   /// Build `SLSBridgedMoveWindowsToManagedSpaceOperation(initWithWindows:spaceID:)` and
-  /// perform it in-process via the zero-argument `performWithWMBridgeDelegate` method.
+  /// perform it in-process via the zero-argument `performWithWMBridgeDelegate` method. This
+  /// is the exact path the spike ran GREEN: raw `objc_getClass` for the Class pointer,
+  /// `objc_msgSend` resolved by `dlsym`, with `UnsafeRawPointer?`-typed selectors.
   private static func performBridgedMove(_ windowID: CGWindowID, _ space: CGSSpaceID) {
-    guard let cls = NSClassFromString("SLSBridgedMoveWindowsToManagedSpaceOperation"),
-      let msgSend
+    guard let bridgeClass = sm_objc_getClass("SLSBridgedMoveWindowsToManagedSpaceOperation"),
+      let handle = dlopen(nil, RTLD_LAZY),
+      let msgSendRaw = dlsym(handle, "objc_msgSend")
     else { return }
-    typealias MsgObj = @convention(c) (UnsafeRawPointer?, Selector) -> UnsafeRawPointer?
+    typealias MsgObj = @convention(c) (UnsafeRawPointer?, UnsafeRawPointer?) -> UnsafeRawPointer?
     typealias MsgInit = @convention(c) (
-      UnsafeRawPointer?, Selector, UnsafeRawPointer?, UInt64
+      UnsafeRawPointer?, UnsafeRawPointer?, UnsafeRawPointer?, UInt64
     ) -> UnsafeRawPointer?
-    let msgObj = unsafeBitCast(msgSend, to: MsgObj.self)
-    let msgInit = unsafeBitCast(msgSend, to: MsgInit.self)
-    let classPtr = unsafeBitCast(cls, to: UnsafeRawPointer.self)
+    let msgObj = unsafeBitCast(msgSendRaw, to: MsgObj.self)
+    let msgInit = unsafeBitCast(msgSendRaw, to: MsgInit.self)
 
     let windows = [NSNumber(value: windowID)] as NSArray
     withExtendedLifetime(windows) {
-      guard let allocated = msgObj(classPtr, NSSelectorFromString("alloc")) else { return }
+      guard let allocated = msgObj(bridgeClass, sm_sel_registerName("alloc")) else { return }
       let windowsPtr = Unmanaged.passUnretained(windows).toOpaque()
       guard
-        let operation = msgInit(allocated, NSSelectorFromString("initWithWindows:spaceID:"), windowsPtr, space)
+        let operation = msgInit(allocated, sm_sel_registerName("initWithWindows:spaceID:"), windowsPtr, space)
       else { return }
-      _ = msgObj(operation, NSSelectorFromString("performWithWMBridgeDelegate"))
-      _ = msgObj(operation, NSSelectorFromString("release"))
+      _ = msgObj(operation, sm_sel_registerName("performWithWMBridgeDelegate"))
+      _ = msgObj(operation, sm_sel_registerName("release"))
     }
   }
 

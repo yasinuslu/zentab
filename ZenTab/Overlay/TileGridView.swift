@@ -27,6 +27,7 @@ final class TileGridView: NSView {
   private let buttonSize: CGFloat = 22
   private let buttonInset: CGFloat = 8
   private let dividerBand: CGFloat = 30
+  private let emptyStripHeight: CGFloat = 64
 
   /// Which tile's close/quit buttons to draw: the one physically under the cursor.
   /// Tracked separately from the controller's selection (which the keyboard also
@@ -52,9 +53,11 @@ final class TileGridView: NSView {
   private var hoveredTileIndex: Int?
   private var trackingArea: NSTrackingArea?
 
-  // The two-zone divider (line + "here" label), shown only when both zones are present.
+  // The two-zone divider (line + "here" label), shown only when the board is present.
   private let dividerLine = CALayer()
   private let hereLabel = CATextLayer()
+  // Shown in place of strip tiles when the current Space has no windows yet (drop target).
+  private let emptyStripHint = CATextLayer()
 
   // The transient fly animation layer (summon/fling), snapshotted before a relayout.
   private var ghost: CALayer?
@@ -80,8 +83,15 @@ final class TileGridView: NSView {
     hereLabel.alignmentMode = .center
     hereLabel.contentsScale = 2
     hereLabel.isHidden = true
+    emptyStripHint.string = "↓ brings a window here"
+    emptyStripHint.fontSize = 12
+    emptyStripHint.foregroundColor = NSColor.white.withAlphaComponent(0.4).cgColor
+    emptyStripHint.alignmentMode = .center
+    emptyStripHint.contentsScale = 2
+    emptyStripHint.isHidden = true
     layer?.addSublayer(dividerLine)
     layer?.addSublayer(hereLabel)
+    layer?.addSublayer(emptyStripHint)
   }
 
   // MARK: - Configuration
@@ -107,11 +117,18 @@ final class TileGridView: NSView {
     let count = windows.count
     let gridCount = self.hereStart
     let stripCount = count - gridCount
-    let twoZone = gridCount > 0 && stripCount > 0
+    // Show the board (grid + strip) whenever anything is ELSEWHERE — even if the strip is
+    // momentarily empty (you're standing on a fresh Space), so it reads as a drop target.
+    // A flat list (nothing elsewhere, e.g. Cmd+Tab) renders as a single grid.
+    let twoZone = gridCount > 0
 
     let grid = twoZone ? metrics(gridCount) : metrics(count)
-    let strip = twoZone ? metrics(stripCount) : Metrics.zero
-    let dividerH = twoZone ? dividerBand : 0
+    let strip: Metrics =
+      twoZone
+      ? (stripCount > 0
+        ? metrics(stripCount) : Metrics(columns: 0, rows: 0, width: 0, height: emptyStripHeight))
+      : .zero
+    let dividerH: CGFloat = twoZone ? dividerBand : 0
     let contentWidth = padding * 2 + max(grid.width, strip.width)
     let contentHeight = padding * 2 + grid.height + dividerH + strip.height
 
@@ -126,9 +143,18 @@ final class TileGridView: NSView {
 
       if twoZone {
         layoutZone(0..<gridCount, columns: grid.columns, topFromTop: padding, contentHeight: contentHeight)
-        layoutZone(
-          gridCount..<count, columns: strip.columns, topFromTop: padding + grid.height + dividerH,
-          contentHeight: contentHeight)
+        let stripTopFromTop = padding + grid.height + dividerH
+        if stripCount > 0 {
+          layoutZone(
+            gridCount..<count, columns: strip.columns, topFromTop: stripTopFromTop,
+            contentHeight: contentHeight)
+          emptyStripHint.isHidden = true
+        } else {
+          emptyStripHint.frame = CGRect(
+            x: 0, y: contentHeight - stripTopFromTop - emptyStripHeight / 2 - 8, width: contentWidth,
+            height: 16)
+          emptyStripHint.isHidden = false
+        }
         let boundaryFromTop = padding + grid.height + dividerH / 2
         dividerLine.frame = CGRect(
           x: padding, y: contentHeight - boundaryFromTop, width: contentWidth - padding * 2, height: 1)
@@ -140,6 +166,7 @@ final class TileGridView: NSView {
         layoutZone(0..<count, columns: grid.columns, topFromTop: padding, contentHeight: contentHeight)
         dividerLine.isHidden = true
         hereLabel.isHidden = true
+        emptyStripHint.isHidden = true
       }
     }
 

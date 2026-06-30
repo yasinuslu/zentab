@@ -13,19 +13,19 @@ namespace ZenTab;
 /// </summary>
 public sealed class OneBasedIndexConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is int i && i is >= 0 and < 9 ? (i + 1).ToString(CultureInfo.InvariantCulture) : string.Empty;
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         Binding.DoNothing;
 }
 
 /// <summary>Show the index chip only for the first nine tiles.</summary>
 public sealed class IndexVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is int i && i is >= 0 and < 9 ? Visibility.Visible : Visibility.Collapsed;
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         Binding.DoNothing;
 }

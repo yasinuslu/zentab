@@ -123,7 +123,13 @@ final class OverlayController {
         let windows = await WindowEnumerator.enumerate(
           mode: mode, frontmostPID: frontmost, selfPID: selfPID, monitorFrame: monitorFrame,
           registryWindows: registryWindows, windowlessApps: windowlessApps)
-        self?.send(.enumerated(windows, currentPID: frontmost, session: id))
+        guard let self else { return }
+        // The board (grid/strip split) is for the multi-Space modes; Cmd+Tab is current-
+        // Space only, so it stays a flat list. "Here" = the windows on the current Space.
+        let usesBoard = mode != .otherApps
+        let hereIDs = usesBoard ? SpaceMover.windowsOnCurrentSpace() : []
+        self.send(
+          .enumerated(windows, hereIDs: hereIDs, usesBoard: usesBoard, currentPID: frontmost, session: id))
       }
 
     case .scheduleHold(let id):
@@ -131,17 +137,19 @@ final class OverlayController {
         MainActor.assumeIsolated { self?.send(.holdElapsed(session: id)) }
       }
 
-    case .show(let windows, let index):
-      showPanel(windows: windows, index: index)
+    case .show(let windows, let hereStart, let index):
+      showPanel(windows: windows, hereStart: hereStart, index: index)
 
     case .updateSelection(let index):
       grid.updateSelection(index)
 
-    case .relayout(let windows, let index):
-      relayoutPanel(windows: windows, index: index)
+    case .relayout(let windows, let hereStart, let index):
+      relayoutPanel(windows: windows, hereStart: hereStart, index: index)
+      consumeFly()
 
     case .hide:
       panel.orderOut(nil)
+      consumeFly()  // drop any pending ghost (e.g. flinging the last window)
 
     case .focus(let window):
       if let window { WindowFocuser.focus(window) }
@@ -154,23 +162,45 @@ final class OverlayController {
 
     case .summonWindow(let window):
       SpaceMover.summon(window)
+      // Snapshot the tile NOW (old layout); the .relayout that follows flies it to the strip.
+      grid.beginGhost(windowID: window.windowID)
+      pendingFly = .toStrip(window.windowID)
 
     case .flingWindow(let window, let direction):
       SpaceMover.fling(window, direction)
+      grid.beginGhost(windowID: window.windowID)
+      pendingFly = .off(direction)
     }
   }
 
-  /// Re-lay the grid after a close/quit dropped windows: resize + re-center the panel,
+  /// A queued fly animation, captured on a move effect and run on the relayout that follows.
+  private enum FlyIntent {
+    case toStrip(CGWindowID)
+    case off(FlingDirection)
+  }
+  private var pendingFly: FlyIntent?
+
+  private func consumeFly() {
+    switch pendingFly {
+    case .toStrip(let windowID): grid.flyGhostToStrip(windowID: windowID)
+    case .off(let direction): grid.flyGhostOff(direction: direction)
+    case nil: break
+    }
+    pendingFly = nil
+  }
+
+  /// Re-lay the grid after a move/close/quit changed the list: resize + re-center the panel,
   /// keeping the live thumbnails already captured for the survivors (no re-capture).
-  private func relayoutPanel(windows: [WindowInfo], index: Int) {
-    let size = grid.configure(windows: windows, selectedIndex: index, keepThumbnails: true)
+  private func relayoutPanel(windows: [WindowInfo], hereStart: Int, index: Int) {
+    let size = grid.configure(
+      windows: windows, hereStart: hereStart, selectedIndex: index, keepThumbnails: true)
     panel.setContentSize(size)
     centerPanel(size: size)
     grid.refreshHoveredTile()  // the survivors shifted under the cursor; re-place badges
   }
 
-  private func showPanel(windows: [WindowInfo], index: Int) {
-    let size = grid.configure(windows: windows, selectedIndex: index)
+  private func showPanel(windows: [WindowInfo], hereStart: Int, index: Int) {
+    let size = grid.configure(windows: windows, hereStart: hereStart, selectedIndex: index)
     panel.setContentSize(size)
     centerPanel(size: size)
     panel.makeKeyAndOrderFront(nil)

@@ -66,20 +66,22 @@ the first thing to prove; if it works, the whole board is unlocked.
 
 ## Key map (while the overlay is held)
 
-| Key | Action |
-| --- | --- |
-| `Tab` / `Shift+Tab` | Move selection within the current zone (existing) |
-| `↑` / `↓` | Move selection between the grid (up) and the here-strip (down) |
-| `Space` | Summon: bring the highlighted window to this Space |
-| `←` / `→` | Fling: send the highlighted window to the adjacent Space |
-| `Ctrl+←/→`, `Ctrl+↑/↓` | Fling: send the highlighted window to the next monitor |
-| `W` / `Q` | Close window / quit app (existing) |
-| release | Focus the selected window (existing) |
+| Key | Action | Status |
+| --- | --- | --- |
+| `Tab` / `Shift+Tab` | Cycle the selection across both zones | ✅ built |
+| `↓` / `Space` | Summon: pull the highlighted ELSEWHERE window down into the HERE strip | ✅ built |
+| `↑` | Send away: fling the highlighted window off to an adjacent Space | ✅ built |
+| `←` / `→` | Fling: send the highlighted window to the left / right adjacent Space | ✅ built |
+| `Ctrl+←/→`, `Ctrl+↑/↓` | Fling to the next monitor | ◻︎ not built |
+| `W` / `Q` | Close window / quit app | ✅ built |
+| release | Focus the selected window | ✅ built |
 
-Geometry is the mnemonic: Spaces extend left/right, so `←/→` flings across them; the
-strip sits at the bottom, so `↓` drops into it. `Tab` still does all within-zone
-navigation, which is why plain arrows are free to be actions (ZenTab already navigates
-with `Tab`, not arrows).
+Geometry is the mnemonic: the strip sits at the bottom, so `↓` drops a window into it
+(bring here) and `↑` pushes one out (send away); Spaces extend left/right, so `←/→` fling
+across them. `Tab` does all selection movement, which is why the plain arrows are free to be
+move actions (ZenTab navigates with `Tab`, not arrows). `↓` is the primary summon key; `Space`
+is kept as an ergonomic alias (note `⌘Space` collides with Spotlight in the `Cmd+\`` mode, so
+prefer `↓` there).
 
 ## Feedback
 
@@ -129,11 +131,14 @@ AX frame onto the other display. Reliable, no exotic API.
    cross-Space moves on macOS 26 via the bridged operation (see "The wall" above and
    `docs/space-move-spike-plan.md`). Summon and fling-to-Space are unblocked. The proven
    move call belongs in a small `SpaceMover` once the UI work begins.
-2. **Monitor-move** (reliable) and the **strip UI** (free data) can land in parallel with
-   the spike.
-3. Wire **summon** (`Space` to current Space) once the spike is green.
-4. Wire **fling-to-Space** (`←/→`) on the same proven call.
-5. Animations (fly-down / fly-off), then make the strip fully interactive.
+2. **Two-zone board** (ELSEWHERE grid + HERE strip, partitioned by current-Space
+   membership) ✅ built (`TileGridView`, split at `hereStart` in `OverlaySession`).
+3. **Summon** (`↓` / `Space`, bring here) ✅ built, the gateway.
+4. **Fling** (`↑` send away, `←/→` to an adjacent Space) ✅ built on the proven move.
+5. **Fly animations** (summon flies the tile down into the strip; fling flies it off the
+   edge) ✅ built (transient ghost layers in `TileGridView`).
+6. Still open: per-monitor fling (`Ctrl+arrows`), a smaller dedicated strip tile size, and
+   making the strip independently interactive (drag between zones).
 
 ## Decisions to confirm
 

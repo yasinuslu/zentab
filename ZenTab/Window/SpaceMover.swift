@@ -1,10 +1,12 @@
 import AppKit
 
-/// Which way `fling` sends a window across the Space strip. Kept here (a Foundation-only
+/// Which way `fling` sends a window off the current Space. Kept here (a Foundation-only
 /// value) so the pure `OverlaySession` reducer can carry it without importing AppKit.
+/// `away` (↑) means "any adjacent Space", preferring the right then the left.
 enum FlingDirection: Equatable {
   case left
   case right
+  case away
 }
 
 /// Moves another app's window across Mission Control Spaces: the primitive behind summon
@@ -23,7 +25,8 @@ enum SpaceMover {
     performBridgedMove(window.windowID, destination)
   }
 
-  /// Fling: send `window` to the adjacent user Space (left/right) on the active display.
+  /// Fling: send `window` off the current Space to an adjacent user Space. `left`/`right`
+  /// pick that neighbor; `away` takes the right neighbor, or the left if there is no right.
   /// A no-op at the edge — ZenTab never creates a Space. Returns whether a move was issued
   /// (so the caller can avoid dropping the tile when nothing actually moved).
   @MainActor
@@ -33,10 +36,34 @@ enum SpaceMover {
     let current = CGSManagedDisplayGetCurrentSpace(cgsConnection, uuid as CFString)
     let spaces = userSpaces(containing: current)
     guard let index = spaces.firstIndex(of: current) else { return false }
-    let neighbor = direction == .left ? index - 1 : index + 1
-    guard spaces.indices.contains(neighbor) else { return false }  // edge: no Space exists there
+    let candidates: [Int]
+    switch direction {
+    case .left: candidates = [index - 1]
+    case .right: candidates = [index + 1]
+    case .away: candidates = [index + 1, index - 1]  // prefer right, fall back to left
+    }
+    guard let neighbor = candidates.first(where: { spaces.indices.contains($0) }) else {
+      return false  // edge: no adjacent Space exists, and we never create one
+    }
     performBridgedMove(window.windowID, spaces[neighbor])
     return true
+  }
+
+  /// The window ids the WindowServer composites on the active display's current Space —
+  /// i.e. the windows that are "here". The overlay uses this to split its list into the
+  /// ELSEWHERE grid and the HERE strip. Empty if the Space can't be resolved.
+  @MainActor
+  static func windowsOnCurrentSpace() -> Set<CGWindowID> {
+    guard let uuid = activeDisplayUUID() else { return [] }
+    let current = CGSManagedDisplayGetCurrentSpace(cgsConnection, uuid as CFString)
+    var setTags: UInt64 = 0
+    var clearTags: UInt64 = 0
+    guard
+      let array = SLSCopyWindowsWithOptionsAndTags(
+        cgsConnection, 0, [NSNumber(value: current)] as CFArray, 0x7, &setTags, &clearTags
+      )?.takeRetainedValue() as? [NSNumber]
+    else { return [] }
+    return Set(array.map { $0.uint32Value })
   }
 
   // MARK: - The proven move (bridged WindowServer operation)

@@ -37,7 +37,9 @@ final class HotkeyTap: @unchecked Sendable {
   /// chord modifier (e.g. ⌘ held) can't fire the system shortcut underneath (⌘Space, etc.).
   private static let closeWindowKeyCode: CGKeyCode = 13  // W
   private static let quitAppKeyCode: CGKeyCode = 12  // Q
-  private static let summonKeyCode: CGKeyCode = 49  // Space
+  private static let summonSpaceKeyCode: CGKeyCode = 49  // Space (summon alias)
+  private static let summonDownKeyCode: CGKeyCode = 125  // ↓ (down into the HERE strip)
+  private static let flingUpKeyCode: CGKeyCode = 126  // ↑ (send away)
   private static let flingLeftKeyCode: CGKeyCode = 123  // ←
   private static let flingRightKeyCode: CGKeyCode = 124  // →
   private static let escapeKeyCode: CGKeyCode = 53
@@ -195,8 +197,11 @@ final class HotkeyTap: @unchecked Sendable {
       case Self.quitAppKeyCode:  // Q quits the selected window's app
         dispatchMain { self.handlers.quitSelected() }
         return true
-      case Self.summonKeyCode:  // Space summons the selected window to this Space
+      case Self.summonDownKeyCode, Self.summonSpaceKeyCode:  // ↓ / Space: bring here
         dispatchMain { self.handlers.summonSelected() }
+        return true
+      case Self.flingUpKeyCode:  // ↑ sends the selected window away to an adjacent Space
+        dispatchMain { self.handlers.flingSelected(.away) }
         return true
       case Self.flingLeftKeyCode:  // ← flings the selected window to the Space on the left
         dispatchMain { self.handlers.flingSelected(.left) }

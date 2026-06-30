@@ -17,7 +17,7 @@ public sealed class OneBasedIndexConverter : IValueConverter
         value is int i && i is >= 0 and < 9 ? (i + 1).ToString(CultureInfo.InvariantCulture) : string.Empty;
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        Binding.DoNothing;
+        System.Windows.Data.Binding.DoNothing; // qualified: WinForms also has a Binding type
 }
 
 /// <summary>Show the index chip only for the first nine tiles.</summary>
@@ -27,5 +27,5 @@ public sealed class IndexVisibilityConverter : IValueConverter
         value is int i && i is >= 0 and < 9 ? Visibility.Visible : Visibility.Collapsed;
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        Binding.DoNothing;
+        System.Windows.Data.Binding.DoNothing; // qualified: WinForms also has a Binding type
 }

@@ -2,7 +2,11 @@ using System;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+// WinForms is enabled (tray icon), so System.Drawing is implicitly imported and collides
+// with WPF on these names — pin them to the WPF types.
+using Brush = System.Windows.Media.Brush;
 using Color = System.Windows.Media.Color;
+using Point = System.Windows.Point;
 
 namespace ZenTab;
 

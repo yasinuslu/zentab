@@ -17,6 +17,10 @@ final class OverlayController {
   /// Keeps the cache warm so a summon paints a recent frame instantly. On-screen
   /// windows only, gently paced, and paused under Low Power to respect the battery.
   private var refreshTimer: Timer?
+  /// Global mouse-down watch, live only while the overlay is up: a click outside the panel
+  /// cancels the switcher (VISION's one cancel gesture). The overlay is a non-activating
+  /// panel that never becomes key, so a global monitor is how we hear those clicks.
+  private var clickOutsideMonitor: Any?
 
   // Captured at each summon so the enumeration effect knows what to ask for.
   private var pendingMode: SwitchMode = .otherApps
@@ -150,6 +154,7 @@ final class OverlayController {
     case .hide:
       panel.orderOut(nil)
       consumeFly()  // drop any pending ghost (e.g. flinging the last window)
+      removeClickOutsideDismissal()
 
     case .focus(let window):
       if let window { WindowFocuser.focus(window) }
@@ -189,6 +194,28 @@ final class OverlayController {
     pendingFly = nil
   }
 
+  // MARK: - Click-outside-to-cancel
+
+  /// Watch global mouse-downs while the overlay is up; a click outside the panel cancels the
+  /// switcher (dismiss, no focus change) — VISION's one cancel gesture. The click still lands
+  /// on whatever is under it; we only stop switching. Idempotent.
+  private func installClickOutsideDismissal() {
+    guard clickOutsideMonitor == nil else { return }
+    clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(
+      matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+    ) { [weak self] _ in
+      MainActor.assumeIsolated {
+        guard let self, self.machine.isVisible else { return }
+        if !self.panel.frame.contains(NSEvent.mouseLocation) { self.send(.cancel) }
+      }
+    }
+  }
+
+  private func removeClickOutsideDismissal() {
+    if let clickOutsideMonitor { NSEvent.removeMonitor(clickOutsideMonitor) }
+    clickOutsideMonitor = nil
+  }
+
   /// Re-lay the grid after a move/close/quit changed the list: resize + re-center the panel,
   /// keeping the live thumbnails already captured for the survivors (no re-capture).
   private func relayoutPanel(windows: [WindowInfo], hereStart: Int, index: Int) {
@@ -204,6 +231,7 @@ final class OverlayController {
     panel.setContentSize(size)
     centerPanel(size: size)
     panel.makeKeyAndOrderFront(nil)
+    installClickOutsideDismissal()
     grid.refreshHoveredTile()  // show badges if the panel landed under the cursor
 
     let ids = windows.map(\.windowID)

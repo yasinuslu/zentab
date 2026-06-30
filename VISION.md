@@ -43,6 +43,8 @@ While the overlay is held:
   buttons also appear on the thumbnail under the mouse, for discoverability.
 - Releasing the key always confirms: if the mouse is over a thumbnail, that one is
   focused; otherwise the keyboard selection stands. Release is never a cancel.
+- **Click outside** the overlay to stop switching: it dismisses with no focus change.
+  This is the one cancel gesture, distinct from release-to-confirm.
 
 This *behavior* is **not configurable** (it is the opinion ZenTab ships); only the
 keys that trigger it are.

@@ -1,16 +1,28 @@
-name: CI
+name: windows CI
 
+# Build the Windows app (windows/) on every PR and every push to main that
+# touches it. Path-scoped so macOS-only changes don't spin up a Windows runner.
 on:
   push:
     branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows-ci.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows-ci.yml"
   workflow_dispatch:
 
 # Cancel superseded runs on the same ref.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: windows-ci-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: windows
 
 jobs:
   build:

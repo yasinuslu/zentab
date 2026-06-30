@@ -1,12 +1,14 @@
-name: Release
+name: windows Release
 
-# Tag a release to ship it:
-#   git tag v0.2.0 && git push origin v0.2.0
-# This builds the portable exe + MSI (version derived from the tag), generates checksums,
-# and publishes a GitHub Release with the artifacts attached.
+# Cut a Windows release by pushing a windows-namespaced version tag:
+#   git tag windows-v0.2.0 && git push origin windows-v0.2.0
+# (The tag is prefixed because this monorepo also ships a macOS app under its
+# own darwin-v* tags — see darwin-release.yml.)
+# This builds the portable exe + MSI (version derived from the tag), generates
+# checksums, and publishes a GitHub Release with the artifacts attached.
 on:
   push:
-    tags: ["v*"]
+    tags: ["windows-v*"]
   workflow_dispatch:
     inputs:
       version:
@@ -15,6 +17,10 @@ on:
 
 permissions:
   contents: write
+
+defaults:
+  run:
+    working-directory: windows
 
 jobs:
   release:
@@ -33,9 +39,9 @@ jobs:
         run: |
           if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
             $v = '${{ inputs.version }}' -replace '^v', ''
-            $tag = "v$v"
+            $tag = "windows-v$v"
           } else {
-            $v = '${{ github.ref_name }}' -replace '^v', ''
+            $v = '${{ github.ref_name }}' -replace '^windows-v', ''
             $tag = '${{ github.ref_name }}'
           }
           "version=$v" >> $env:GITHUB_OUTPUT
@@ -49,11 +55,11 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ZenTab ${{ steps.version.outputs.version }}
+          name: ZenTab for Windows ${{ steps.version.outputs.version }}
           tag_name: ${{ steps.version.outputs.tag }}
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
-            dist/ZenTab-${{ steps.version.outputs.version }}-win-x64-portable.exe
-            dist/ZenTab-${{ steps.version.outputs.version }}-win-x64.msi
-            dist/SHA256SUMS.txt
+            windows/dist/ZenTab-${{ steps.version.outputs.version }}-win-x64-portable.exe
+            windows/dist/ZenTab-${{ steps.version.outputs.version }}-win-x64.msi
+            windows/dist/SHA256SUMS.txt

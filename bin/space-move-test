@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Cross-Space move feasibility spike (docs/space-move-spike-plan.md).
+#
+# Builds ZenTab (Debug), then runs the self-test ladder in a SEPARATE process that
+# never touches the menu-bar app or its Cmd+Tab capture. The self-test launches a
+# throwaway "helper" window in its own PID, then tries each move strategy in turn,
+# verifying by Space id (not pixels) that the helper window actually changed Space —
+# both away and back. Prints the result table and exits with the ladder's code:
+#
+#   0 = GREEN  a strategy moved the helper both directions (winner named in the table)
+#   1 = RED    the whole ladder failed (pivot window-curation.md to monitor-only)
+#   2 = SKIP   precondition unmet (needs a 2nd Desktop, or the helper couldn't launch)
+#
+# Requires: ≥2 Desktops on the main display, Accessibility granted, a real login
+# session (the WindowServer is unreachable over plain SSH). Leaves no orphans.
+source "$(dirname "$0")/lib.sh"
+
+RESULT="$HOME/zentab-spacemove.txt"
+rm -f "$RESULT"
+
+xcb build \
+  -project "$PROJECT" -scheme "$SCHEME" \
+  -configuration Debug -destination "$DESTINATION" \
+  CODE_SIGNING_ALLOWED=NO
+
+BIN="$(debug_app_path)/Contents/MacOS/ZenTab"
+[ -x "$BIN" ] || { echo "error: built binary not found at $BIN" >&2; exit 3; }
+
+echo "Running self-test: $BIN --space-move-selftest"
+set +e
+"$BIN" --space-move-selftest
+CODE=$?
+set -e
+
+# No orphans. The self-test terminates its own helper on every exit path; this is the
+# belt-and-suspenders for a hard crash mid-run. It matches the dev launch args, so it
+# can never hit the user's running menu-bar ZenTab (which has no such arg).
+pkill -f "ZenTab --space-move-helper"   2>/dev/null || true
+pkill -f "ZenTab --space-move-selftest" 2>/dev/null || true
+
+echo
+echo "===== $RESULT ====="
+if [ -f "$RESULT" ]; then cat "$RESULT"; else echo "(no result file written)"; fi
+echo "===== exit code: $CODE ====="
+exit "$CODE"

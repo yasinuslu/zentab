@@ -79,6 +79,106 @@ func SLSSpaceSetFrontPSN(
   _ cid: CGSConnectionID, _ sid: CGSSpaceID, _ psn: ProcessSerialNumber
 ) -> CGError
 
+// MARK: - Move a window to a Space (window curation: summon / fling)
+
+/// Move the given windows (a CFArray of CGWindowID numbers) to one managed Space. This
+/// is the single call the curation feature rests on: aim it at the *current* Space to
+/// "bring here" (summon), or an adjacent Space to "send away" (fling). Does NOT move
+/// native-fullscreen windows. Whether it works on **another app's** window without SIP
+/// on this macOS is exactly what the menu/`SIGUSR2` spike verifies before any UI is built.
+@_silgen_name("CGSMoveWindowsToManagedSpace")
+func CGSMoveWindowsToManagedSpace(_ cid: CGSConnectionID, _ windowIDs: CFArray, _ space: CGSSpaceID)
+
+/// Add the given windows to the given Spaces (without removing them from their current
+/// ones). The spike's fallback move path: `CGSAddWindowsToSpaces` to the destination,
+/// then `CGSRemoveWindowsFromSpaces` from the origin, in case the single move no-ops.
+@_silgen_name("CGSAddWindowsToSpaces")
+func CGSAddWindowsToSpaces(_ cid: CGSConnectionID, _ windowIDs: CFArray, _ spaceIDs: CFArray)
+
+/// Remove the given windows from the given Spaces. Paired with `CGSAddWindowsToSpaces`
+/// to emulate a move (add to destination, remove from origin).
+@_silgen_name("CGSRemoveWindowsFromSpaces")
+func CGSRemoveWindowsFromSpaces(_ cid: CGSConnectionID, _ windowIDs: CFArray, _ spaceIDs: CFArray)
+
+// MARK: - Space enumeration + extra move strategies (cross-Space move spike)
+
+/// The full managed-Space layout: a CFArray of per-display NSDictionaries. Each has a
+/// `"Display Identifier"` (a `ScreenUuid`, or the literal `"Main"`), a `"Current Space"`
+/// dict, and a `"Spaces"` array of dicts each carrying an `"id64"` (`CGSSpaceID`). The
+/// spike uses it to enumerate the Spaces on a display and pick a destination `S2 != S1`.
+@_silgen_name("CGSCopyManagedDisplaySpaces")
+func CGSCopyManagedDisplaySpaces(_ cid: CGSConnectionID) -> CFArray
+
+/// Switch a display's *current* (visible) Space to `sid`. The spike uses this only for
+/// the "switch to dest, move, switch back" degraded strategy; the shipped curation
+/// feature must never force a Space switch. `display` is the display UUID string.
+@_silgen_name("CGSManagedDisplaySetCurrentSpace")
+func CGSManagedDisplaySetCurrentSpace(_ cid: CGSConnectionID, _ display: CFString, _ sid: CGSSpaceID)
+
+/// alt-tab experimental (annotated working only 10.10–12.2): add windows to `sid` and
+/// remove them from the other Spaces in one call. `selector` is the undocumented mask
+/// (yabai/alt-tab pass `0x80007`). Tried on macOS 26 as a ladder fallback.
+@_silgen_name("CGSSpaceAddWindowsAndRemoveFromSpaces")
+func CGSSpaceAddWindowsAndRemoveFromSpaces(
+  _ cid: CGSConnectionID, _ sid: CGSSpaceID, _ windowIDs: CFArray, _ selector: Int)
+
+/// alt-tab experimental: move a window list to Space `sid`. `windowCount` is the count
+/// of ids in `windowList`. Returns an `OSStatus`. Tried on macOS 26 as a ladder fallback.
+@_silgen_name("CGSMoveWorkspaceWindowList")
+@discardableResult
+func CGSMoveWorkspaceWindowList(
+  _ cid: CGSConnectionID, _ windowList: CFArray, _ windowCount: UInt, _ sid: CGSSpaceID
+) -> OSStatus
+
+// MARK: - yabai's no-SIP move paths (the ones it actually uses on macOS ≥15)
+
+/// The `SLS`-prefixed twin of `CGSMoveWindowsToManagedSpace`. SkyLight exports both; yabai
+/// calls the `SLS` form. (yabai *skips* this on macOS ≥15 — `workspace_use_macos_space_workaround`
+/// is true there — but we try it to confirm whether the plain call is truly inert on 26.)
+@_silgen_name("SLSMoveWindowsToManagedSpace")
+func SLSMoveWindowsToManagedSpace(_ cid: CGSConnectionID, _ windowIDs: CFArray, _ space: CGSSpaceID)
+
+/// Give a Space a temporary "compat id" (a workspace tag). Paired with
+/// `SLSSetWindowListWorkspace`, this is yabai's no-scripting-addition move fallback:
+/// tag the destination Space, set the window's workspace to that tag (which relocates it),
+/// then clear the tag. `workspace` is a 32-bit tag (yabai uses `0x79616265` = "yabe").
+@_silgen_name("SLSSpaceSetCompatID")
+@discardableResult
+func SLSSpaceSetCompatID(_ cid: CGSConnectionID, _ sid: CGSSpaceID, _ workspace: Int32) -> CGError
+
+/// Set the workspace tag of a window list (a C array of CGWindowID + count). With a Space
+/// temporarily carrying the matching compat id, this lands the windows on that Space — the
+/// no-SIP "compat id dance" from yabai's `space_manager_move_window_to_space`.
+@_silgen_name("SLSSetWindowListWorkspace")
+@discardableResult
+func SLSSetWindowListWorkspace(
+  _ cid: CGSConnectionID, _ windowList: UnsafeMutablePointer<CGWindowID>, _ windowCount: Int32,
+  _ workspace: Int32
+) -> CGError
+
+/// Assign an entire *process* (all its windows) to one Space. yabai uses this directly
+/// from a normal connection (no scripting addition) in `space_manager_assign_process_to_space`.
+@_silgen_name("SLSProcessAssignToSpace")
+@discardableResult
+func SLSProcessAssignToSpace(_ cid: CGSConnectionID, _ pid: pid_t, _ sid: CGSSpaceID) -> CGError
+
+/// Assign an entire *process* to all Spaces (sticky). Pair with `SLSProcessAssignToSpace`
+/// to "unstick" onto a single Space.
+@_silgen_name("SLSProcessAssignToAllSpaces")
+@discardableResult
+func SLSProcessAssignToAllSpaces(_ cid: CGSConnectionID, _ pid: pid_t) -> CGError
+
+/// The window ids the WindowServer composites on the given Space(s) — the *authoritative*
+/// per-Space membership Mission Control itself renders (works for non-current Spaces too).
+/// yabai calls it with `owner = 0` (any), `options = 0x7` (incl. minimized), zeroed tags.
+/// We use it to confirm a cross-Space move is real (window enters the destination Space's
+/// list and leaves the origin's), not just a bookkeeping/"sticky" side effect.
+@_silgen_name("SLSCopyWindowsWithOptionsAndTags")
+func SLSCopyWindowsWithOptionsAndTags(
+  _ cid: CGSConnectionID, _ owner: UInt32, _ spaces: CFArray, _ options: UInt32,
+  _ setTags: UnsafeMutablePointer<UInt64>, _ clearTags: UnsafeMutablePointer<UInt64>
+) -> Unmanaged<CFArray>?
+
 // MARK: - Window capture (cross-Space + minimized)
 
 /// Flags for `CGSHWCaptureWindowList` (yabai/alt-tab constants).

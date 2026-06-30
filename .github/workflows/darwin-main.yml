@@ -1,0 +1,72 @@
+name: darwin Publish (main)
+
+# Every push to main that touches the macOS app builds a Release .dmg + .zip and
+# overwrites the rolling "latest from main" bundle on R2 (cdn.nepjua.org). Stable,
+# always-revalidated URLs:
+#   https://cdn.nepjua.org/zentab/macos/main/ZenTab-main.dmg
+#   https://cdn.nepjua.org/zentab/macos/main/ZenTab-main.zip
+#   https://cdn.nepjua.org/zentab/macos/main/build.json   (commit + run metadata)
+#
+# Path-scoped like the CI workflow, so Windows-only changes don't spin up a Mac
+# runner. Cutting a real versioned release is a separate, tag-driven flow — see
+# darwin-release.yml.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "darwin/**"
+      - ".github/workflows/darwin-main.yml"
+  workflow_dispatch:
+
+# One main build at a time; a newer push supersedes an in-flight one.
+concurrency:
+  group: darwin-main-publish
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: darwin
+
+jobs:
+  publish:
+    name: Build & upload (main)
+    runs-on: macos-26
+    env:
+      R2_API_URL: ${{ secrets.R2_API_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install xcbeautify
+        run: brew list xcbeautify >/dev/null 2>&1 || brew install xcbeautify
+
+      - name: Package app (.dmg + .zip)
+        run: bin/release 0.0.0
+
+      - name: Upload rolling main bundle to R2
+        run: |
+          bin/r2-publish dist/ZenTab-0.0.0.dmg zentab/macos/main/ZenTab-main.dmg rolling
+          bin/r2-publish dist/ZenTab-0.0.0.zip zentab/macos/main/ZenTab-main.zip rolling
+          jq -n \
+            --arg commit "$GITHUB_SHA" \
+            --arg short "$(git rev-parse --short HEAD)" \
+            --arg ref "$GITHUB_REF_NAME" \
+            --arg run "$GITHUB_RUN_ID" \
+            '{platform:"macos",channel:"main",commit:$commit,shortCommit:$short,ref:$ref,runId:$run,dmg:"ZenTab-main.dmg",zip:"ZenTab-main.zip"}' \
+            > dist/build.json
+          bin/r2-publish dist/build.json zentab/macos/main/build.json rolling
+
+      - name: Summary
+        run: |
+          {
+            echo "### macOS main build published to R2 🚀"
+            echo ""
+            echo "- https://cdn.nepjua.org/zentab/macos/main/ZenTab-main.dmg"
+            echo "- https://cdn.nepjua.org/zentab/macos/main/ZenTab-main.zip"
+          } >> "$GITHUB_STEP_SUMMARY"

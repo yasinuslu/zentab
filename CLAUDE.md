@@ -72,6 +72,13 @@ Workflows live at the repo root and are **path-scoped**: a `darwin/**` change ru
 macOS jobs, a `windows/**` change only the Windows jobs. Release tags are namespaced per
 platform so they don't collide: `darwin-v*` cuts a macOS release, `windows-v*` a Windows one.
 
+Bundles ship to the `nepjua-cdn` R2 bucket (`cdn.nepjua.org`), not to GitHub assets:
+`*-main.yml` overwrite a rolling "latest from main" copy on every push to `main`, and
+`*-release.yml` upload versioned + "latest stable" copies on a tag (the GitHub Release is
+notes-only). Uploads go through `darwin/bin/r2-publish` / `windows/r2-publish.ps1` (curl
+SigV4), driven by the `R2_API_URL`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` secrets. See
+the README "Artifacts on R2" section for the object layout.
+
 ## License
 
 The whole repo is **GPL-3.0** (single root [`LICENSE`](LICENSE)) — the same license as

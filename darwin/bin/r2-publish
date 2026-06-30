@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Upload one file to the ZenTab R2 bucket and exit non-zero if it fails.
+#
+#   bin/r2-publish <local-file> <remote-key> [rolling|immutable]
+#
+# R2 is addressed S3-style with SigV4, signed by curl (no aws-cli needed). The
+# endpoint already includes the bucket, so the object URL is just
+# "$R2_API_URL/<remote-key>" (path-style). Required env (CI secrets):
+#   R2_API_URL            e.g. https://<acct>.r2.cloudflarestorage.com/nepjua-cdn
+#   R2_ACCESS_KEY_ID
+#   R2_SECRET_ACCESS_KEY
+#
+# Cache mode:
+#   immutable  versioned artifacts that never change   (long, immutable cache)
+#   rolling    "latest"/"main" pointers we overwrite    (always revalidate)
+set -euo pipefail
+
+FILE="${1:?usage: r2-publish <local-file> <remote-key> [rolling|immutable]}"
+KEY="${2:?usage: r2-publish <local-file> <remote-key> [rolling|immutable]}"
+MODE="${3:-immutable}"
+
+: "${R2_API_URL:?R2_API_URL is not set}"
+: "${R2_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID is not set}"
+: "${R2_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY is not set}"
+
+[ -f "$FILE" ] || { echo "r2-publish: no such file: $FILE" >&2; exit 1; }
+
+case "$MODE" in
+  rolling)   CACHE="no-cache, max-age=0, must-revalidate" ;;
+  immutable) CACHE="public, max-age=31536000, immutable" ;;
+  *) echo "r2-publish: mode must be 'rolling' or 'immutable', got '$MODE'" >&2; exit 1 ;;
+esac
+
+case "$FILE" in
+  *.dmg)  CT="application/x-apple-diskimage" ;;
+  *.zip)  CT="application/zip" ;;
+  *.json) CT="application/json" ;;
+  *.txt)  CT="text/plain; charset=utf-8" ;;
+  *)      CT="application/octet-stream" ;;
+esac
+
+URL="${R2_API_URL%/}/${KEY#/}"
+echo "  → $URL  ($MODE, $CT)"
+
+# Credentials come from --user / SigV4; GitHub masks the secret values in logs.
+curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+  --aws-sigv4 "aws:amz:auto:s3" \
+  --user "${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}" \
+  --header "Content-Type: ${CT}" \
+  --header "Cache-Control: ${CACHE}" \
+  --upload-file "$FILE" \
+  "$URL"
+
+echo "    uploaded $(basename "$FILE")"

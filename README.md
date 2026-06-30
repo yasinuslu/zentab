@@ -46,7 +46,11 @@ The two platforms are independent in CI. Workflows are path-scoped, so a change 
 jobs:
 
 - `darwin-ci.yml` / `windows-ci.yml` — build + test on PRs and pushes to `main`.
-- `darwin-release.yml` / `windows-release.yml` — publish a GitHub Release on a tag.
+- `darwin-main.yml` / `windows-main.yml` — on every push to `main`, build the shippable
+  bundles and overwrite the rolling **"latest from main"** copies on R2.
+- `darwin-release.yml` / `windows-release.yml` — on a version tag, build the bundles, upload
+  them to R2 (versioned + a "latest stable" pointer), and create a **notes-only** GitHub
+  Release (the changelog; binaries live on R2, not as GitHub assets).
 
 Release tags are **namespaced per platform** so they don't collide:
 
@@ -54,6 +58,29 @@ Release tags are **namespaced per platform** so they don't collide:
 git tag darwin-v0.1.0  && git push origin darwin-v0.1.0     # cuts a macOS release
 git tag windows-v0.2.0 && git push origin windows-v0.2.0    # cuts a Windows release
 ```
+
+### Artifacts on R2 (`cdn.nepjua.org`)
+
+Bundles are published to the `nepjua-cdn` Cloudflare R2 bucket via S3/SigV4 (uploaded by
+`darwin/bin/r2-publish` and `windows/r2-publish.ps1`, signed with `curl`). The three CI
+secrets `R2_API_URL` (endpoint incl. bucket), `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`
+drive it. Object layout under `zentab/`:
+
+```
+zentab/macos/main/ZenTab-main.dmg                              # rolling, overwritten each push to main
+zentab/macos/main/ZenTab-main.zip
+zentab/macos/releases/v<version>/ZenTab-<version>.dmg          # immutable, per release tag
+zentab/macos/releases/latest/ZenTab.dmg                        # rolling, points at newest stable
+
+zentab/windows/main/ZenTab-main-win-x64-portable.exe          # rolling, overwritten each push to main
+zentab/windows/main/ZenTab-main-win-x64.msi
+zentab/windows/releases/v<version>/ZenTab-<version>-win-x64-portable.exe   # immutable, per release tag
+zentab/windows/releases/latest/ZenTab-win-x64-portable.exe                # rolling, points at newest stable
+```
+
+Each rolling location also carries a small `build.json` / `release.json` (commit, version,
+run) and Windows carries `SHA256SUMS.txt`. Versioned files cache hard (immutable); rolling
+"latest"/"main" files are sent `Cache-Control: no-cache` so the newest is always served.
 
 ## License
 

@@ -4,8 +4,14 @@ name: darwin Release
 #   git tag darwin-v0.1.0 && git push origin darwin-v0.1.0
 # (The tag is prefixed because this monorepo also ships a Windows app under its
 # own windows-v* tags — see windows-release.yml.)
-# This builds a Release .app, packages a .dmg + .zip, and publishes a GitHub
-# Release with both attached.
+#
+# This builds a Release .app, packages a .dmg + .zip, and uploads them to R2
+# (cdn.nepjua.org) as the release binaries — both immutable versioned copies and
+# a rolling "latest stable" pointer:
+#   https://cdn.nepjua.org/zentab/macos/releases/v<version>/ZenTab-<version>.dmg
+#   https://cdn.nepjua.org/zentab/macos/releases/latest/ZenTab.dmg
+# A GitHub Release is still created for the changelog, but it carries NO binaries
+# (those live on R2).
 #
 # NOTE: builds are ad-hoc signed (not notarized), so users see a Gatekeeper
 # warning on first launch. See darwin/docs/HUMAN-TODO.md to add Developer ID
@@ -15,7 +21,7 @@ on:
     tags: ["darwin-v*"]
 
 permissions:
-  contents: write # required to create the GitHub Release
+  contents: write # required to create the GitHub Release (notes only)
 
 defaults:
   run:
@@ -25,6 +31,10 @@ jobs:
   release:
     name: Build & Publish
     runs-on: macos-26
+    env:
+      R2_API_URL: ${{ secrets.R2_API_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -36,26 +46,46 @@ jobs:
       - name: Install xcbeautify
         run: brew list xcbeautify >/dev/null 2>&1 || brew install xcbeautify
 
-      - name: Package app (.dmg + .zip)
-        run: |
-          VERSION="${GITHUB_REF_NAME#darwin-v}"
-          bin/release "$VERSION"
+      - name: Resolve version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#darwin-v}" >> "$GITHUB_OUTPUT"
 
-      - name: Publish GitHub Release
+      - name: Package app (.dmg + .zip)
+        run: bin/release "${{ steps.version.outputs.version }}"
+
+      - name: Upload release binaries to R2
+        run: |
+          V="${{ steps.version.outputs.version }}"
+          # Immutable, versioned copies.
+          bin/r2-publish "dist/ZenTab-$V.dmg" "zentab/macos/releases/v$V/ZenTab-$V.dmg" immutable
+          bin/r2-publish "dist/ZenTab-$V.zip" "zentab/macos/releases/v$V/ZenTab-$V.zip" immutable
+          # Rolling "latest stable" pointer (stable download URL).
+          bin/r2-publish "dist/ZenTab-$V.dmg" "zentab/macos/releases/latest/ZenTab.dmg" rolling
+          bin/r2-publish "dist/ZenTab-$V.zip" "zentab/macos/releases/latest/ZenTab.zip" rolling
+          jq -n --arg v "$V" --arg commit "$GITHUB_SHA" --arg tag "$GITHUB_REF_NAME" \
+            '{platform:"macos",channel:"release",version:$v,tag:$tag,commit:$commit,dmg:"ZenTab.dmg",zip:"ZenTab.zip"}' \
+            > dist/release.json
+          bin/r2-publish dist/release.json zentab/macos/releases/latest/release.json rolling
+
+      - name: Publish GitHub Release (notes only)
         uses: softprops/action-gh-release@v2
         with:
           draft: false
           generate_release_notes: true
           body: |
             ### Install (macOS)
+
+            Download from the ZenTab CDN:
+
+            - **DMG (recommended):** https://cdn.nepjua.org/zentab/macos/releases/v${{ steps.version.outputs.version }}/ZenTab-${{ steps.version.outputs.version }}.dmg
+            - **Zip:** https://cdn.nepjua.org/zentab/macos/releases/v${{ steps.version.outputs.version }}/ZenTab-${{ steps.version.outputs.version }}.zip
+            - Always-latest stable: https://cdn.nepjua.org/zentab/macos/releases/latest/ZenTab.dmg
+
             ZenTab is not yet notarized, so macOS Gatekeeper warns on first launch.
 
-            1. Download `ZenTab-*.dmg`, open it, and drag **ZenTab** into Applications.
+            1. Download the DMG, open it, and drag **ZenTab** into Applications.
             2. On first launch either right-click **ZenTab → Open**, or run:
                ```
                xattr -dr com.apple.quarantine /Applications/ZenTab.app
                ```
                On macOS 15+ you may instead need **System Settings → Privacy & Security → Open Anyway**.
-          files: |
-            darwin/dist/*.dmg
-            darwin/dist/*.zip

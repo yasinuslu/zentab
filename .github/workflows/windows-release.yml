@@ -4,8 +4,14 @@ name: windows Release
 #   git tag windows-v0.2.0 && git push origin windows-v0.2.0
 # (The tag is prefixed because this monorepo also ships a macOS app under its
 # own darwin-v* tags — see darwin-release.yml.)
+#
 # This builds the portable exe + MSI (version derived from the tag), generates
-# checksums, and publishes a GitHub Release with the artifacts attached.
+# checksums, and uploads them to R2 (cdn.nepjua.org) as the release binaries —
+# both immutable versioned copies and a rolling "latest stable" pointer:
+#   https://cdn.nepjua.org/zentab/windows/releases/v<version>/ZenTab-<version>-win-x64-portable.exe
+#   https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe
+# A GitHub Release is still created for the changelog, but it carries NO binaries
+# (those live on R2).
 on:
   push:
     tags: ["windows-v*"]
@@ -25,6 +31,10 @@ defaults:
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      R2_API_URL: ${{ secrets.R2_API_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,14 +62,40 @@ jobs:
         shell: pwsh
         run: ./build.ps1 -Version ${{ steps.version.outputs.version }}
 
-      - name: Publish GitHub Release
+      - name: Upload release binaries to R2
+        shell: pwsh
+        run: |
+          $v = '${{ steps.version.outputs.version }}'
+          $exe = "ZenTab-$v-win-x64-portable.exe"
+          $msi = "ZenTab-$v-win-x64.msi"
+          # Immutable, versioned copies.
+          ./r2-publish.ps1 -File "dist/$exe"            -Key "zentab/windows/releases/v$v/$exe"            -Mode immutable
+          ./r2-publish.ps1 -File "dist/$msi"            -Key "zentab/windows/releases/v$v/$msi"            -Mode immutable
+          ./r2-publish.ps1 -File "dist/SHA256SUMS.txt"  -Key "zentab/windows/releases/v$v/SHA256SUMS.txt"  -Mode immutable
+          # Rolling "latest stable" pointer (stable download URLs).
+          ./r2-publish.ps1 -File "dist/$exe"            -Key "zentab/windows/releases/latest/ZenTab-win-x64-portable.exe" -Mode rolling
+          ./r2-publish.ps1 -File "dist/$msi"            -Key "zentab/windows/releases/latest/ZenTab-win-x64.msi"          -Mode rolling
+          ./r2-publish.ps1 -File "dist/SHA256SUMS.txt"  -Key "zentab/windows/releases/latest/SHA256SUMS.txt"              -Mode rolling
+          $rel = [ordered]@{
+            platform = "windows"; channel = "release"; version = $v
+            tag = '${{ steps.version.outputs.tag }}'; commit = $env:GITHUB_SHA
+            portable = "ZenTab-win-x64-portable.exe"; msi = "ZenTab-win-x64.msi"
+          }
+          $rel | ConvertTo-Json | Set-Content dist/release.json -Encoding utf8
+          ./r2-publish.ps1 -File dist/release.json -Key zentab/windows/releases/latest/release.json -Mode rolling
+
+      - name: Publish GitHub Release (notes only)
         uses: softprops/action-gh-release@v2
         with:
           name: ZenTab for Windows ${{ steps.version.outputs.version }}
           tag_name: ${{ steps.version.outputs.tag }}
           generate_release_notes: true
-          fail_on_unmatched_files: true
-          files: |
-            windows/dist/ZenTab-${{ steps.version.outputs.version }}-win-x64-portable.exe
-            windows/dist/ZenTab-${{ steps.version.outputs.version }}-win-x64.msi
-            windows/dist/SHA256SUMS.txt
+          body: |
+            ### Install (Windows)
+
+            Download from the ZenTab CDN:
+
+            - **Portable exe (recommended):** https://cdn.nepjua.org/zentab/windows/releases/v${{ steps.version.outputs.version }}/ZenTab-${{ steps.version.outputs.version }}-win-x64-portable.exe
+            - **MSI installer:** https://cdn.nepjua.org/zentab/windows/releases/v${{ steps.version.outputs.version }}/ZenTab-${{ steps.version.outputs.version }}-win-x64.msi
+            - **Checksums:** https://cdn.nepjua.org/zentab/windows/releases/v${{ steps.version.outputs.version }}/SHA256SUMS.txt
+            - Always-latest stable: https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe

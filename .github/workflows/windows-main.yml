@@ -1,0 +1,76 @@
+name: windows Publish (main)
+
+# Every push to main that touches the Windows app builds the portable exe + MSI
+# and overwrites the rolling "latest from main" bundle on R2 (cdn.nepjua.org).
+# Stable, always-revalidated URLs:
+#   https://cdn.nepjua.org/zentab/windows/main/ZenTab-main-win-x64-portable.exe
+#   https://cdn.nepjua.org/zentab/windows/main/ZenTab-main-win-x64.msi
+#   https://cdn.nepjua.org/zentab/windows/main/SHA256SUMS.txt
+#   https://cdn.nepjua.org/zentab/windows/main/build.json   (commit + run metadata)
+#
+# Path-scoped like the CI workflow. Cutting a real versioned release is a
+# separate, tag-driven flow — see windows-release.yml.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows-main.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: windows-main-publish
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: windows
+
+jobs:
+  publish:
+    name: Build & upload (main)
+    runs-on: windows-latest
+    env:
+      R2_API_URL: ${{ secrets.R2_API_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build artifacts (portable exe + MSI + checksums)
+        shell: pwsh
+        run: ./build.ps1 -Version 0.0.0
+
+      - name: Upload rolling main bundle to R2
+        shell: pwsh
+        run: |
+          ./r2-publish.ps1 -File dist/ZenTab-0.0.0-win-x64-portable.exe -Key zentab/windows/main/ZenTab-main-win-x64-portable.exe -Mode rolling
+          ./r2-publish.ps1 -File dist/ZenTab-0.0.0-win-x64.msi          -Key zentab/windows/main/ZenTab-main-win-x64.msi          -Mode rolling
+          ./r2-publish.ps1 -File dist/SHA256SUMS.txt                    -Key zentab/windows/main/SHA256SUMS.txt                    -Mode rolling
+          $build = [ordered]@{
+            platform    = "windows"
+            channel     = "main"
+            commit      = $env:GITHUB_SHA
+            shortCommit = (git rev-parse --short HEAD)
+            ref         = $env:GITHUB_REF_NAME
+            runId       = $env:GITHUB_RUN_ID
+            portable    = "ZenTab-main-win-x64-portable.exe"
+            msi         = "ZenTab-main-win-x64.msi"
+          }
+          $build | ConvertTo-Json | Set-Content dist/build.json -Encoding utf8
+          ./r2-publish.ps1 -File dist/build.json -Key zentab/windows/main/build.json -Mode rolling
+
+      - name: Summary
+        shell: pwsh
+        run: |
+          @(
+            "### Windows main build published to R2 🚀"
+            ""
+            "- https://cdn.nepjua.org/zentab/windows/main/ZenTab-main-win-x64-portable.exe"
+            "- https://cdn.nepjua.org/zentab/windows/main/ZenTab-main-win-x64.msi"
+          ) | Add-Content $env:GITHUB_STEP_SUMMARY

@@ -210,7 +210,9 @@ final class AppModel: ObservableObject {
         confirm: { [weak overlay] in overlay?.confirm() },
         cancel: { [weak overlay] in overlay?.cancel() },
         closeSelected: { [weak overlay] in overlay?.closeSelected() },
-        quitSelected: { [weak overlay] in overlay?.quitSelected() }))
+        quitSelected: { [weak overlay] in overlay?.quitSelected() },
+        summonSelected: { [weak overlay] in overlay?.summonSelected() },
+        flingSelected: { [weak overlay] direction in overlay?.flingSelected(direction) }))
 
     guard tap.start() else { return }  // tapCreate fails only without Accessibility
 

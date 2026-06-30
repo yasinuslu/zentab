@@ -25,6 +25,10 @@ struct OverlaySession: Equatable {
     case closeSelected
     /// Q: quit the selected window's whole app (all its windows go with it).
     case quitSelected
+    /// Space: summon the selected window to the current Space (it comes here; tile stays).
+    case summonSelected
+    /// ←/→: fling the selected window to the adjacent Space (it leaves; you stay put).
+    case flingSelected(FlingDirection)
   }
 
   enum Effect: Equatable {
@@ -46,6 +50,10 @@ struct OverlaySession: Equatable {
     case close(WindowInfo)
     /// Quit this app (terminate every window it owns).
     case quit(pid_t)
+    /// Summon this window to the current Space (bring here).
+    case summonWindow(WindowInfo)
+    /// Fling this window to the adjacent Space in the given direction (send away).
+    case flingWindow(WindowInfo, FlingDirection)
   }
 
   private(set) var session = 0
@@ -71,6 +79,8 @@ struct OverlaySession: Equatable {
     case .hover(let i): return hover(i)
     case .closeSelected: return closeSelected()
     case .quitSelected: return quitSelected()
+    case .summonSelected: return summonSelected()
+    case .flingSelected(let direction): return flingSelected(direction)
     }
   }
 
@@ -154,6 +164,26 @@ struct OverlaySession: Equatable {
     let pid = target.pid
     var effects: [Effect] = [.quit(pid)]
     removeWindows { $0.pid == pid }
+    effects += relayoutOrHide()
+    return effects
+  }
+
+  /// Space: summon the selected window to the current Space. It comes to you, so the tile
+  /// stays in the list (the window still exists; it is just here now) and the overlay stays
+  /// up — rapid Space-Space gathers a set. A hold-only action. The move is a side effect.
+  private mutating func summonSelected() -> [Effect] {
+    guard isVisible, let target = selected else { return [] }
+    return [.summonWindow(target)]
+  }
+
+  /// Arrow: fling the selected window to the adjacent Space. The window leaves this Space,
+  /// so it is dropped from the overlay (mirrors close/quit) — that is also what keeps
+  /// "you stay put": release can't follow a window that is no longer selectable. The actual
+  /// move (and the edge no-op, where no adjacent Space exists) is the side effect.
+  private mutating func flingSelected(_ direction: FlingDirection) -> [Effect] {
+    guard isVisible, let target = selected else { return [] }
+    var effects: [Effect] = [.flingWindow(target, direction)]
+    removeWindows { $0.windowID == target.windowID }
     effects += relayoutOrHide()
     return effects
   }

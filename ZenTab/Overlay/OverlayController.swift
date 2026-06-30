@@ -100,6 +100,8 @@ final class OverlayController {
   func cancel() { send(.cancel) }
   func closeSelected() { send(.closeSelected) }
   func quitSelected() { send(.quitSelected) }
+  func summonSelected() { send(.summonSelected) }
+  func flingSelected(_ direction: FlingDirection) { send(.flingSelected(direction)) }
 
   // MARK: - Reducer plumbing
 
@@ -149,6 +151,12 @@ final class OverlayController {
 
     case .quit(let pid):
       WindowCloser.quitApp(pid: pid)
+
+    case .summonWindow(let window):
+      SpaceMover.summon(window)
+
+    case .flingWindow(let window, let direction):
+      SpaceMover.fling(window, direction)
     }
   }
 

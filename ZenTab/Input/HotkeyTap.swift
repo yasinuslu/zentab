@@ -27,12 +27,19 @@ final class HotkeyTap: @unchecked Sendable {
     let cancel: @MainActor () -> Void
     let closeSelected: @MainActor () -> Void
     let quitSelected: @MainActor () -> Void
+    let summonSelected: @MainActor () -> Void
+    let flingSelected: @MainActor (_ direction: FlingDirection) -> Void
   }
 
   /// In-overlay action keys. Positional (like the triggers), and fixed — VISION makes
-  /// the W=close / Q=quit *behavior* non-configurable; only the trigger keys vary.
+  /// the action *behavior* non-configurable; only the trigger keys vary. Space summons
+  /// (bring here); ←/→ fling to the adjacent Space (send away). They are absorbed so the
+  /// chord modifier (e.g. ⌘ held) can't fire the system shortcut underneath (⌘Space, etc.).
   private static let closeWindowKeyCode: CGKeyCode = 13  // W
   private static let quitAppKeyCode: CGKeyCode = 12  // Q
+  private static let summonKeyCode: CGKeyCode = 49  // Space
+  private static let flingLeftKeyCode: CGKeyCode = 123  // ←
+  private static let flingRightKeyCode: CGKeyCode = 124  // →
   private static let escapeKeyCode: CGKeyCode = 53
 
   private let triggers: [Trigger]
@@ -187,6 +194,15 @@ final class HotkeyTap: @unchecked Sendable {
         return true
       case Self.quitAppKeyCode:  // Q quits the selected window's app
         dispatchMain { self.handlers.quitSelected() }
+        return true
+      case Self.summonKeyCode:  // Space summons the selected window to this Space
+        dispatchMain { self.handlers.summonSelected() }
+        return true
+      case Self.flingLeftKeyCode:  // ← flings the selected window to the Space on the left
+        dispatchMain { self.handlers.flingSelected(.left) }
+        return true
+      case Self.flingRightKeyCode:  // → flings it to the Space on the right
+        dispatchMain { self.handlers.flingSelected(.right) }
         return true
       default:
         break

@@ -295,4 +295,72 @@ struct OverlaySessionTests {
     // A normal hold still shows the full, untouched list.
     #expect(session.handle(.holdElapsed(session: 1)) == [.show(windows: list, index: 0)])
   }
+
+  // MARK: - Space = summon / arrows = fling
+
+  @Test("Space summons the selected window, keeps it in the list, keeps the overlay")
+  func summonKeepsTileAndOverlay() {
+    var session = OverlaySession()
+    let list = windows(3)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    _ = session.handle(.holdElapsed(session: 1))  // visible at 0
+
+    // The window comes to us: only the move effect, no list change, overlay stays up.
+    #expect(session.handle(.summonSelected) == [.summonWindow(list[0])])
+    #expect(session.isVisible)
+    // Release focuses the summoned window (now on this Space — no follow).
+    #expect(session.handle(.confirm) == [.hide, .focus(list[0])])
+  }
+
+  @Test("An arrow flings the selected window away and drops it (you stay put)")
+  func flingRemovesTileAndRelayouts() {
+    var session = OverlaySession()
+    let list = windows(3)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    _ = session.handle(.holdElapsed(session: 1))  // visible at 0
+
+    let remaining = [list[1], list[2]]
+    #expect(
+      session.handle(.flingSelected(.right))
+        == [.flingWindow(list[0], .right), .relayout(windows: remaining, index: 0)])
+    #expect(session.isVisible)
+    // The flung window is gone, so release can never follow it to its new Space.
+    #expect(session.handle(.confirm) == [.hide, .focus(list[1])])
+  }
+
+  @Test("Fling carries its direction")
+  func flingCarriesDirection() {
+    var session = OverlaySession()
+    let list = windows(2)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    _ = session.handle(.holdElapsed(session: 1))
+    #expect(session.handle(.flingSelected(.left)).first == .flingWindow(list[0], .left))
+  }
+
+  @Test("Flinging the only window hides the overlay")
+  func flingOnlyWindowHides() {
+    var session = OverlaySession()
+    let list = windows(1)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    _ = session.handle(.holdElapsed(session: 1))
+
+    #expect(session.handle(.flingSelected(.right)) == [.flingWindow(list[0], .right), .hide])
+    #expect(!session.isVisible)
+    #expect(session.handle(.confirm) == [.focus(nil)])
+  }
+
+  @Test("Summon / fling do nothing before the overlay is shown")
+  func summonFlingIgnoredWhenHidden() {
+    var session = OverlaySession()
+    let list = windows(3)
+    _ = session.handle(.summon)
+    _ = session.handle(.enumerated(list, currentPID: nil, session: 1))
+    #expect(session.handle(.summonSelected).isEmpty)
+    #expect(session.handle(.flingSelected(.left)).isEmpty)
+    #expect(!session.isVisible)
+  }
 }

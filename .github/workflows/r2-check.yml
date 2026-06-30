@@ -1,0 +1,52 @@
+name: R2 connectivity check
+
+# Manual diagnostic for the R2 release credentials. Run it from the Actions tab
+# (or: gh workflow run r2-check.yml). It is cheap (~20s, ubuntu, no app build) and
+# it NEVER prints secret values — only their character lengths, which is enough to
+# tell the Access Key ID (32 chars) apart from the Secret Access Key (64 chars).
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      R2_API_URL: ${{ secrets.R2_API_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Inspect secret shapes (lengths only, values stay masked)
+        run: |
+          echo "R2_API_URL set?            $([ -n "$R2_API_URL" ] && echo yes || echo 'NO — missing!')"
+          echo "R2_ACCESS_KEY_ID length:   ${#R2_ACCESS_KEY_ID}   (R2 expects 32)"
+          echo "R2_SECRET_ACCESS_KEY length: ${#R2_SECRET_ACCESS_KEY}   (R2 expects 64)"
+          if [ "${#R2_ACCESS_KEY_ID}" != "32" ]; then
+            echo "::warning::R2_ACCESS_KEY_ID is ${#R2_ACCESS_KEY_ID} chars, not 32 — it likely holds the Secret Access Key. The two are swapped."
+          fi
+
+      - name: Round-trip a tiny object (PUT, GET, DELETE)
+        run: |
+          set -euo pipefail
+          key="zentab/_diag/check-${GITHUB_RUN_ID}.txt"
+          url="${R2_API_URL%/}/${key}"
+          echo "zentab r2 check ${GITHUB_RUN_ID}" > /tmp/r2-check.txt
+
+          echo "PUT  $url"
+          curl --fail-with-body --silent --show-error \
+            --aws-sigv4 "aws:amz:auto:s3" \
+            --user "${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}" \
+            --upload-file /tmp/r2-check.txt "$url"
+
+          echo "GET  (verify body)"
+          curl --fail-with-body --silent --show-error \
+            --aws-sigv4 "aws:amz:auto:s3" \
+            --user "${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}" \
+            "$url"
+
+          echo "DELETE (cleanup)"
+          curl --fail-with-body --silent --show-error --request DELETE \
+            --aws-sigv4 "aws:amz:auto:s3" \
+            --user "${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}" \
+            "$url" || true
+
+          echo "✅ R2 round-trip succeeded — credentials + endpoint are good."

@@ -33,6 +33,12 @@ struct MenuBarContent: View {
 
     Divider()
 
+    if model.profile == .development, model.switcherRunning {
+      Button("Preview overlay — board") { model.previewOverlay(board: true) }
+      Button("Preview overlay — flat") { model.previewOverlay(board: false) }
+      Divider()
+    }
+
     Button("Run private-API diagnostics") { model.runDiagnostics() }
     Button("Dump switchability") { model.dumpSwitchability() }
     Button("Test HW capture (off-Space)") { model.runCaptureDiagnostics() }

@@ -332,7 +332,7 @@ export default class Overlay extends Component<Record<string, never>, OverlaySta
     const elsewhere = withIdx.filter((o) => !o.win.here);
     const hereList = withIdx.filter((o) => o.win.here);
     const row = (arr: { win: WindowItem; i: number }[]) => (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>{arr.map((o) => this.renderTile(o.win, o.i))}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px" }}>{arr.map((o) => this.renderTile(o.win, o.i))}</div>
     );
     const zoneHead = (title: string, hint: boolean) => (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 4px 12px" }}>

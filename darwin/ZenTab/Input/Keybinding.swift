@@ -20,6 +20,40 @@ struct Keybinding: Equatable, Sendable {
   /// The modifier set whose *release* confirms the switch (the "hold" keys).
   var holdModifiers: NSEvent.ModifierFlags { modifiers.intersection(Self.triggerModifierMask) }
 
+  /// A human-readable glyph form for the overlay header pill, e.g. `⌘ Tab`, `⌃⌥ Tab`,
+  /// `⌘ ``. Modifiers use the macOS canonical order (⌃⌥⇧⌘).
+  var displayString: String {
+    var mods = ""
+    if modifiers.contains(.control) { mods += "⌃" }
+    if modifiers.contains(.option) { mods += "⌥" }
+    if modifiers.contains(.shift) { mods += "⇧" }
+    if modifiers.contains(.command) { mods += "⌘" }
+    let key = Self.displayLabel(for: keyCode)
+    return mods.isEmpty ? key : "\(mods) \(key)"
+  }
+
+  /// The display label for a keycode (the reverse of `keyCodes`, with nicer glyphs for the
+  /// special keys a trigger realistically uses).
+  static func displayLabel(for code: CGKeyCode) -> String {
+    switch code {
+    case 48: return "Tab"
+    case 49: return "Space"
+    case 50: return "`"
+    case 36: return "↵"
+    case 53: return "Esc"
+    case 51: return "⌫"
+    case 123: return "←"
+    case 124: return "→"
+    case 125: return "↓"
+    case 126: return "↑"
+    default:
+      if let name = keyCodes.first(where: { $0.value == code && $0.key.count == 1 })?.key {
+        return name.uppercased()
+      }
+      return "?"
+    }
+  }
+
   /// Does a live key event satisfy this chord? Identifying modifiers must match
   /// exactly; Shift and other bits are ignored.
   func matches(keyCode: CGKeyCode, modifiers: NSEvent.ModifierFlags) -> Bool {

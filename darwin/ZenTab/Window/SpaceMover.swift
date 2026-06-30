@@ -85,9 +85,10 @@ enum SpaceMover {
       let msgSendRaw = dlsym(handle, "objc_msgSend")
     else { return }
     typealias MsgObj = @convention(c) (UnsafeRawPointer?, UnsafeRawPointer?) -> UnsafeRawPointer?
-    typealias MsgInit = @convention(c) (
-      UnsafeRawPointer?, UnsafeRawPointer?, UnsafeRawPointer?, UInt64
-    ) -> UnsafeRawPointer?
+    typealias MsgInit =
+      @convention(c) (
+        UnsafeRawPointer?, UnsafeRawPointer?, UnsafeRawPointer?, UInt64
+      ) -> UnsafeRawPointer?
     let msgObj = unsafeBitCast(msgSendRaw, to: MsgObj.self)
     let msgInit = unsafeBitCast(msgSendRaw, to: MsgInit.self)
 

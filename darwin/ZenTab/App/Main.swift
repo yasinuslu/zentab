@@ -15,6 +15,9 @@ enum ZenTabMain {
     let arguments = CommandLine.arguments
     if arguments.contains("--space-move-helper") { SpaceMoveSpike.runHelper() }
     if arguments.contains("--space-move-selftest") { SpaceMoveSpike.runSelfTest() }
+    if let index = arguments.firstIndex(of: "--render-overlay"), index + 1 < arguments.count {
+      OverlayRenderer.run(path: arguments[index + 1], board: arguments.contains("--board"))
+    }
     ZenTabApp.main()
   }
 }

@@ -18,7 +18,11 @@ final class SwitcherPanel: NSPanel {
     collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
     isOpaque = false
     backgroundColor = .clear
-    hasShadow = true
+    // The blur lives in the backdrop and the frosted cards are drawn by the grid, so the
+    // content panel itself is a clear, shadowless sheet. Pinned dark so the look never
+    // depends on the OS light/dark theme (fixes light-mode legibility).
+    appearance = OverlayTheme.appearance
+    hasShadow = false
     hidesOnDeactivate = false
     isReleasedWhenClosed = false
     animationBehavior = .none

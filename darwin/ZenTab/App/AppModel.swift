@@ -26,6 +26,9 @@ final class AppModel: ObservableObject {
   private var watchdog: CaptureWatchdog?
   private var permissionTimer: Timer?
   private var dumpSignalSource: DispatchSourceSignal?
+  private var previewSignalSource: DispatchSourceSignal?
+  /// Dev-only red/green "hands off" light under the notch, driven from a shell test loop.
+  private var statusPill: StatusPill?
 
   private init() {}
 
@@ -43,6 +46,12 @@ final class AppModel: ObservableObject {
     if Permissions.isAccessibilityTrusted { WindowTracker.shared.start() }
     startSwitcherIfPossible()
     installDumpSignal()
+    // Dev-only "hands off" light under the notch while an automated test loop drives the app.
+    if profile == .development {
+      let pill = StatusPill()
+      pill.startWatching()
+      statusPill = pill
+    }
 
     // Reflect a permission grant (and start the switcher) without a relaunch, and
     // re-assert the Cmd+Tab claim (other apps / macOS can quietly reclaim it).
@@ -75,6 +84,11 @@ final class AppModel: ObservableObject {
     Permissions.requestScreenRecording()
     Permissions.openScreenRecordingSettings()
   }
+
+  /// Show the redesigned overlay populated from running apps, without the hotkey — a dev
+  /// affordance for iterating on the look. `board` true → two-zone board; false → flat grid.
+  func previewOverlay(board: Bool) { overlay?.preview(board: board) }
+  func togglePreviewOverlay(board: Bool) { overlay?.togglePreview(board: board) }
 
   /// Smoke-test each private symbol in isolation, so a bad `@_silgen_name` binding
   /// surfaces here instead of corrupting the stack inside the hot path. Also reports
@@ -191,6 +205,16 @@ final class AppModel: ObservableObject {
     }
     source.resume()
     dumpSignalSource = source
+
+    // SIGUSR2 toggles the redesigned overlay preview, so the look can be screenshotted
+    // from a shell (`killall -USR2 ZenTab`) without holding a hotkey. Dev affordance.
+    signal(SIGUSR2, SIG_IGN)
+    let previewSource = DispatchSource.makeSignalSource(signal: SIGUSR2, queue: .main)
+    previewSource.setEventHandler { [weak self] in
+      MainActor.assumeIsolated { self?.togglePreviewOverlay(board: true) }
+    }
+    previewSource.resume()
+    previewSignalSource = previewSource
   }
 
   private func startSwitcherIfPossible() {

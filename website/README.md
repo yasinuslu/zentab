@@ -42,5 +42,16 @@ src/
   replaces that runtime; the `DCLogic` classes became typed `React.Component`s nearly verbatim.
 - The overlay's ⌘Tab / ⌥Tab gestures are remapped to safe stand-ins (hold **Space**, hold **V**)
   so the browser demo never fights the real OS shortcuts.
-- Hosting: this is a SPA with client-side routing. On a static host, add a catch-all rewrite to
-  `index.html` so `/overlay` and `/brand` resolve on hard refresh.
+## Deploy
+
+Deployed to **GitHub Pages** at `https://yasinuslu.github.io/zentab/` by
+[`../.github/workflows/website-pages.yml`](../.github/workflows/website-pages.yml) on every push
+to `main` that touches `website/**` (or via the workflow's manual run button). One-time setup:
+repo **Settings → Pages → Source: GitHub Actions**.
+
+- The CI build runs with `BASE_PATH=/zentab/` so Vite emits asset URLs and a router `basename`
+  under the project subpath. Local `bun dev`/`bun run build` default to `/`; reproduce the Pages
+  build locally with `BASE_PATH=/zentab/ bun run build`.
+- It's a SPA with client-side routing, so the Vite config writes a `404.html` (a copy of
+  `index.html`) plus `.nojekyll` into `dist/`, letting `/overlay` and `/brand` resolve on a hard
+  refresh.

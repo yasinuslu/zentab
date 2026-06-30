@@ -10,6 +10,7 @@
 		198AB7E7827DB4043A08A8C5 /* MenuBarContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C2F680461FAE383379D7A6D /* MenuBarContent.swift */; };
 		213812D756CD965EA42EBA64 /* TOMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63934F2C629A4A581F13C591 /* TOMLParser.swift */; };
 		28C370C05D35E040E5BFF206 /* Keybinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71A17F28DCE54435B0B551F /* Keybinding.swift */; };
+		2D3E60B13E1CC69A43247E40 /* OverlayRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 940C790ABF28B7951FC860FB /* OverlayRenderer.swift */; };
 		2F3828F4840412D873EBF181 /* SwitchMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D6E403FDB76C082C2AB69A8 /* SwitchMode.swift */; };
 		30001556255624A181E9F0E3 /* WindowCloser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7FF900699C924D5C6B062D0 /* WindowCloser.swift */; };
 		400977C582141E7D8E80224F /* NativeHotkeyConflict.swift in Sources */ = {isa = PBXBuildFile; fileRef = F381FDE6D9D28C4B9AA848B1 /* NativeHotkeyConflict.swift */; };
@@ -38,8 +39,11 @@
 		B12237B0F0B51868727891B2 /* WindowRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10869E356C169B00E00BF301 /* WindowRegistry.swift */; };
 		B2F0FE1DE18A37EADD1A2385 /* OverlaySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A1A77506ECACA9398BCEDC4 /* OverlaySession.swift */; };
 		B351E2D3C6CB5BD258B58705 /* SpaceMover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CCF1EF4E6855C46D0A43B97 /* SpaceMover.swift */; };
+		B660B9863EAADE1D1CA0C0B5 /* StatusPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20BA69862FDE37D6D2DFE0A /* StatusPill.swift */; };
 		C5AE6A3AD7D42C53CEA397FE /* TileGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 556FD0EDD87634D487E85A8D /* TileGridView.swift */; };
+		CA34A5F015D65B5227BA01CC /* OverlayBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8199FDF7B5489B381BA51E5 /* OverlayBackdrop.swift */; };
 		CF7103783C1EF0F490A5C9C2 /* KeybindingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F7E385C2993CB30C4B2E43 /* KeybindingTests.swift */; };
+		D117C1F9A846D840E2DE9757 /* OverlayTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35B147C270FD6B7897F5C308 /* OverlayTheme.swift */; };
 		DF1910CBB368C01357928020 /* ZenTabApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EBD932CC863F5804AAA20E0 /* ZenTabApp.swift */; };
 		E4F1395DD342554AA89800D3 /* WindowInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16DBA74F3FE81CD5DF5D4B1B /* WindowInfo.swift */; };
 		E68F12031F40C5ECC6F524D1 /* SpaceMoveSpike.swift in Sources */ = {isa = PBXBuildFile; fileRef = B49B72A7E45BB0834FA0EA3B /* SpaceMoveSpike.swift */; };
@@ -69,6 +73,7 @@
 		2D6E403FDB76C082C2AB69A8 /* SwitchMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchMode.swift; sourceTree = "<group>"; };
 		31B38D20870FD09668FC3E25 /* ZenTab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZenTab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3259A283E5998AA73D38DADA /* HotkeyTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyTap.swift; sourceTree = "<group>"; };
+		35B147C270FD6B7897F5C308 /* OverlayTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayTheme.swift; sourceTree = "<group>"; };
 		35E6B10B67E46713183282D9 /* WindowFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowFilterTests.swift; sourceTree = "<group>"; };
 		376468B2DF2FB17C32FC2C84 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		398E6E7E4B452FEB1FB94B13 /* CaptureWatchdog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureWatchdog.swift; sourceTree = "<group>"; };
@@ -88,8 +93,10 @@
 		6C2F680461FAE383379D7A6D /* MenuBarContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContent.swift; sourceTree = "<group>"; };
 		704F07B389F7056774BE70B9 /* WindowFocuser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowFocuser.swift; sourceTree = "<group>"; };
 		739EA1DDC0B92C5C85C28617 /* Main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Main.swift; sourceTree = "<group>"; };
+		940C790ABF28B7951FC860FB /* OverlayRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRenderer.swift; sourceTree = "<group>"; };
 		9CCF1EF4E6855C46D0A43B97 /* SpaceMover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceMover.swift; sourceTree = "<group>"; };
 		A71A17F28DCE54435B0B551F /* Keybinding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keybinding.swift; sourceTree = "<group>"; };
+		B20BA69862FDE37D6D2DFE0A /* StatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPill.swift; sourceTree = "<group>"; };
 		B49B72A7E45BB0834FA0EA3B /* SpaceMoveSpike.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceMoveSpike.swift; sourceTree = "<group>"; };
 		B601B39E631A5CE5C71E33E0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B7FF900699C924D5C6B062D0 /* WindowCloser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowCloser.swift; sourceTree = "<group>"; };
@@ -101,6 +108,7 @@
 		F24200F4FDDFA43F04520569 /* TOMLConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOMLConfigTests.swift; sourceTree = "<group>"; };
 		F381FDE6D9D28C4B9AA848B1 /* NativeHotkeyConflict.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHotkeyConflict.swift; sourceTree = "<group>"; };
 		F51A81869C402552D21D9573 /* ZenTabTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ZenTabTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F8199FDF7B5489B381BA51E5 /* OverlayBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayBackdrop.swift; sourceTree = "<group>"; };
 		FA237BC209BACEE03479F9C5 /* WindowEnumerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowEnumerator.swift; sourceTree = "<group>"; };
 		FA4D8F2BD049B818E4C3790D /* SkyLight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyLight.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -117,7 +125,10 @@
 		23E588D989B7D58850041C4E /* Overlay */ = {
 			isa = PBXGroup;
 			children = (
+				F8199FDF7B5489B381BA51E5 /* OverlayBackdrop.swift */,
 				3B4263808D3FBE36E15E0F4D /* OverlayController.swift */,
+				940C790ABF28B7951FC860FB /* OverlayRenderer.swift */,
+				35B147C270FD6B7897F5C308 /* OverlayTheme.swift */,
 				EE31BC4E771567CE8001B2F2 /* SwitcherPanel.swift */,
 				556FD0EDD87634D487E85A8D /* TileGridView.swift */,
 			);
@@ -201,6 +212,7 @@
 				5D1D9174ED8FD2CA0A4FF149 /* LaunchProfile.swift */,
 				739EA1DDC0B92C5C85C28617 /* Main.swift */,
 				6C2F680461FAE383379D7A6D /* MenuBarContent.swift */,
+				B20BA69862FDE37D6D2DFE0A /* StatusPill.swift */,
 				4EBD932CC863F5804AAA20E0 /* ZenTabApp.swift */,
 			);
 			path = App;
@@ -380,12 +392,16 @@
 				198AB7E7827DB4043A08A8C5 /* MenuBarContent.swift in Sources */,
 				400977C582141E7D8E80224F /* NativeHotkeyConflict.swift in Sources */,
 				618E806B988620E172A13E45 /* NativeHotkeyRestore.swift in Sources */,
+				CA34A5F015D65B5227BA01CC /* OverlayBackdrop.swift in Sources */,
 				422744913EA997BD7DFE40BF /* OverlayController.swift in Sources */,
+				2D3E60B13E1CC69A43247E40 /* OverlayRenderer.swift in Sources */,
 				B2F0FE1DE18A37EADD1A2385 /* OverlaySession.swift in Sources */,
+				D117C1F9A846D840E2DE9757 /* OverlayTheme.swift in Sources */,
 				8C701A9154B86A92D9151B1F /* Permissions.swift in Sources */,
 				64D37DF88335D28C83716F40 /* SkyLight.swift in Sources */,
 				E68F12031F40C5ECC6F524D1 /* SpaceMoveSpike.swift in Sources */,
 				B351E2D3C6CB5BD258B58705 /* SpaceMover.swift in Sources */,
+				B660B9863EAADE1D1CA0C0B5 /* StatusPill.swift in Sources */,
 				2F3828F4840412D873EBF181 /* SwitchMode.swift in Sources */,
 				8EA5EDC239B73833175CA897 /* SwitcherPanel.swift in Sources */,
 				213812D756CD965EA42EBA64 /* TOMLParser.swift in Sources */,

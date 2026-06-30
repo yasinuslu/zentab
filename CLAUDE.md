@@ -15,6 +15,12 @@ setting?" is **no**. When a request conflicts with VISION.md, surface the tensio
 silently implementing it. Do not reintroduce ideas it rules out (no Pro tier, no settings
 sprawl, no MRU reshuffling).
 
+**[`BRANDING.md`](BRANDING.md) is the authoritative visual identity** — the one brand both
+apps share (the always-dark "spotlight" scrim, the dim+blur recede, the ZenTab Jade accent,
+the card/tile/fade tokens). Change a brand value there first, then transcribe it into each
+app's theme code (macOS: `darwin/ZenTab/Overlay/OverlayTheme.swift`). Keep the two apps
+looking like the same product — don't fork the brand per OS.
+
 ## Repository layout
 
 ```
@@ -23,8 +29,9 @@ windows/   Windows app (C#/WPF) — sources, build.ps1/dev.ps1, installer/
 .github/   CI + release workflows for both platforms (path-scoped)
 ```
 
-Shared at the root: `VISION.md`, this `CLAUDE.md`, `LICENSE` (GPL-3.0), and the monorepo
-`README.md`. Each app also keeps its own `README.md` with platform build/run details.
+Shared at the root: `VISION.md`, `BRANDING.md`, this `CLAUDE.md`, `LICENSE` (GPL-3.0), and
+the monorepo `README.md`. Each app also keeps its own `README.md` with platform build/run
+details.
 
 ## macOS (`darwin/`)
 

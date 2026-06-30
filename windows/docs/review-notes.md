@@ -1,7 +1,7 @@
 # Review notes
 
 Findings from a round of fresh-eyes reviews (3 independent reviewers: a bug hunter, a
-feel/performance reviewer against [VISION.md](../VISION.md), and a packaging/release
+feel/performance reviewer against [VISION.md](../../VISION.md), and a packaging/release
 reviewer). This is a working backlog, not a contract — items are notes to act on, prune,
 or reject as the vision dictates.
 

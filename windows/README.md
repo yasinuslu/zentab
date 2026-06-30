@@ -6,17 +6,17 @@ Win32/DWM interop layer.
 > ZenTab is not about its interface — it's about the **feel**, and the **focus** it brings.
 > The whole focus is two co-equal pillars: **feel and performance**. It is *very*
 > opinionated: for each choice we pick one behavior and delete the knob. See
-> [VISION.md](VISION.md).
+> [`../VISION.md`](../VISION.md).
 
 ZenTab is resident in the tray (no main window) and **replaces the native switching
 gestures** with a low-level keyboard hook.
 
 > **ZenTab is a cross-platform vision, not a single app.** The product — the *feel*, the
 > *focus*, the brand — is shared across platforms; each platform gets a native
-> implementation that does whatever is best *there*. This repository is the **Windows**
-> edition (C#/WPF). The **macOS** edition is a separate, fully native Swift app. Same
-> philosophy ([VISION.md](VISION.md)), same branding, different native guts. The product
-> website lives elsewhere; this repo is just the Windows source.
+> implementation that does whatever is best *there*. This folder is the **Windows** edition
+> (C#/WPF); the **macOS** edition (native Swift) lives in [`../darwin/`](../darwin/) in the
+> same repo. Same philosophy ([`../VISION.md`](../VISION.md)), same branding, different
+> native guts.
 
 ## What it does
 
@@ -121,12 +121,15 @@ tooltip and menu. `zentab.toml` is build-tree-only; the MSI does not ship it.
 - `build.ps1` — one script → portable exe + WiX MSI (+ checksums) in `dist/`
 - `installer/ZenTab.wxs` — the WiX MSI definition
 - `assets/` — placeholder app icon (`zentab.ico`) + its generator (`make-icon.ps1`)
-- `.github/workflows/` — CI (build on push/PR) + tag-driven Release
 - `docs/review-notes.md` — review backlog (bugs, feel/perf, packaging)
+
+> CI + release workflows live at the repo root in [`../.github/workflows/`](../.github/workflows/)
+> (`windows-ci.yml`, `windows-release.yml`), path-scoped to `windows/**`. Cut a release by
+> pushing a `windows-v*` tag.
 
 ## License
 
-[MIT](LICENSE) © Yasin Uslu.
+[GPL-3.0](../LICENSE) © Yasin Uslu. Repo-wide, across both platforms.
 
 ## Not yet done (next steps)
 

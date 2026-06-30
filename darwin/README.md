@@ -3,14 +3,13 @@
 The alt-tab I always wanted: opinionated, instant, and the same on every OS I refuse to leave.
 
 ZenTab is one window switcher with two native implementations that live together in this
-repository: a **macOS** app (Swift) and a **Windows** app (built on native Windows
-technologies, not Swift). macOS is what's built today; the Windows version is being
-brought into this repo in its own folder, and this README will grow a Windows section once
-it lands. Both share the same idea: switch individual windows through a hand-rolled,
-non-activating overlay driven by a global hotkey, ship with strong defaults, and keep the
-entire configuration in one file you own. No Pro tier, no settings maze, free forever.
+repository: this **macOS** app (Swift) and a **Windows** app (C#/WPF, in
+[`../windows/`](../windows/)). Both share the same idea: switch individual windows through a
+hand-rolled, non-activating overlay driven by a global hotkey, ship with strong defaults,
+and keep the entire configuration in one file you own. No Pro tier, no settings maze, free
+forever.
 
-**Read [`VISION.md`](VISION.md) for the product direction** (the three-shortcut model,
+**Read [`../VISION.md`](../VISION.md) for the product direction** (the three-mode model,
 tap-vs-hold, the stable list, the non-negotiable principles). Everything below this intro
 covers the macOS app: how to run, build, and ship it.
 
@@ -249,5 +248,6 @@ exists because of their work. Huge thanks.
 ## License
 
 ZenTab is licensed under the **GNU General Public License v3.0** (the same license as
-alt-tab-macos, the project it learns from). See [`LICENSE`](LICENSE). You are free to use,
-study, modify, and redistribute it under the same terms.
+alt-tab-macos, the project it learns from) — repo-wide, across both platforms. See
+[`../LICENSE`](../LICENSE). You are free to use, study, modify, and redistribute it under
+the same terms.

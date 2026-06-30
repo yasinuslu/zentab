@@ -12,17 +12,19 @@ together in this repository.
 Both share the same idea: switch **individual windows** through a hand-rolled,
 non-activating overlay driven by a global hotkey, ship with strong defaults, and keep the
 entire configuration in one file you own. No Pro tier, no settings maze, free forever.
-Same philosophy, same branding, different native guts.
+**One license, one vision, one product — two native apps.**
 
 ## Where to start
 
-- **macOS** — see [`darwin/README.md`](darwin/README.md) and [`darwin/VISION.md`](darwin/VISION.md).
-  Build/run with the `darwin/bin/*` scripts (`bin/run`, `bin/build`, `bin/test`).
-- **Windows** — see [`windows/README.md`](windows/README.md) and [`windows/VISION.md`](windows/VISION.md).
-  Build/run with the PowerShell scripts (`windows/dev.ps1`, `windows/build.ps1`).
+- **[`VISION.md`](VISION.md)** — the single, authoritative product direction for both apps
+  (the three-mode model, tap-vs-hold, the principles). Read it first.
+- **macOS** — [`darwin/README.md`](darwin/README.md). Build/run with the `darwin/bin/*`
+  scripts (`bin/run`, `bin/build`, `bin/test`).
+- **Windows** — [`windows/README.md`](windows/README.md). Build/run with the PowerShell
+  scripts (`windows/dev.ps1`, `windows/build.ps1`).
 
-Each platform keeps its own `README`, `VISION`, and `CLAUDE.md` in its folder — read those
-before working on that platform.
+The shared `VISION.md`, `CLAUDE.md`, and `LICENSE` live at the root; each app keeps only a
+platform-specific `README` in its folder.
 
 ## Repository layout
 
@@ -30,6 +32,7 @@ before working on that platform.
 darwin/    macOS app (Swift) — sources, bin/ scripts, docs, project.yml
 windows/   Windows app (C#/WPF) — sources, build.ps1/dev.ps1, installer/
 .github/   CI + release workflows for both platforms (see below)
+VISION.md · CLAUDE.md · LICENSE   shared across both apps
 ```
 
 ## CI and releases
@@ -50,8 +53,7 @@ git tag windows-v0.2.0 && git push origin windows-v0.2.0    # cuts a Windows rel
 
 ## License
 
-The two implementations carry different licenses (kept in their folders):
-
-- **macOS** (`darwin/`) — **GPL-3.0** (see [`darwin/LICENSE`](darwin/LICENSE)); it ports
-  window-engine techniques from [alt-tab-macos](https://github.com/lwouis/alt-tab-macos).
-- **Windows** (`windows/`) — **MIT** (see [`windows/LICENSE`](windows/LICENSE)).
+The whole repository — both apps — is **GPL-3.0** (single root [`LICENSE`](LICENSE)), the
+same license as [alt-tab-macos](https://github.com/lwouis/alt-tab-macos), the project ZenTab
+learns from. That clears porting alt-tab's window-engine techniques. You are free to use,
+study, modify, and redistribute under the same terms.

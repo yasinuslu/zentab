@@ -137,15 +137,17 @@ internal static class Native
     public const int ACCENT_ENABLE_ACRYLICBLURBEHIND = 4;
 
     /// <summary>
-    /// Turn on a GPU acrylic (frosted) blur behind a window, tinted by <paramref name="tintAbgr"/>
-    /// (0xAABBGGRR; the alpha is the tint strength). Best-effort and undocumented, so any failure
-    /// is swallowed — the window then just shows its own painted dim, no blur.
+    /// Turn on a GPU blur behind a window, tinted by <paramref name="tintAbgr"/> (0xAABBGGRR; the
+    /// alpha is the tint strength). <paramref name="acrylic"/> chooses the heavier frosted acrylic
+    /// vs. the cheaper Aero blur-behind (acrylic re-composites the whole surface each time it
+    /// appears — much costlier). Best-effort and undocumented, so any failure is swallowed — the
+    /// window then just shows its own painted dim, no blur.
     /// </summary>
-    public static void EnableAcrylicBlur(nint hWnd, uint tintAbgr)
+    public static void EnableBlur(nint hWnd, uint tintAbgr, bool acrylic = true)
     {
         var accent = new ACCENT_POLICY
         {
-            AccentState = ACCENT_ENABLE_ACRYLICBLURBEHIND,
+            AccentState = acrylic ? ACCENT_ENABLE_ACRYLICBLURBEHIND : ACCENT_ENABLE_BLURBEHIND,
             AccentFlags = 0,
             GradientColor = tintAbgr,
             AnimationId = 0,

@@ -75,7 +75,10 @@ public sealed class DimWindow : Window
         Native.SetWindowLongPtr(hwnd, Native.GWL_EXSTYLE, (nint)ex);
 
         // The GPU blur behind the dim — the spotlight effect (VISION.md performance pillar).
-        Native.EnableAcrylicBlur(hwnd, ScrimTint);
+        // Aero blur-behind, NOT acrylic: acrylic re-composites the whole virtual screen on every
+        // reveal, a measured ~100–185ms GPU stall that made the overlay feel laggy; blur-behind is
+        // the same idea at ~a third of the cost (see the timing work behind this choice).
+        Native.EnableBlur(hwnd, ScrimTint, acrylic: false);
     }
 
     /// <summary>

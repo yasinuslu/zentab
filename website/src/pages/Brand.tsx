@@ -344,7 +344,7 @@ export default class Brand extends Component<Record<string, never>, BrandState> 
             <div style={{ ...card, padding: "36px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "26px" }}>
                 <span style={{ fontFamily: mono, fontSize: "20px", fontWeight: 600, letterSpacing: "-0.01em" }}>JetBrains Mono</span>
-                <span style={{ fontFamily: mono, fontSize: "11px", color: "var(--faint)" }}>Keys · Config · Labels</span>
+                <span style={{ fontFamily: mono, fontSize: "11px", color: "var(--faint)" }}>Keys · Modes · Labels</span>
               </div>
               <div style={{ fontFamily: mono, fontSize: "72px", fontWeight: 500, lineHeight: 1 }}>Aa</div>
               <div style={{ fontFamily: mono, fontSize: "12px", color: "var(--faint)", margin: "18px 0 24px", letterSpacing: "0.04em" }}>abcdefghijklm · 0123456789 · {"{}[]"}</div>
@@ -356,13 +356,13 @@ export default class Brand extends Component<Record<string, never>, BrandState> 
                   <span style={{ fontSize: "14px", color: "var(--dim)", marginLeft: "8px" }}>hold to reveal</span>
                 </div>
                 <pre style={{ fontFamily: mono, fontSize: "13px", color: "var(--dim)", lineHeight: 1.7, margin: 0 }}>
-                  <span style={{ color: "var(--faint)" }}># ~/.zentab.toml</span>
-                  {"\neveryday  = "}
-                  <span style={{ color: "var(--accent)" }}>"cmd+tab"</span>
-                  {"\napp_only  = "}
-                  <span style={{ color: "var(--accent)" }}>"cmd+`"</span>
-                  {"\nglobal    = "}
-                  <span style={{ color: "var(--accent)" }}>"opt+tab"</span>
+                  <span style={{ color: "var(--faint)" }}># three modes, one feel</span>
+                  {"\neveryday   "}
+                  <span style={{ color: "var(--accent)" }}>⌘ Tab</span>
+                  {"\napp only   "}
+                  <span style={{ color: "var(--accent)" }}>⌘ `</span>
+                  {"\nglobal     "}
+                  <span style={{ color: "var(--accent)" }}>⌥ Tab</span>
                 </pre>
               </div>
             </div>

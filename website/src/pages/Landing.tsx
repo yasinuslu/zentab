@@ -249,7 +249,7 @@ export default class Landing extends Component<Record<string, never>, LandingSta
             <div style={{ display: "flex", gap: "26px", marginLeft: "14px", fontSize: "14px", color: "var(--dim)" }}>
               <a href="#feel" className="zt-link">The feel</a>
               <a href="#modes" className="zt-link">Three modes</a>
-              <a href="#config" className="zt-link">Config</a>
+              <a href="#calm" className="zt-link">No settings</a>
               <Link to="/overlay" className="zt-link">Live overlay</Link>
               <a href="#free" className="zt-link">Pricing</a>
             </div>
@@ -493,8 +493,8 @@ export default class Landing extends Component<Record<string, never>, LandingSta
           </div>
         </section>
 
-        {/* CONFIG */}
-        <section id="config" style={{ position: "relative", maxWidth: "1200px", margin: "0 auto", padding: "90px 32px", borderTop: "1px solid var(--bd)" }}>
+        {/* NO SETTINGS */}
+        <section id="calm" style={{ position: "relative", maxWidth: "1200px", margin: "0 auto", padding: "90px 32px", borderTop: "1px solid var(--bd)" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "54px", alignItems: "center" }}>
             <div>
               <div style={{ fontFamily: mono, fontSize: "12px", letterSpacing: "0.28em", color: "var(--accent)", textTransform: "uppercase", marginBottom: "22px" }}>Calm by design</div>
@@ -503,31 +503,24 @@ export default class Landing extends Component<Record<string, never>, LandingSta
                 <br />
                 On purpose.
               </h2>
-              <p style={{ fontSize: "17px", color: "var(--dim)", lineHeight: 1.55, marginBottom: "18px" }}>Every setting is a small decision, and decisions pull you out of your flow — so ZenTab has none. We make the calls and keep you on one clear path. The calm comes from having nothing to fiddle with.</p>
-              <p style={{ fontSize: "15px", color: "var(--faint)", lineHeight: 1.55 }}>The one file that does exist is just for the keys that summon each mode. Open it once, then forget it's there.</p>
+              <p style={{ fontSize: "17px", color: "var(--dim)", lineHeight: 1.55, marginBottom: "18px" }}>Every setting is a small decision, and decisions pull you out of your flow, so ZenTab has none. We make the calls and keep you on one clear path. The calm comes from having nothing to fiddle with.</p>
+              <p style={{ fontSize: "15px", color: "var(--faint)", lineHeight: 1.55 }}>Install it and it works the way it should from the first tap. No setup, no preferences to wade through, nothing to maintain.</p>
             </div>
             <div style={{ background: "#0e0f14", border: "1px solid var(--bd)", borderRadius: "18px", overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,0.45)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "13px 16px", borderBottom: "1px solid var(--bd)", background: "rgba(255,255,255,0.02)" }}>
                 <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ff5f57" }} />
                 <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#febc2e" }} />
                 <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#28c840" }} />
-                <span style={{ fontFamily: mono, fontSize: "11.5px", color: "var(--faint)", marginLeft: "8px" }}>~/.zentab.toml</span>
+                <span style={{ fontFamily: mono, fontSize: "11.5px", color: "var(--faint)", marginLeft: "8px" }}>ZenTab · Settings</span>
               </div>
-              <pre style={{ fontFamily: mono, fontSize: "13.5px", lineHeight: 1.85, padding: "22px 24px", margin: 0, color: "var(--dim)", overflowX: "auto" }}>
-                <span style={{ color: "var(--faint)" }}># great defaults out of the box —</span>
-                {"\n"}
-                <span style={{ color: "var(--faint)" }}># tune the keys to your hands.</span>
-                {"\n\n[triggers]\neveryday   = "}
-                <span style={{ color: "#5d6dff" }}>"cmd+tab"</span>
-                {"\ncurrent_app = "}
-                <span style={{ color: "#5d6dff" }}>"cmd+grave"</span>
-                {"\nglobal     = "}
-                <span style={{ color: "#5d6dff" }}>"opt+tab"</span>
-                {"\n\n[overlay]\ntheme = "}
-                <span style={{ color: "#5d6dff" }}>"dark"</span>
-                {"   "}
-                <span style={{ color: "var(--faint)" }}># dark | light</span>
-              </pre>
+              <div style={{ padding: "72px 32px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "18px" }}>
+                <div style={{ position: "relative", width: "56px", height: "56px", flex: "none" }}>
+                  <div style={{ position: "absolute", inset: 0, borderRadius: "16px", background: "radial-gradient(circle,rgba(93,109,255,0.28),transparent 70%)", filter: "blur(6px)" }} />
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(93,109,255,0.4)", borderRadius: "16px", background: "rgba(93,109,255,0.08)", color: "var(--accent)", fontSize: "26px", fontWeight: 700 }}>✓</div>
+                </div>
+                <div style={{ fontSize: "18px", fontWeight: 600, letterSpacing: "-0.01em" }}>Nothing to configure.</div>
+                <div style={{ fontSize: "14px", color: "var(--faint)", lineHeight: 1.55, maxWidth: "300px" }}>ZenTab already made the calls. There is no settings screen to get lost in, so you never have to think about it again.</div>
+              </div>
             </div>
           </div>
         </section>
@@ -595,7 +588,7 @@ export default class Landing extends Component<Record<string, never>, LandingSta
             <div style={{ display: "flex", gap: "24px", fontSize: "13.5px", color: "var(--dim)" }}>
               <a href="#feel" className="zt-link">The feel</a>
               <a href="#modes" className="zt-link">Modes</a>
-              <a href="#config" className="zt-link">Config</a>
+              <a href="#calm" className="zt-link">No settings</a>
               <Link to="/overlay" className="zt-link">Overlay</Link>
               <Link to="/brand" className="zt-link">Brand</Link>
             </div>

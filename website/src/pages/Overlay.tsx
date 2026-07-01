@@ -243,9 +243,9 @@ export default class Overlay extends Component<Record<string, never>, OverlaySta
         }}
         style={{
           position: "relative",
-          flex: "1 1 150px",
-          minWidth: "150px",
-          maxWidth: "200px",
+          flex: "1 1 180px",
+          minWidth: "180px",
+          maxWidth: "220px",
           cursor: "pointer",
           borderRadius: "15px",
           padding: "5px",
@@ -261,12 +261,12 @@ export default class Overlay extends Component<Record<string, never>, OverlaySta
             top: "11px",
             left: "11px",
             zIndex: 2,
-            width: "18px",
-            height: "18px",
-            borderRadius: "5px",
+            width: "20px",
+            height: "20px",
+            borderRadius: "6px",
             background: "rgba(8,9,12,0.7)",
             color: on ? "#fff" : "rgba(255,255,255,0.6)",
-            fontSize: "10px",
+            fontSize: "11px",
             fontWeight: 700,
             fontFamily: mono,
             display: "flex",
@@ -316,11 +316,11 @@ export default class Overlay extends Component<Record<string, never>, OverlaySta
           <Thumb type={win.type} />
         </div>
         {win.badge && (
-          <div style={{ position: "absolute", bottom: "44px", left: "11px", zIndex: 2, fontFamily: mono, fontSize: "9px", letterSpacing: "0.04em", color: "#cfd2dc", background: "rgba(8,9,12,0.7)", borderRadius: "5px", padding: "2px 6px" }}>{win.badge}</div>
+          <div style={{ position: "absolute", bottom: "54px", left: "11px", zIndex: 2, fontFamily: mono, fontSize: "9px", letterSpacing: "0.04em", color: "#cfd2dc", background: "rgba(8,9,12,0.7)", borderRadius: "5px", padding: "2px 6px" }}>{win.badge}</div>
         )}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "9px 5px 4px" }}>
-          <div style={{ width: "18px", height: "18px", borderRadius: "5px", flex: "none", background: win.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", color: "#fff", fontWeight: 700, fontFamily: mono }}>{win.letter}</div>
-          <span style={{ fontSize: "12.5px", fontWeight: on ? 600 : 500, color: on ? "#ECEDF1" : "#9b9ea9", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", transition: "color .26s ease" }}>{win.title}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "9px", padding: "10px 6px 5px" }}>
+          <div style={{ width: "28px", height: "28px", borderRadius: "7px", flex: "none", background: win.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", color: "#fff", fontWeight: 700, fontFamily: mono }}>{win.letter}</div>
+          <span style={{ fontSize: "13px", fontWeight: on ? 600 : 500, color: on ? "#ECEDF1" : "#9b9ea9", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", transition: "color .26s ease" }}>{win.title}</span>
         </div>
       </div>
     );
@@ -514,9 +514,6 @@ export default class Overlay extends Component<Record<string, never>, OverlaySta
                   </div>
                 </div>
                 <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "7px 0" }}>
-                  <div className="zt-menu-item" style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 15px", cursor: "pointer", color: "var(--dim)" }}>
-                    <span style={{ fontFamily: mono, fontSize: "11px" }}>↳</span> Edit ~/.zentab.toml
-                  </div>
                   <div style={{ padding: "8px 15px", color: "var(--faint)", fontSize: "11.5px" }}>Free forever · no account</div>
                   <div className="zt-menu-item" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 15px", cursor: "pointer", color: "var(--dim)" }}>
                     <span>Quit ZenTab</span>
@@ -529,7 +526,7 @@ export default class Overlay extends Component<Record<string, never>, OverlaySta
             {/* OVERLAY */}
             {s.open && (
               <div onClick={() => this.cancel()} style={{ position: "absolute", inset: 0, background: "rgba(6,7,10,0.55)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", animation: "ovBack .12s ease" }}>
-                <div onClick={(e) => e.stopPropagation()} style={{ width: "min(86%,940px)", background: "rgba(24,26,33,0.7)", backdropFilter: "blur(30px)", WebkitBackdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "24px", boxShadow: "0 40px 120px rgba(0,0,0,0.6)", padding: "22px", animation: "ovIn .14s cubic-bezier(.22,.61,.36,1)" }}>
+                <div onClick={(e) => e.stopPropagation()} style={{ width: "min(92%,1060px)", background: "rgba(24,26,33,0.7)", backdropFilter: "blur(30px)", WebkitBackdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "24px", boxShadow: "0 40px 120px rgba(0,0,0,0.6)", padding: "22px", animation: "ovIn .14s cubic-bezier(.22,.61,.36,1)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "2px 6px 18px" }}>
                     <span style={{ fontFamily: mono, fontSize: "12px", letterSpacing: "0.04em", color: "var(--accent)", border: "1px solid rgba(93,109,255,0.35)", borderRadius: "7px", padding: "5px 9px" }}>{meta.key}</span>
                     <span style={{ fontSize: "15px", fontWeight: 600, letterSpacing: "-0.01em" }}>{meta.label}</span>
@@ -608,7 +605,7 @@ export default class Overlay extends Component<Record<string, never>, OverlaySta
                 {[
                   { lead: "Stable order.", rest: " Tiles never reshuffle by recency — Slack is always 4th." },
                   { lead: "Two actions only.", rest: " W closes, Q quits. Window management is the OS's job." },
-                  { lead: "One TOML file.", rest: " Only the trigger keys are configurable — never the behavior." },
+                  { lead: "No settings.", rest: " The behavior is settled, on purpose. Nothing to tune." },
                 ].map((p) => (
                   <div key={p.lead} style={{ display: "flex", gap: "11px", alignItems: "flex-start" }}>
                     <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent)", marginTop: "7px", flex: "none" }} />

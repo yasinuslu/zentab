@@ -192,9 +192,6 @@ internal static class Native
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
 
-    [StructLayout(LayoutKind.Sequential)]
-    public struct SIZE { public int cx; public int cy; }
-
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
     public struct MONITORINFO
     {
@@ -219,42 +216,11 @@ internal static class Native
         return mi.rcWork;
     }
 
-    // ---- DWM live thumbnails --------------------------------------------------
-    [DllImport("dwmapi.dll")]
-    public static extern int DwmRegisterThumbnail(nint dest, nint src, out nint thumbId);
-
-    [DllImport("dwmapi.dll")]
-    public static extern int DwmUnregisterThumbnail(nint thumbId);
-
-    [DllImport("dwmapi.dll")]
-    public static extern int DwmUpdateThumbnailProperties(nint thumbId, ref DWM_THUMBNAIL_PROPERTIES props);
-
-    [DllImport("dwmapi.dll")]
-    public static extern int DwmQueryThumbnailSourceSize(nint thumbId, out SIZE size);
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct DWM_THUMBNAIL_PROPERTIES
-    {
-        public int dwFlags;
-        public RECT rcDestination;
-        public RECT rcSource;
-        public byte opacity;
-        public bool fVisible;
-        public bool fSourceClientAreaOnly;
-    }
-
-    public const int DWM_TNP_RECTDESTINATION = 0x1;
-    public const int DWM_TNP_RECTSOURCE = 0x2;
-    public const int DWM_TNP_OPACITY = 0x4;
-    public const int DWM_TNP_VISIBLE = 0x8;
-    public const int DWM_TNP_SOURCECLIENTAREAONLY = 0x10;
-
     // ---- Static window capture (cached tile previews) -------------------------
     // PrintWindow with PW_RENDERFULLCONTENT snapshots a window into a DC even when it's
     // occluded or on another desktop — the basis for the idle-warmed preview cache, so a
-    // tile shows an image the instant the overlay paints instead of waiting for DWM to
-    // composite a live thumbnail. (WindowService owns the bitmap plumbing; this is the raw
-    // interop.)
+    // tile shows an image the instant the overlay paints. (WindowService owns the bitmap
+    // plumbing; this is the raw interop.)
     [DllImport("user32.dll")]
     public static extern bool PrintWindow(nint hWnd, nint hdcBlt, uint nFlags);
 

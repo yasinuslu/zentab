@@ -51,7 +51,7 @@
                                         ClipToBounds="True">
                                     <Image Source="{Binding Preview}"
                                            Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="LinearQuality"
+                                           RenderOptions.BitmapScalingMode="HighQuality"
                                            SnapsToDevicePixels="True"/>
                                 </Border>
 

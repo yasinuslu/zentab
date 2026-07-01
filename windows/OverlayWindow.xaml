@@ -12,14 +12,15 @@
         WindowStartupLocation="Manual">
 
     <!-- A floating, content-sized "frosted" card (NOT full-screen). The recede/dim+blur comes
-         from the separate DimWindow underneath. The window stays opaque so DWM live thumbnails
-         render (they can't on a layered/transparent window); corners are rounded at the DWM
-         level (see OverlayWindow.OnSourceInitialized). A faithful transcription of the website
-         overlay (website/src/pages/Overlay.tsx), mirroring darwin's OverlayTheme.swift.
+         from the separate DimWindow underneath. The window stays opaque (the two-window
+         architecture: the dim layer carries the blur/recede, this panel carries the content);
+         corners are rounded at the DWM level (see OverlayWindow.OnSourceInitialized). A faithful
+         transcription of the website overlay (website/src/pages/Overlay.tsx), mirroring darwin's
+         OverlayTheme.swift.
 
-         NB (platform): DWM live thumbnails composite ABOVE the window's own WPF content, so the
-         index/action chips can't sit over the thumbnail like they do on macOS — they live in
-         the tile footer (always visible) instead. -->
+         Tile previews are cached static window snapshots (WindowService warms them on idle) so a
+         card paints its image the instant the panel shows. The index/action chips live in the
+         tile footer (always visible). -->
 
     <Window.Resources>
         <Style x:Key="CardItem" TargetType="ListBoxItem">
@@ -38,14 +39,22 @@
                                 BorderBrush="Transparent"
                                 BorderThickness="2">
                             <StackPanel Width="196">
-                                <!-- DWM draws the live thumbnail over this rectangle; the
-                                     placeholder is a near-black so letterbox bars recede. -->
+                                <!-- The cached static snapshot (Preview) paints instantly with the
+                                     card — idle-warmed by WindowService, so previews never "fill in
+                                     late". The placeholder is a near-black so letterbox bars (and
+                                     any window that couldn't be captured) recede. -->
                                 <Border x:Name="Thumb"
                                         Width="196" Height="120"
                                         CornerRadius="10"
                                         Background="{StaticResource ThumbPlaceholderBrush}"
                                         BorderBrush="{StaticResource ThumbBorderBrush}"
-                                        BorderThickness="1"/>
+                                        BorderThickness="1"
+                                        ClipToBounds="True">
+                                    <Image Source="{Binding Preview}"
+                                           Stretch="Uniform"
+                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                           SnapsToDevicePixels="True"/>
+                                </Border>
 
                                 <!-- Footer: index chip · app icon · title · (W / Q when selected). -->
                                 <Grid Margin="2,9,2,2">
@@ -151,9 +160,8 @@
         </Style>
     </Window.Resources>
 
-    <!-- The frosted card. Its content (header / tiles / footer) fades in/out (~100 ms); the
-         opaque window background can't fade (DWM thumbnails need it), so the dim layer carries
-         the rest of the recede. -->
+    <!-- The frosted card. Its content (header / tiles / footer) fades in/out (~60 ms); the
+         window background stays opaque (the dim layer behind carries the rest of the recede). -->
     <Border x:Name="Scene"
             CornerRadius="12"
             BorderBrush="{StaticResource CardBorderBrush}"

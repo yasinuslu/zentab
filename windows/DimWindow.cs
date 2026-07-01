@@ -23,8 +23,8 @@ namespace ZenTab;
 /// </summary>
 public sealed class DimWindow : Window
 {
-    private static readonly Duration FadeIn = new(TimeSpan.FromMilliseconds(120));
-    private static readonly Duration FadeOut = new(TimeSpan.FromMilliseconds(90));
+    private static readonly Duration FadeIn = new(TimeSpan.FromMilliseconds(60));
+    private static readonly Duration FadeOut = new(TimeSpan.FromMilliseconds(45));
 
     // Acrylic tint = the website scrim rgba(6,7,10,0.55), as 0xAABBGGRR.
     private const uint ScrimTint = 0x8C0A0706;
@@ -75,7 +75,25 @@ public sealed class DimWindow : Window
         Native.SetWindowLongPtr(hwnd, Native.GWL_EXSTYLE, (nint)ex);
 
         // The GPU blur behind the dim — the spotlight effect (VISION.md performance pillar).
-        Native.EnableAcrylicBlur(hwnd, ScrimTint);
+        // Aero blur-behind, NOT acrylic: acrylic re-composites the whole virtual screen on every
+        // reveal, a measured ~100–185ms GPU stall that made the overlay feel laggy; blur-behind is
+        // the same idea at ~a third of the cost (see the timing work behind this choice).
+        Native.EnableBlur(hwnd, ScrimTint, acrylic: false);
+    }
+
+    /// <summary>
+    /// Realize the HWND and enable acrylic (both happen in <see cref="OnSourceInitialized"/>)
+    /// offscreen at startup, so the first real summon skips window-creation cost and lands
+    /// within the show budget. Opacity is 0 throughout, so nothing ever flashes on screen.
+    /// </summary>
+    public void Prewarm()
+    {
+        if (_everShown) return;
+        Left = Top = -32000; // fully offscreen; belt-and-braces with Opacity 0
+        Width = Height = 1;
+        Show(); // Opacity is 0 (set in the ctor), so this is invisible
+        _everShown = true;
+        Visibility = Visibility.Hidden;
     }
 
     public void ShowDim()

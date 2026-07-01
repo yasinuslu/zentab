@@ -7,29 +7,28 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
-using Point = System.Windows.Point;
 
 namespace ZenTab;
 
 /// <summary>
 /// The switcher panel: a borderless, top-most, non-activating, content-sized window that
-/// floats on the monitor under the cursor, over a translucent <see cref="DimWindow"/>. It
-/// shows the cards with DWM live thumbnails. It never takes focus, so the real foreground
-/// app stays put until the user commits (release-to-switch, hover-to-select, click-to-switch).
+/// floats on the monitor under the cursor, over a translucent <see cref="DimWindow"/>. Each
+/// card shows a cached static window snapshot (warmed on idle by <see cref="WindowService"/>)
+/// so previews paint instantly. It never takes focus, so the real foreground app stays put
+/// until the user commits (release-to-switch, hover-to-select, click-to-switch).
 /// </summary>
 public partial class OverlayWindow : Window
 {
-    private static readonly Duration FadeIn = new(TimeSpan.FromMilliseconds(110));
-    private static readonly Duration FadeOut = new(TimeSpan.FromMilliseconds(90));
-
-    private sealed record Thumb(nint Id, FrameworkElement Element, Native.SIZE Source);
+    private static readonly Duration FadeIn = new(TimeSpan.FromMilliseconds(60));
+    private static readonly Duration FadeOut = new(TimeSpan.FromMilliseconds(45));
 
     private readonly DimWindow _dim = new();
     private readonly WindowInteropHelper _interop;
-    private readonly List<Thumb> _thumbs = new();
     private List<SwitchEntry> _entries = new();
     private bool _closing;
     private bool _everShown;
+    private bool _prepared;  // content is built + rendered off-screen, waiting to reveal
+    private bool _revealed;  // currently on-screen
 
     /// <summary>Mouse-click commit on a card.</summary>
     public event Action<SwitchEntry>? Committed;
@@ -38,7 +37,6 @@ public partial class OverlayWindow : Window
     {
         InitializeComponent();
         _interop = new WindowInteropHelper(this);
-        Cards.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(OnScroll));
 
         // Cap the panel so a crowded list wraps + scrolls instead of overflowing the screen.
         Cards.MaxWidth = SystemParameters.PrimaryScreenWidth * 0.85;
@@ -62,9 +60,17 @@ public partial class OverlayWindow : Window
 
     public SwitchEntry? Selected => Cards.SelectedItem as SwitchEntry;
 
-    public void Show(IReadOnlyList<SwitchEntry> entries, int selectedIndex, SwitchMode mode, string keyGlyphs)
+    /// <summary>
+    /// Build the panel's content and render it fully off-screen — while the trigger is still being
+    /// held, before the reveal. This is the expensive half (regenerating the card containers, the
+    /// layout pass, uploading the preview image textures to the GPU); doing it here, during the
+    /// hold's dead time, means <see cref="Reveal"/> is just a move-on-screen with no first-frame
+    /// hitch. (Web analogy: keep the component mounted and rendered, then swap it into view.)
+    /// </summary>
+    public void Prepare(IReadOnlyList<SwitchEntry> entries, int selectedIndex, SwitchMode mode, string keyGlyphs)
     {
-        ClearThumbs();
+        if (!_everShown) Prewarm();
+
         _entries = new List<SwitchEntry>(entries);
         Cards.ItemsSource = _entries;
         Cards.SelectedIndex = _entries.Count == 0 ? -1 : Math.Clamp(selectedIndex, 0, _entries.Count - 1);
@@ -75,45 +81,88 @@ public partial class OverlayWindow : Window
         ModeLabel.Text = ModeLabelText(mode);
         CountText.Text = CountLabelText(mode, _entries.Count);
 
+        // Render off-screen at full opacity so the visual tree + preview textures are realized on
+        // the GPU now, not at reveal. Parked far off any monitor, so nothing shows.
+        Left = Top = -32000;
+        Visibility = Visibility.Visible;
+        Scene.BeginAnimation(OpacityProperty, null);
+        Scene.Opacity = 1;
+        UpdateLayout(); // force measure/arrange (finalizes SizeToContent) during the hold
+        _prepared = true;
+        _revealed = false;
+    }
+
+    /// <summary>
+    /// Swap the pre-rendered panel into view: fade the dim in, position on the cursor's monitor,
+    /// and fade the (already-rendered) content up. No content build, layout, or texture upload
+    /// happens here — that was all done in <see cref="Prepare"/>.
+    /// </summary>
+    public void Reveal()
+    {
+        if (!_prepared) return;
+        _closing = false;
+        _revealed = true;
+
         _dim.ShowDim();
 
-        _closing = false;
         Scene.BeginAnimation(OpacityProperty, null);
         Scene.Opacity = 0;
-
-        // First display must go through Show() so the HWND / PresentationSource exists
-        // before we measure & position. After that we just toggle visibility.
-        if (!_everShown)
-        {
-            Owner = _dim; // keep the panel above the dim
-            base.Show();
-            _everShown = true;
-        }
-        else
-        {
-            Visibility = Visibility.Visible;
-        }
         Topmost = true;
-
-        UpdateLayout(); // finalize SizeToContent so ActualWidth/Height are correct
-        CenterOnCursorMonitor();
-
+        CenterOnCursorMonitor(); // move on-screen; size was already finalized in Prepare
         Scene.BeginAnimation(OpacityProperty, new DoubleAnimation(1, FadeIn));
         ScrollSelectionIntoView();
-        Dispatcher.BeginInvoke(PlaceThumbnails, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    /// <summary>Drop a prepared-but-never-revealed panel (a quick tap that switched invisibly)
+    /// back to the idle hidden state, so a topmost window isn't left parked off-screen.</summary>
+    public void Discard()
+    {
+        if (_revealed || !_prepared) return;
+        _prepared = false;
+        Visibility = Visibility.Hidden;
+        Left = Top = -32000;
+    }
+
+    /// <summary>
+    /// Warm both windows offscreen at startup — realize the HWNDs, enable acrylic, and run a
+    /// full layout pass so the visual tree and card template are JIT-compiled ahead of time.
+    /// Without this the *first* summon pays all of that on the keypress and overshoots the show
+    /// budget; after it, every summon takes the fast visibility-toggle path. Runs at Background
+    /// priority (see <see cref="SwitcherController"/>) so it never delays app launch.
+    /// </summary>
+    public void Prewarm()
+    {
+        if (_everShown) return;
+
+        _dim.Prewarm();  // the owner must be realized before the panel can adopt it
+        Owner = _dim;
+
+        _entries = new List<SwitchEntry>();
+        Cards.ItemsSource = _entries;
+
+        Left = Top = -32000; // fully offscreen; never visible
+        Opacity = 0;
+        Scene.Opacity = 0;
+        base.Show();
+        UpdateLayout(); // force the visual tree + template to realize now, not on first summon
+        Visibility = Visibility.Hidden;
+        Opacity = 1;    // restore for the real (visibility-toggled) shows
+        _everShown = true;
     }
 
     public void Dismiss()
     {
-        if (_closing || Visibility != Visibility.Visible) return;
+        if (_closing || !_revealed) return;
         _closing = true;
-        ClearThumbs(); // live thumbnails would otherwise linger over the fade
+        _revealed = false;
+        _prepared = false;
         _dim.HideDim();
 
         var fade = new DoubleAnimation(0, FadeOut);
         fade.Completed += (_, _) =>
         {
-            if (_closing) Visibility = Visibility.Hidden; // Hidden keeps the HWND for next time
+            // Hidden keeps the HWND warm for next time; park off-screen so it never flashes.
+            if (_closing) { Visibility = Visibility.Hidden; Left = Top = -32000; }
         };
         Scene.BeginAnimation(OpacityProperty, fade);
     }
@@ -160,7 +209,6 @@ public partial class OverlayWindow : Window
         int i = Cards.SelectedIndex;
         if (i < 0 || i >= _entries.Count) return false;
 
-        ClearThumbs();
         _entries.RemoveAt(i);
         Cards.ItemsSource = null;
         Cards.ItemsSource = _entries;
@@ -170,7 +218,6 @@ public partial class OverlayWindow : Window
         UpdateLayout();
         CenterOnCursorMonitor();
         ScrollSelectionIntoView();
-        Dispatcher.BeginInvoke(PlaceThumbnails, System.Windows.Threading.DispatcherPriority.Loaded);
         return true;
     }
 
@@ -191,8 +238,6 @@ public partial class OverlayWindow : Window
         if (Selected is { } entry) Committed?.Invoke(entry);
     }
 
-    private void OnScroll(object sender, ScrollChangedEventArgs e) => UpdateThumbnailRects();
-
     // ---- Geometry ----
 
     private void CenterOnCursorMonitor()
@@ -205,94 +250,5 @@ public partial class OverlayWindow : Window
         double cy = (work.Top + work.Bottom) / 2.0;
         Left = cx / dpi.DpiScaleX - ActualWidth / 2;
         Top = cy / dpi.DpiScaleY - ActualHeight / 2;
-    }
-
-    // ---- DWM live thumbnails ----
-
-    private void PlaceThumbnails()
-    {
-        ClearThumbs();
-        var hwnd = _interop.Handle;
-        if (hwnd == 0 || Visibility != Visibility.Visible) return;
-
-        Cards.UpdateLayout();
-        var winOrigin = PointToScreen(new Point(0, 0));
-
-        for (int i = 0; i < _entries.Count; i++)
-        {
-            if (Cards.ItemContainerGenerator.ContainerFromIndex(i) is not ListBoxItem container) continue;
-            if (FindThumb(container) is not { ActualWidth: > 0 } element) continue;
-
-            if (Native.DwmRegisterThumbnail(hwnd, _entries[i].Primary, out nint id) != 0) continue;
-            Native.DwmQueryThumbnailSourceSize(id, out var size);
-
-            var thumb = new Thumb(id, element, size);
-            _thumbs.Add(thumb);
-            Apply(thumb, winOrigin);
-        }
-    }
-
-    private void UpdateThumbnailRects()
-    {
-        if (_thumbs.Count == 0 || Visibility != Visibility.Visible) return;
-        var winOrigin = PointToScreen(new Point(0, 0));
-        foreach (var thumb in _thumbs) Apply(thumb, winOrigin);
-    }
-
-    private void Apply(Thumb thumb, Point winOrigin)
-    {
-        Point tl = thumb.Element.PointToScreen(new Point(0, 0));
-        Point br = thumb.Element.PointToScreen(new Point(thumb.Element.ActualWidth, thumb.Element.ActualHeight));
-
-        var place = new Native.RECT
-        {
-            Left = (int)Math.Round(tl.X - winOrigin.X),
-            Top = (int)Math.Round(tl.Y - winOrigin.Y),
-            Right = (int)Math.Round(br.X - winOrigin.X),
-            Bottom = (int)Math.Round(br.Y - winOrigin.Y),
-        };
-
-        var props = new Native.DWM_THUMBNAIL_PROPERTIES
-        {
-            dwFlags = Native.DWM_TNP_RECTDESTINATION | Native.DWM_TNP_VISIBLE
-                      | Native.DWM_TNP_OPACITY | Native.DWM_TNP_SOURCECLIENTAREAONLY,
-            opacity = 255,
-            fVisible = true,
-            fSourceClientAreaOnly = true,
-            rcDestination = FitPreservingAspect(place, thumb.Source),
-        };
-        Native.DwmUpdateThumbnailProperties(thumb.Id, ref props);
-    }
-
-    /// <summary>Letterbox the source into the placeholder rect so thumbnails aren't stretched.</summary>
-    private static Native.RECT FitPreservingAspect(Native.RECT box, Native.SIZE src)
-    {
-        int boxW = box.Right - box.Left, boxH = box.Bottom - box.Top;
-        if (src.cx <= 0 || src.cy <= 0 || boxW <= 0 || boxH <= 0) return box;
-
-        double scale = Math.Min((double)boxW / src.cx, (double)boxH / src.cy);
-        int w = (int)Math.Round(src.cx * scale);
-        int h = (int)Math.Round(src.cy * scale);
-        int x = box.Left + (boxW - w) / 2;
-        int y = box.Top + (boxH - h) / 2;
-        return new Native.RECT { Left = x, Top = y, Right = x + w, Bottom = y + h };
-    }
-
-    private void ClearThumbs()
-    {
-        foreach (var thumb in _thumbs) Native.DwmUnregisterThumbnail(thumb.Id);
-        _thumbs.Clear();
-    }
-
-    private static FrameworkElement? FindThumb(DependencyObject root)
-    {
-        int count = VisualTreeHelper.GetChildrenCount(root);
-        for (int i = 0; i < count; i++)
-        {
-            var child = VisualTreeHelper.GetChild(root, i);
-            if (child is FrameworkElement { Name: "Thumb" } found) return found;
-            if (FindThumb(child) is { } nested) return nested;
-        }
-        return null;
     }
 }

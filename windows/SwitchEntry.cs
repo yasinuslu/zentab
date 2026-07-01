@@ -31,4 +31,10 @@ public sealed class SwitchEntry
     /// <summary>The app's icon (from its executable), shown beside the title so apps are
     /// recognizable when the live thumbnail isn't. Null if it couldn't be resolved.</summary>
     public ImageSource? Icon { get; init; }
+
+    /// <summary>A cached static snapshot of the window (idle-warmed via PrintWindow), shown
+    /// instantly when the overlay paints so previews never "fill in late". The live DWM
+    /// thumbnail composites over it a frame later. Null until the window has been captured
+    /// (some GPU windows never snapshot — the live thumbnail carries those).</summary>
+    public ImageSource? Preview { get; init; }
 }

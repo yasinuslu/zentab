@@ -103,6 +103,33 @@ public partial class OverlayWindow : Window
         Dispatcher.BeginInvoke(PlaceThumbnails, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
+    /// <summary>
+    /// Warm both windows offscreen at startup — realize the HWNDs, enable acrylic, and run a
+    /// full layout pass so the visual tree and card template are JIT-compiled ahead of time.
+    /// Without this the *first* summon pays all of that on the keypress and overshoots the show
+    /// budget; after it, every summon takes the fast visibility-toggle path. Runs at Background
+    /// priority (see <see cref="SwitcherController"/>) so it never delays app launch.
+    /// </summary>
+    public void Prewarm()
+    {
+        if (_everShown) return;
+
+        _dim.Prewarm();  // the owner must be realized before the panel can adopt it
+        Owner = _dim;
+
+        _entries = new List<SwitchEntry>();
+        Cards.ItemsSource = _entries;
+
+        Left = Top = -32000; // fully offscreen; never visible
+        Opacity = 0;
+        Scene.Opacity = 0;
+        base.Show();
+        UpdateLayout(); // force the visual tree + template to realize now, not on first summon
+        Visibility = Visibility.Hidden;
+        Opacity = 1;    // restore for the real (visibility-toggled) shows
+        _everShown = true;
+    }
+
     public void Dismiss()
     {
         if (_closing || Visibility != Visibility.Visible) return;

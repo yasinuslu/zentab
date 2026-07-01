@@ -78,6 +78,21 @@ public sealed class DimWindow : Window
         Native.EnableAcrylicBlur(hwnd, ScrimTint);
     }
 
+    /// <summary>
+    /// Realize the HWND and enable acrylic (both happen in <see cref="OnSourceInitialized"/>)
+    /// offscreen at startup, so the first real summon skips window-creation cost and lands
+    /// within the show budget. Opacity is 0 throughout, so nothing ever flashes on screen.
+    /// </summary>
+    public void Prewarm()
+    {
+        if (_everShown) return;
+        Left = Top = -32000; // fully offscreen; belt-and-braces with Opacity 0
+        Width = Height = 1;
+        Show(); // Opacity is 0 (set in the ctor), so this is invisible
+        _everShown = true;
+        Visibility = Visibility.Hidden;
+    }
+
     public void ShowDim()
     {
         Left = SystemParameters.VirtualScreenLeft;

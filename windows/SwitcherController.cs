@@ -18,6 +18,7 @@ public sealed class SwitcherController : IDisposable
     private readonly WindowService _windows;
     private readonly OverlayWindow _overlay;
     private readonly DispatcherTimer _armTimer;
+    private readonly Dispatcher _dispatcher;
 
     // "Armed" = a summon is pending: entries are built but the overlay is held back until
     // the threshold elapses (or a second gesture arrives), so a quick tap stays invisible.
@@ -32,6 +33,7 @@ public sealed class SwitcherController : IDisposable
     public SwitcherController(ZenConfig config, Dispatcher dispatcher)
     {
         Profile = config.BuildProfile();
+        _dispatcher = dispatcher;
         _windows = new WindowService();
         _overlay = new OverlayWindow();
         _hook = new KeyboardHook(Profile, dispatcher);
@@ -56,6 +58,10 @@ public sealed class SwitcherController : IDisposable
     {
         _windows.Start();
         _hook.Start();
+
+        // Warm the overlay + dim windows offscreen once the app is idle, so the very first
+        // summon takes the fast warm path instead of paying window-creation cost on the keypress.
+        _dispatcher.BeginInvoke(new Action(_overlay.Prewarm), DispatcherPriority.Background);
     }
 
     private void OnNavigate(SwitchMode mode, bool reverse)

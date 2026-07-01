@@ -25,9 +25,10 @@
     <!-- PerMonitorV2 DPI awareness for correct multi-monitor thumbnail placement. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
-    <!-- Safe size trims: ZenTab has no culture-sensitive UI, so drop ICU and the
-         localized framework satellite assemblies. -->
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Drop the localized framework satellite assemblies (ZenTab ships English-only UI).
+         NOTE: do NOT enable InvariantGlobalization — WPF's font cache
+         (MS.Internal.FontCache.MajorLanguages) constructs CultureInfo("en") during text
+         layout, which throws in globalization-invariant mode and crashes the overlay. -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
 
     <!-- WFO0003: WinForms wants DPI set via ApplicationHighDpiMode, but this is a WPF app

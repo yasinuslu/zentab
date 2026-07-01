@@ -1,90 +1,123 @@
+<div align="center">
+
 # ZenTab
 
-The alt-tab I always wanted: opinionated, instant, and the same on every OS I refuse to
-leave. One window switcher, one product vision, two native implementations that live
-together in this repository. Born from years of a great Linux switching experience that
-neither macOS nor Windows ever matched — the [full origin story](darwin/README.md#why-zentab-exists)
-is in the macOS readme.
+### Window switching that feels instant.
 
-| Platform | Folder | Stack | Status |
-| --- | --- | --- | --- |
-| **macOS** | [`darwin/`](darwin/) | Swift / AppKit, private SkyLight + Accessibility SPIs | the original; vertical slice working |
-| **Windows** | [`windows/`](windows/) | C# / WPF on .NET 10, thin Win32/DWM interop | brought in from `zentab-windows` |
+A calm, instant window switcher for **macOS** and **Windows**. Tap to land in the
+window you want, or hold and every window steps gently into view while the rest of
+the world recedes.
 
-Both share the same idea: switch **individual windows** through a hand-rolled,
-non-activating overlay driven by a global hotkey, ship with strong defaults, and keep the
-entire configuration in one file you own. No Pro tier, no settings maze, free forever.
-**One license, one vision, one product — two native apps.**
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-5D6DFF?style=flat-square)](#download)
+[![License](https://img.shields.io/badge/license-GPL--3.0-5D6DFF?style=flat-square)](LICENSE)
+[![Price](https://img.shields.io/badge/price-free%20forever-5D6DFF?style=flat-square)](#download)
+[![Website](https://img.shields.io/badge/site-zentab-5D6DFF?style=flat-square)](https://yasinuslu.github.io/zentab/)
 
-## Where to start
+**[Download](#download)** · **[Try the live overlay](https://yasinuslu.github.io/zentab/overlay)** · **[Website](https://yasinuslu.github.io/zentab/)** · **[Vision](VISION.md)**
 
-- **[`VISION.md`](VISION.md)** — the single, authoritative product direction for both apps
-  (the three-mode model, tap-vs-hold, the principles). Read it first.
-- **[`BRANDING.md`](BRANDING.md)**: the shared visual identity both apps transcribe (the
-  always-dark spotlight, the Electric `#5D6DFF` accent, the card/tile/fade tokens).
-- **macOS** — [`darwin/README.md`](darwin/README.md). Build/run with the `darwin/bin/*`
-  scripts (`bin/run`, `bin/build`, `bin/test`).
-- **Windows** — [`windows/README.md`](windows/README.md). Build/run with the PowerShell
-  scripts (`windows/dev.ps1`, `windows/build.ps1`).
+<br>
+
+<img src="docs/overlay-hero.png" alt="The ZenTab overlay: a dark spotlight card of window tiles, one marked in Electric blue, while the rest of the screen recedes." width="900">
+
+</div>
+
+---
+
+ZenTab is the alt-tab I always wanted: opinionated, instant, and the same on every OS I
+refuse to leave. Years of a great Linux switching experience that neither macOS nor
+Windows ever matched (the [full origin story](darwin/README.md#why-zentab-exists) is in
+the macOS readme) turned into one product with two native builds:
+
+- **macOS** in Swift / AppKit, on private SkyLight + Accessibility APIs.
+- **Windows** in C# / WPF on .NET 10, on a thin Win32/DWM interop layer.
+
+Same vision, same brand, native guts on each OS. It replaces your system switcher, ships
+with strong defaults, and keeps the little it needs in one file you own.
+
+## Why it feels different
+
+- **Very opinionated.** One considered path, chosen for you. The switching behavior is the product, and it is not up for debate.
+- **No settings.** No knobs, nothing to fiddle with. The calm comes from having nothing to tune (only the trigger keys live in a file).
+- **Free forever.** No Pro tier, no license server, no nag. For everyone, always.
+- **Featherlight.** Resident all day, effectively invisible until summoned: near-zero CPU, GPU, and memory at idle.
+- **Minimal and calm.** A soft 80 to 120 ms fade at the monitor's real refresh rate. Quiet motion, quiet chrome, full focus.
+
+The whole point is the **feel**: a switch that stutters can't feel calm, and one that
+feels calm is, by definition, fast. Feel and performance are one goal, and every choice is
+judged against both.
+
+## Three modes
+
+Three modes, hard-coded behavior, on both platforms. Only the trigger keys are configurable.
+
+| Mode | Shows | Scope | macOS | Windows |
+| --- | --- | --- | --- | --- |
+| **Everyday switch** | every window here | current monitor + desktop | `⌘ Tab` | `Alt Tab` |
+| **Current-app windows** | every window of the active app | all desktops + monitors (incl. minimized) | `⌘ \`` | `Alt \`` |
+| **Global escape hatch** | everything, everywhere | all apps, desktops, monitors | `⌥ Tab` | `Ctrl Alt Tab` |
+
+- **Tap** (press and release): instant switch to the most-recent other window. No overlay, no lag.
+- **Hold**: the overlay appears with a **stable** list (Slack is always 4th), so your hand builds muscle memory instead of chasing a reshuffling list.
+- In the overlay: **Tab** / **Shift+Tab** or the mouse to navigate, release to commit, click outside to cancel, **W** to close a window, **Q** to quit its app.
+
+See **[VISION.md](VISION.md)** for the full behavior spec and **[BRANDING.md](BRANDING.md)**
+for the shared visual identity (the always-dark spotlight, the Electric `#5D6DFF` accent).
+
+## Download
+
+| Platform | Get it | Requirements |
+| --- | --- | --- |
+| **macOS** | [Download `.dmg`](https://cdn.nepjua.org/zentab/macos/releases/latest/ZenTab.dmg) | Universal, macOS 13+ |
+| **Windows** | [Download portable `.exe`](https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe) | Windows 10 / 11 |
+
+Prefer to watch it move first? **[Try the playable overlay in your browser](https://yasinuslu.github.io/zentab/overlay)** (no install).
+
+macOS needs Accessibility (mandatory) and Screen Recording (for live thumbnails). Interim
+builds are ad-hoc signed, so Gatekeeper shows a warning until notarization lands.
+
+## Build from source
+
+One repo, two apps. Each has its own README with the full details.
+
+```
+darwin/    macOS app (Swift)    -> see darwin/README.md
+windows/   Windows app (C#/WPF) -> see windows/README.md
+website/   marketing site + live overlay demo (Bun + Vite + React)
+```
+
+- **macOS**: work from `darwin/`, build/run with `bin/run`, `bin/build`, `bin/test`. `project.yml` is the source of truth (regenerate the Xcode project with `bin/generate`).
+- **Windows**: work from `windows/`, build/run with `dotnet run`, `./dev.ps1`, `./build.ps1`.
 
 The shared `VISION.md`, `BRANDING.md`, `CLAUDE.md`, and `LICENSE` live at the root; each app
-keeps only a platform-specific `README` in its folder.
+keeps a platform-specific README in its folder.
 
-## Repository layout
+<details>
+<summary><b>CI &amp; releases</b></summary>
 
-```
-darwin/    macOS app (Swift) — sources, bin/ scripts, docs, project.yml
-windows/   Windows app (C#/WPF) — sources, build.ps1/dev.ps1, installer/
-.github/   CI + release workflows for both platforms (see below)
-VISION.md · BRANDING.md · CLAUDE.md · LICENSE   shared across both apps
-```
+Workflows are path-scoped: a `darwin/**` change runs only the macOS jobs, a `windows/**`
+change only the Windows jobs.
 
-## CI and releases
+- `*-ci.yml`: build + test on PRs and pushes to `main`.
+- `*-main.yml`: on every push to `main`, overwrite the rolling "latest from main" bundles on R2.
+- `*-release.yml`: on a version tag, upload versioned + "latest stable" bundles to R2 and cut a notes-only GitHub Release.
 
-The two platforms are independent in CI. Workflows are path-scoped, so a change under
-`darwin/**` only runs the macOS jobs and a change under `windows/**` only runs the Windows
-jobs:
-
-- `darwin-ci.yml` / `windows-ci.yml` — build + test on PRs and pushes to `main`.
-- `darwin-main.yml` / `windows-main.yml` — on every push to `main`, build the shippable
-  bundles and overwrite the rolling **"latest from main"** copies on R2.
-- `darwin-release.yml` / `windows-release.yml` — on a version tag, build the bundles, upload
-  them to R2 (versioned + a "latest stable" pointer), and create a **notes-only** GitHub
-  Release (the changelog; binaries live on R2, not as GitHub assets).
-
-Release tags are **namespaced per platform** so they don't collide:
+Release tags are namespaced per platform so they don't collide:
 
 ```
 git tag darwin-v0.1.0  && git push origin darwin-v0.1.0     # cuts a macOS release
 git tag windows-v0.2.0 && git push origin windows-v0.2.0    # cuts a Windows release
 ```
 
-### Artifacts on R2 (`cdn.nepjua.org`)
+Bundles ship to the `nepjua-cdn` Cloudflare R2 bucket (`cdn.nepjua.org`) under `zentab/`,
+not to GitHub assets. Versioned files cache hard (immutable); rolling "latest"/"main" files
+are served `no-cache`. Uploads go through `darwin/bin/r2-publish` / `windows/r2-publish.ps1`,
+driven by the `R2_API_URL`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY` secrets.
 
-Bundles are published to the `nepjua-cdn` Cloudflare R2 bucket via S3/SigV4 (uploaded by
-`darwin/bin/r2-publish` and `windows/r2-publish.ps1`, signed with `curl`). The three CI
-secrets `R2_API_URL` (endpoint incl. bucket), `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`
-drive it. Object layout under `zentab/`:
-
-```
-zentab/macos/main/ZenTab-main.dmg                              # rolling, overwritten each push to main
-zentab/macos/main/ZenTab-main.zip
-zentab/macos/releases/v<version>/ZenTab-<version>.dmg          # immutable, per release tag
-zentab/macos/releases/latest/ZenTab.dmg                        # rolling, points at newest stable
-
-zentab/windows/main/ZenTab-main-win-x64-portable.exe          # rolling, overwritten each push to main
-zentab/windows/main/ZenTab-main-win-x64.msi
-zentab/windows/releases/v<version>/ZenTab-<version>-win-x64-portable.exe   # immutable, per release tag
-zentab/windows/releases/latest/ZenTab-win-x64-portable.exe                # rolling, points at newest stable
-```
-
-Each rolling location also carries a small `build.json` / `release.json` (commit, version,
-run) and Windows carries `SHA256SUMS.txt`. Versioned files cache hard (immutable); rolling
-"latest"/"main" files are sent `Cache-Control: no-cache` so the newest is always served.
+</details>
 
 ## License
 
-The whole repository — both apps — is **GPL-3.0** (single root [`LICENSE`](LICENSE)), the
-same license as [alt-tab-macos](https://github.com/lwouis/alt-tab-macos), the project ZenTab
-learns from. That clears porting alt-tab's window-engine techniques. You are free to use,
-study, modify, and redistribute under the same terms.
+The whole repository, both apps, is **GPL-3.0** (single root [`LICENSE`](LICENSE)): the same
+license as [alt-tab-macos](https://github.com/lwouis/alt-tab-macos), the project ZenTab
+learns from, which clears porting its window-engine techniques. Use, study, modify, and
+redistribute under the same terms.

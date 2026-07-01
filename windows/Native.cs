@@ -249,6 +249,29 @@ internal static class Native
     public const int DWM_TNP_VISIBLE = 0x8;
     public const int DWM_TNP_SOURCECLIENTAREAONLY = 0x10;
 
+    // ---- Static window capture (cached tile previews) -------------------------
+    // PrintWindow with PW_RENDERFULLCONTENT snapshots a window into a DC even when it's
+    // occluded or on another desktop — the basis for the idle-warmed preview cache, so a
+    // tile shows an image the instant the overlay paints instead of waiting for DWM to
+    // composite a live thumbnail. (WindowService owns the bitmap plumbing; this is the raw
+    // interop.)
+    [DllImport("user32.dll")]
+    public static extern bool PrintWindow(nint hWnd, nint hdcBlt, uint nFlags);
+
+    public const uint PW_RENDERFULLCONTENT = 0x00000002; // capture DirectComposition/GPU content too
+
+    [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(nint hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    public static extern bool GetClientRect(nint hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    public static extern bool ClientToScreen(nint hWnd, ref POINT lpPoint);
+
+    [DllImport("gdi32.dll")]
+    public static extern bool DeleteObject(nint hObject);
+
     // ---- Win-event hook (foreground tracking) ---------------------------------
     public delegate void WinEventDelegate(nint hWinEventHook, uint eventType, nint hWnd,
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);

@@ -38,14 +38,22 @@
                                 BorderBrush="Transparent"
                                 BorderThickness="2">
                             <StackPanel Width="196">
-                                <!-- DWM draws the live thumbnail over this rectangle; the
-                                     placeholder is a near-black so letterbox bars recede. -->
+                                <!-- The cached static snapshot paints instantly (Preview); the DWM
+                                     live thumbnail composites over this same rectangle a frame
+                                     later, so previews never "fill in late". The placeholder is a
+                                     near-black so letterbox bars (and un-captured windows) recede. -->
                                 <Border x:Name="Thumb"
                                         Width="196" Height="120"
                                         CornerRadius="10"
                                         Background="{StaticResource ThumbPlaceholderBrush}"
                                         BorderBrush="{StaticResource ThumbBorderBrush}"
-                                        BorderThickness="1"/>
+                                        BorderThickness="1"
+                                        ClipToBounds="True">
+                                    <Image Source="{Binding Preview}"
+                                           Stretch="Uniform"
+                                           RenderOptions.BitmapScalingMode="LinearQuality"
+                                           SnapsToDevicePixels="True"/>
+                                </Border>
 
                                 <!-- Footer: index chip · app icon · title · (W / Q when selected). -->
                                 <Grid Margin="2,9,2,2">

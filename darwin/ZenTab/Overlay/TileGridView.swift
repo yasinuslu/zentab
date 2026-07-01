@@ -63,6 +63,20 @@ final class TileGridView: NSView {
   private var trackingArea: NSTrackingArea?
   private var header = Header(key: "", label: "")
 
+  /// Per-layout multiplier applied to every dimension in the card, derived from the active
+  /// display's width (see `OverlayTheme.tileScale`). Set at the top of `applyLayout` and read
+  /// everywhere through `s(_:)`, so the whole overlay grows on a big monitor and is unchanged
+  /// on a laptop.
+  private var tileScale: CGFloat = 1
+
+  /// Scale a base metric by the current display factor.
+  private func s(_ value: CGFloat) -> CGFloat { value * tileScale }
+
+  /// The tile size at the current display factor.
+  private func scaledTileSize() -> CGSize {
+    CGSize(width: s(OverlayTheme.Tile.size.width), height: s(OverlayTheme.Tile.size.height))
+  }
+
   // Chrome: one frosted card, dividers, the header strip, the zone heads, the footer.
   private let card = CALayer()
   private let zoneDivider = CALayer()
@@ -196,7 +210,7 @@ final class TileGridView: NSView {
   /// Flow-grid metrics (no outer padding) for `n` tiles of `size`.
   private func grid(_ n: Int, tile size: CGSize) -> Grid {
     guard n > 0 else { return Grid(columns: 0, rows: 0, width: 0, height: 0) }
-    let spacing = OverlayTheme.Tile.spacing
+    let spacing = s(OverlayTheme.Tile.spacing)
     let columns = max(1, min(OverlayTheme.Tile.maxColumns, n))
     let rows = Int(ceil(Double(n) / Double(columns)))
     let width = CGFloat(columns) * size.width + CGFloat(columns - 1) * spacing
@@ -206,11 +220,12 @@ final class TileGridView: NSView {
 
   /// Position the card and everything inside it for the current window list.
   private func applyLayout() {
+    tileScale = OverlayTheme.tileScale(forSize: bounds.size)
     let count = windows.count
     let twoZone = hereStart > 0 && hereStart < count
-    let pad = OverlayTheme.Card.padding
-    let tileSize = OverlayTheme.Tile.size
-    let zoneHeadBlock = OverlayTheme.Zone.headHeight + OverlayTheme.Zone.headBottomGap
+    let pad = s(OverlayTheme.Card.padding)
+    let tileSize = scaledTileSize()
+    let zoneHeadBlock = s(OverlayTheme.Zone.headHeight) + s(OverlayTheme.Zone.headBottomGap)
 
     // Content metrics.
     let eGrid = twoZone ? grid(hereStart, tile: tileSize) : Grid(columns: 0, rows: 0, width: 0, height: 0)
@@ -222,20 +237,20 @@ final class TileGridView: NSView {
     var contentH: CGFloat
     if twoZone {
       contentW = max(eGrid.width, hGrid.width)
-      let hereInner = hereCount > 0 ? hGrid.height : OverlayTheme.Zone.emptyHintHeight
+      let hereInner = hereCount > 0 ? hGrid.height : s(OverlayTheme.Zone.emptyHintHeight)
       let elsewhereBlock = zoneHeadBlock + eGrid.height
       let hereBlock = zoneHeadBlock + hereInner
-      contentH = elsewhereBlock + OverlayTheme.Zone.gap + OverlayTheme.Zone.dividerTopGap + hereBlock
+      contentH = elsewhereBlock + s(OverlayTheme.Zone.gap) + s(OverlayTheme.Zone.dividerTopGap) + hereBlock
     } else {
       contentW = flatGrid.width
       contentH = flatGrid.height
     }
 
-    let innerW = max(contentW, OverlayTheme.Card.minContentWidth)
+    let innerW = max(contentW, s(OverlayTheme.Card.minContentWidth))
     let cardW = innerW + pad * 2
-    let headerH = OverlayTheme.Header.height
-    let footerH = OverlayTheme.Footer.height
-    let cardH = 2 * pad + footerH + OverlayTheme.Footer.topGap + contentH + OverlayTheme.Header.bottomGap + headerH
+    let headerH = s(OverlayTheme.Header.height)
+    let footerH = s(OverlayTheme.Footer.height)
+    let cardH = 2 * pad + footerH + s(OverlayTheme.Footer.topGap) + contentH + s(OverlayTheme.Header.bottomGap) + headerH
     let cardX = ((bounds.width - cardW) / 2).rounded()
     let cardY = ((bounds.height - cardH) / 2).rounded()
 
@@ -252,12 +267,12 @@ final class TileGridView: NSView {
     // Footer (bottom), with its hairline rule.
     let footerBottom = cardY + pad
     footerDivider.frame = CGRect(
-      x: innerLeft, y: footerBottom + footerH + OverlayTheme.Footer.topGap / 2, width: innerWidth, height: 1)
+      x: innerLeft, y: footerBottom + footerH + s(OverlayTheme.Footer.topGap) / 2, width: innerWidth, height: 1)
     footerDivider.isHidden = false
     layoutFooter(left: innerLeft, right: innerRight, bottom: footerBottom, height: footerH, board: twoZone)
 
     // Content sits between the header and the footer.
-    let contentTop = footerBottom + footerH + OverlayTheme.Footer.topGap + contentH
+    let contentTop = footerBottom + footerH + s(OverlayTheme.Footer.topGap) + contentH
 
     if twoZone {
       layoutTwoZone(
@@ -275,14 +290,14 @@ final class TileGridView: NSView {
   private func layoutHeader(
     innerLeft: CGFloat, innerWidth: CGFloat, top: CGFloat, height: CGFloat, count: Int
   ) {
-    let keyFont = OverlayTheme.mono(OverlayTheme.Header.pillSize, weight: .semibold)
-    let labelFont = OverlayTheme.ui(OverlayTheme.Header.labelSize, weight: .semibold)
-    let countFont = OverlayTheme.mono(OverlayTheme.Header.countSize)
+    let keyFont = OverlayTheme.mono(s(OverlayTheme.Header.pillSize), weight: .semibold)
+    let labelFont = OverlayTheme.ui(s(OverlayTheme.Header.labelSize), weight: .semibold)
+    let countFont = OverlayTheme.mono(s(OverlayTheme.Header.countSize))
     let headerBottom = top - height
 
     // Key pill (accent-outlined chip).
-    let pillH: CGFloat = 22
-    let pillW = measure(header.key, keyFont) + OverlayTheme.Header.pillHPad * 2
+    let pillH: CGFloat = s(22)
+    let pillW = measure(header.key, keyFont) + s(OverlayTheme.Header.pillHPad) * 2
     keyPill.frame = CGRect(
       x: innerLeft, y: headerBottom + (height - pillH) / 2, width: pillW, height: pillH)
     keyPill.isHidden = header.key.isEmpty
@@ -298,7 +313,7 @@ final class TileGridView: NSView {
     headerCount.isHidden = false
 
     // Mode label, between the pill and the count.
-    let labelX = innerLeft + (header.key.isEmpty ? 0 : pillW + OverlayTheme.Header.gap)
+    let labelX = innerLeft + (header.key.isEmpty ? 0 : pillW + s(OverlayTheme.Header.gap))
     let labelW = max(0, innerLeft + innerWidth - labelX - countW - 12)
     setText(headerLabel, header.label, font: labelFont, color: OverlayTheme.Header.labelColor, alignment: .left)
     headerLabel.frame = CGRect(
@@ -307,7 +322,7 @@ final class TileGridView: NSView {
   }
 
   private func layoutFooter(left: CGFloat, right: CGFloat, bottom: CGFloat, height: CGFloat, board: Bool) {
-    let font = OverlayTheme.mono(OverlayTheme.Footer.size)
+    let font = OverlayTheme.mono(s(OverlayTheme.Footer.size))
     let key = OverlayTheme.Footer.keyColor
     let dim = OverlayTheme.Footer.textColor
     let accent = OverlayTheme.Footer.accentColor
@@ -335,24 +350,24 @@ final class TileGridView: NSView {
     contentTop: CGFloat, cardX: CGFloat, cardW: CGFloat, eGrid: Grid, hGrid: Grid, hereCount: Int,
     zoneHeadBlock: CGFloat
   ) {
-    let tileSize = OverlayTheme.Tile.size
-    let headFont = OverlayTheme.mono(OverlayTheme.Zone.headSize, weight: .semibold)
-    let headH = OverlayTheme.Zone.headHeight
+    let tileSize = scaledTileSize()
+    let headFont = OverlayTheme.mono(s(OverlayTheme.Zone.headSize), weight: .semibold)
+    let headH = s(OverlayTheme.Zone.headHeight)
     // Zone heads span the full content width (title flush-left, hint flush-right, like the
     // website's space-between row); the tile grids below center within that same width.
-    let innerLeft = cardX + OverlayTheme.Card.padding
-    let innerWidth = cardW - OverlayTheme.Card.padding * 2
+    let innerLeft = cardX + s(OverlayTheme.Card.padding)
+    let innerWidth = cardW - s(OverlayTheme.Card.padding) * 2
     let eOriginX = innerLeft
     let hOriginX = innerLeft
 
     // ELSEWHERE head + "↓ bring here" hint on one line, over the grid.
     setAttr(
-      elsewhereHead, "ELSEWHERE", font: headFont, color: OverlayTheme.Zone.headColor, kern: OverlayTheme.Zone.headKern,
+      elsewhereHead, "ELSEWHERE", font: headFont, color: OverlayTheme.Zone.headColor, kern: s(OverlayTheme.Zone.headKern),
       alignment: .left)
     elsewhereHead.frame = CGRect(x: eOriginX, y: contentTop - headH, width: innerWidth, height: headH)
     elsewhereHead.isHidden = false
     setAttr(
-      elsewhereHint, "↓ bring here", font: OverlayTheme.mono(OverlayTheme.Zone.headSize + 1),
+      elsewhereHint, "↓ bring here", font: OverlayTheme.mono(s(OverlayTheme.Zone.headSize + 1)),
       color: OverlayTheme.Zone.hintColor, kern: 0, alignment: .right)
     elsewhereHint.frame = CGRect(x: eOriginX, y: contentTop - headH, width: innerWidth, height: headH)
     elsewhereHint.isHidden = false
@@ -364,13 +379,13 @@ final class TileGridView: NSView {
       zone: .elsewhere)
 
     // Divider between the two zones.
-    let dividerY = (eGridTop - eGrid.height - OverlayTheme.Zone.gap).rounded()
+    let dividerY = (eGridTop - eGrid.height - s(OverlayTheme.Zone.gap)).rounded()
     zoneDivider.frame = CGRect(
-      x: cardX + OverlayTheme.Card.padding, y: dividerY, width: cardW - OverlayTheme.Card.padding * 2, height: 1)
+      x: cardX + s(OverlayTheme.Card.padding), y: dividerY, width: cardW - s(OverlayTheme.Card.padding) * 2, height: 1)
     zoneDivider.isHidden = false
 
     // THIS SPACE head + grid (or an empty-state hint).
-    let hereHeadTop = dividerY - OverlayTheme.Zone.dividerTopGap
+    let hereHeadTop = dividerY - s(OverlayTheme.Zone.dividerTopGap)
     setAttr(
       hereHead, "THIS SPACE", font: headFont, color: OverlayTheme.Zone.headColor, kern: OverlayTheme.Zone.headKern,
       alignment: .left)
@@ -385,11 +400,11 @@ final class TileGridView: NSView {
         gridHeight: hGrid.height, columns: hGrid.columns, availableWidth: innerWidth, tile: tileSize,
         zone: .here)
     } else {
-      let hintFont = OverlayTheme.mono(13)
+      let hintFont = OverlayTheme.mono(s(13))
       setText(
         emptyHereHint, "press ↓ to bring a window here", font: hintFont, color: OverlayTheme.Zone.headColor,
         alignment: .left)
-      let y = hereHeadTop - zoneHeadBlock - (OverlayTheme.Zone.emptyHintHeight + lineH(hintFont)) / 2
+      let y = hereHeadTop - zoneHeadBlock - (s(OverlayTheme.Zone.emptyHintHeight) + lineH(hintFont)) / 2
       emptyHereHint.frame = CGRect(x: hOriginX, y: y, width: 360, height: lineH(hintFont))
       emptyHereHint.isHidden = false
     }
@@ -412,7 +427,7 @@ final class TileGridView: NSView {
     tile size: CGSize, zone: Zone
   ) {
     guard columns > 0 else { return }
-    let spacing = OverlayTheme.Tile.spacing
+    let spacing = s(OverlayTheme.Tile.spacing)
     let total = range.count
     for (offset, index) in range.enumerated() {
       let tile = tiles[index]
@@ -531,9 +546,9 @@ extension TileGridView {
     ghost.cornerRadius = OverlayTheme.Tile.radius
     ghost.backgroundColor = OverlayTheme.Tile.selectedFill.cgColor
     ghost.borderColor = OverlayTheme.Tile.selectionRing.cgColor
-    ghost.borderWidth = OverlayTheme.Tile.borderWidth
-    let pad = OverlayTheme.Tile.pad
-    let footer = OverlayTheme.Tile.footerHeight
+    ghost.borderWidth = s(OverlayTheme.Tile.borderWidth)
+    let pad = s(OverlayTheme.Tile.pad)
+    let footer = s(OverlayTheme.Tile.footerHeight)
     let thumb = CALayer()
     thumb.frame = CGRect(
       x: pad, y: footer, width: frame.width - pad * 2, height: frame.height - footer - pad)
@@ -631,51 +646,63 @@ extension TileGridView {
   private func fill(_ tile: Tile, with window: WindowInfo, at index: Int, size: CGSize, zone: Zone, selected: Bool) {
     tile.windowID = window.windowID
     tile.isElsewhere = zone == .elsewhere
-    let pad = OverlayTheme.Tile.pad
-    let footer = OverlayTheme.Tile.footerHeight
-    let icon = OverlayTheme.Tile.iconSize
+    let pad = s(OverlayTheme.Tile.pad)
+    let footer = s(OverlayTheme.Tile.footerHeight)
+    let icon = s(OverlayTheme.Tile.iconSize)
 
     tile.thumbnail.frame = CGRect(
       x: pad, y: footer, width: size.width - pad * 2, height: size.height - footer - pad)
-    tile.icon.frame = CGRect(x: pad + 3, y: (footer - icon) / 2, width: icon, height: icon)
-    let titleX = pad + 3 + icon + 8
-    let titleFont = OverlayTheme.ui(OverlayTheme.Tile.titleSize, weight: selected ? .semibold : .medium)
+    tile.icon.frame = CGRect(x: pad + s(3), y: (footer - icon) / 2, width: icon, height: icon)
+    let titleX = pad + s(3) + icon + s(8)
+    let titleFont = OverlayTheme.ui(s(OverlayTheme.Tile.titleSize), weight: selected ? .semibold : .medium)
     tile.title.frame = CGRect(
       x: titleX, y: (footer - lineH(titleFont)) / 2, width: size.width - titleX - pad, height: lineH(titleFont))
 
     // Index chip, top-left over the thumbnail.
-    let iSize = OverlayTheme.Index.size
-    let iInset = OverlayTheme.Index.inset
+    let iSize = s(OverlayTheme.Index.size)
+    let iInset = s(OverlayTheme.Index.inset)
     tile.indexBadge.frame = CGRect(x: pad + iInset, y: size.height - pad - iInset - iSize, width: iSize, height: iSize)
-    let iFont = OverlayTheme.mono(OverlayTheme.Index.fontSize, weight: .bold)
+    let iFont = OverlayTheme.mono(s(OverlayTheme.Index.fontSize), weight: .bold)
     tile.indexText.string = "\(index + 1)"
     tile.indexText.font = iFont
-    tile.indexText.fontSize = OverlayTheme.Index.fontSize
+    tile.indexText.fontSize = iFont.pointSize
     tile.indexText.frame = CGRect(x: 0, y: (iSize - lineH(iFont)) / 2, width: iSize, height: lineH(iFont))
 
     // Action chips, top-right (rightmost: Q, then W, then "↓ here").
-    let cSize = OverlayTheme.Chip.size
-    let cInset = OverlayTheme.Chip.inset
-    let cGap = OverlayTheme.Chip.gap
+    let cSize = s(OverlayTheme.Chip.size)
+    let cInset = s(OverlayTheme.Chip.inset)
+    let cGap = s(OverlayTheme.Chip.gap)
+    let hereWidth = s(OverlayTheme.Chip.hereWidth)
     let chipY = size.height - pad - cInset - cSize
     let qX = size.width - pad - cInset - cSize
     let wX = qX - cGap - cSize
-    let hereX = wX - cGap - OverlayTheme.Chip.hereWidth
+    let hereX = wX - cGap - hereWidth
     tile.quitChip.frame = CGRect(x: qX, y: chipY, width: cSize, height: cSize)
     tile.closeChip.frame = CGRect(x: wX, y: chipY, width: cSize, height: cSize)
-    tile.hereChip.frame = CGRect(x: hereX, y: chipY, width: OverlayTheme.Chip.hereWidth, height: cSize)
+    tile.hereChip.frame = CGRect(x: hereX, y: chipY, width: hereWidth, height: cSize)
+    // Re-scale each chip's glyph, since chips are built once (at base size) and reused across
+    // summons that may land on displays with different scale factors.
+    let cFont = OverlayTheme.mono(s(OverlayTheme.Chip.fontSize), weight: .semibold)
+    let cGlyphH = lineH(cFont)
+    for (chip, width) in [(tile.hereChip, hereWidth), (tile.closeChip, cSize), (tile.quitChip, cSize)] {
+      guard let glyph = chip.sublayers?.first as? CATextLayer else { continue }
+      glyph.font = cFont
+      glyph.fontSize = cFont.pointSize
+      glyph.frame = CGRect(x: 0, y: (cSize - cGlyphH) / 2, width: width, height: cGlyphH)
+    }
 
     // Status badge, bottom-left of the thumbnail.
     if let badge = statusText(for: window) {
-      let font = OverlayTheme.mono(OverlayTheme.WindowBadge.fontSize, weight: .medium)
-      let w = measure(badge, font) + OverlayTheme.WindowBadge.hPad * 2
-      tile.statusBadge.frame = CGRect(x: pad + iInset, y: footer + 4, width: w, height: OverlayTheme.WindowBadge.height)
+      let font = OverlayTheme.mono(s(OverlayTheme.WindowBadge.fontSize), weight: .medium)
+      let w = measure(badge, font) + s(OverlayTheme.WindowBadge.hPad) * 2
+      let badgeH = s(OverlayTheme.WindowBadge.height)
+      tile.statusBadge.frame = CGRect(x: pad + iInset, y: footer + s(4), width: w, height: badgeH)
       tile.statusText.string = badge
       tile.statusText.font = font
-      tile.statusText.fontSize = OverlayTheme.WindowBadge.fontSize
+      tile.statusText.fontSize = font.pointSize
       tile.statusText.foregroundColor = OverlayTheme.WindowBadge.text.cgColor
       tile.statusText.frame = CGRect(
-        x: 0, y: (OverlayTheme.WindowBadge.height - lineH(font)) / 2, width: w, height: lineH(font))
+        x: 0, y: (badgeH - lineH(font)) / 2, width: w, height: lineH(font))
       tile.statusBadge.isHidden = false
     } else {
       tile.statusBadge.isHidden = true
@@ -694,17 +721,19 @@ extension TileGridView {
   }
 
   private func applySelection(_ tile: Tile, selected: Bool) {
-    tile.container.borderWidth = OverlayTheme.Tile.borderWidth
+    tile.container.borderWidth = s(OverlayTheme.Tile.borderWidth)
     tile.container.borderColor = (selected ? OverlayTheme.Tile.selectionRing : .clear).cgColor
     tile.container.backgroundColor = (selected ? OverlayTheme.Tile.selectedFill : OverlayTheme.Tile.fill).cgColor
     tile.container.shadowColor = OverlayTheme.Tile.glowColor.cgColor
     tile.container.shadowOpacity = selected ? OverlayTheme.Tile.glowOpacity : 0
-    tile.container.shadowRadius = OverlayTheme.Tile.glowRadius
-    tile.container.shadowOffset = OverlayTheme.Tile.glowOffset
+    tile.container.shadowRadius = s(OverlayTheme.Tile.glowRadius)
+    tile.container.shadowOffset = CGSize(width: 0, height: s(OverlayTheme.Tile.glowOffset.height))
 
     tile.indexText.foregroundColor = (selected ? OverlayTheme.Index.selectedText : OverlayTheme.Index.text).cgColor
     tile.title.foregroundColor = (selected ? OverlayTheme.Tile.titlePrimary : OverlayTheme.Tile.titleSecondary).cgColor
-    tile.title.font = OverlayTheme.ui(OverlayTheme.Tile.titleSize, weight: selected ? .semibold : .medium)
+    let titleFont = OverlayTheme.ui(s(OverlayTheme.Tile.titleSize), weight: selected ? .semibold : .medium)
+    tile.title.font = titleFont
+    tile.title.fontSize = titleFont.pointSize  // CATextLayer honors fontSize over the font's own size
 
     tile.closeChip.isHidden = !selected
     tile.quitChip.isHidden = !selected

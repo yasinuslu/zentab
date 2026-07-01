@@ -29,6 +29,25 @@ enum OverlayTheme {
   static let summonScaleFrom: CGFloat = 0.97
   static var summonEase: CAMediaTimingFunction { CAMediaTimingFunction(controlPoints: 0.22, 0.61, 0.36, 1) }
 
+  // MARK: Responsive up-scaling (big external displays)
+
+  /// The base metrics below are tuned for a laptop-class display; the reference is the 16"
+  /// MacBook's ~1728×1117 pt logical size, where the overlay "feels right" today. On a larger
+  /// monitor the whole card — tiles, thumbnails, icons, text, chips — is multiplied by this
+  /// factor so a switch stays big and legible at a glance instead of shrinking into the middle
+  /// of the screen. We take the *smaller* of the width and height ratios so a short or ultrawide
+  /// display (e.g. 3440×1080) doesn't up-scale into a card that overflows vertically. Clamped so
+  /// every laptop is unchanged (floor 1.0) and huge displays don't balloon (ceiling 1.5). Driven
+  /// off the panel's own bounds, which the controller sizes to the active screen, so the renderer
+  /// and the live app agree.
+  static func tileScale(forSize size: CGSize) -> CGFloat {
+    let referenceWidth: CGFloat = 1728
+    let referenceHeight: CGFloat = 1117
+    guard size.width > 0, size.height > 0 else { return 1 }
+    let fit = min(size.width / referenceWidth, size.height / referenceHeight)
+    return min(1.5, max(1.0, fit))
+  }
+
   // MARK: Backdrop (the world recedes)
 
   enum Backdrop {
@@ -124,15 +143,19 @@ enum OverlayTheme {
   // MARK: Tiles
 
   enum Tile {
-    /// Uniform across both zones (website renders the same tile everywhere).
-    static let size = CGSize(width: 196, height: 158)
+    /// Uniform across both zones (website renders the same tile everywhere). Height carries the
+    /// taller footer that holds the enlarged app icon; the thumbnail area is unchanged.
+    static let size = CGSize(width: 200, height: 166)
     static let radius: CGFloat = 15
     /// Inset of the content (thumbnail/footer) from the tile edge — website padding 5.
     static let pad: CGFloat = 5
     static let borderWidth: CGFloat = 2
-    static let footerHeight: CGFloat = 32
-    static let iconSize: CGFloat = 18
-    static let titleSize: CGFloat = 12.5
+    /// Taller than before so the app icon — the fastest "which window is this" cue — can be
+    /// large without crowding the title.
+    static let footerHeight: CGFloat = 40
+    /// The app icon is the primary glance identifier, so it's deliberately prominent (was 18).
+    static let iconSize: CGFloat = 28
+    static let titleSize: CGFloat = 13
 
     static let fill = NSColor.white.withAlphaComponent(0.02)
     static let selectedFill = accent.withAlphaComponent(0.10)
@@ -158,13 +181,13 @@ enum OverlayTheme {
   // MARK: The 1…9 index chip (top-left of every tile)
 
   enum Index {
-    static let size: CGFloat = 18
+    static let size: CGFloat = 20
     static let inset: CGFloat = 6
     static let radius: CGFloat = 5
     static let fill = NSColor(srgbRed: 8 / 255, green: 9 / 255, blue: 12 / 255, alpha: 0.7)
     static let selectedText = NSColor.white
     static let text = NSColor.white.withAlphaComponent(0.6)
-    static let fontSize: CGFloat = 10
+    static let fontSize: CGFloat = 11
   }
 
   // MARK: Action chips on the selected tile (↓ here · W · Q)

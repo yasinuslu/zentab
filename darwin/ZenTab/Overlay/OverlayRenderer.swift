@@ -7,12 +7,14 @@ import AppKit
 /// and not part of this view, so we paint a representative desktop gradient + dim underneath to
 /// mimic the receded world the card floats over.
 ///
-/// Driven from `ZenTabMain` via `--render-overlay <path> [--board]`; renders and exits.
+/// Driven from `ZenTabMain` via `--render-overlay <path> [--board] [--size WxH]`; renders and
+/// exits. The `--size` override drives the responsive scaling, so the same layout can be checked
+/// at a laptop width and a big-monitor width.
 enum OverlayRenderer {
-  static func run(path: String, board: Bool) -> Never {
+  static func run(path: String, board: Bool, size overrideSize: CGSize? = nil) -> Never {
     _ = NSApplication.shared  // bring up the AppKit environment for text/layer drawing
     autoreleasepool {
-      let size = CGSize(width: 1500, height: 950)
+      let size = overrideSize ?? CGSize(width: 1500, height: 950)
       let view = TileGridView(frame: CGRect(origin: .zero, size: size))
 
       let apps = NSWorkspace.shared.runningApplications

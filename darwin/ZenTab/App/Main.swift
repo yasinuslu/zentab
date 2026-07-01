@@ -16,8 +16,19 @@ enum ZenTabMain {
     if arguments.contains("--space-move-helper") { SpaceMoveSpike.runHelper() }
     if arguments.contains("--space-move-selftest") { SpaceMoveSpike.runSelfTest() }
     if let index = arguments.firstIndex(of: "--render-overlay"), index + 1 < arguments.count {
-      OverlayRenderer.run(path: arguments[index + 1], board: arguments.contains("--board"))
+      OverlayRenderer.run(
+        path: arguments[index + 1], board: arguments.contains("--board"), size: Self.parseSize(arguments))
     }
     ZenTabApp.main()
+  }
+
+  /// Optional `--size WxH` (logical points) for the overlay renderer, so the responsive scaling
+  /// can be checked at a laptop and a big-monitor width. `nil` → the renderer's default.
+  private static func parseSize(_ arguments: [String]) -> CGSize? {
+    guard let index = arguments.firstIndex(of: "--size"), index + 1 < arguments.count else { return nil }
+    let parts = arguments[index + 1].lowercased().split(separator: "x")
+    guard parts.count == 2, let width = Double(parts[0]), let height = Double(parts[1]), width > 0, height > 0
+    else { return nil }
+    return CGSize(width: width, height: height)
   }
 }

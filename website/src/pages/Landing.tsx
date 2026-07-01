@@ -266,7 +266,7 @@ export default class Landing extends Component<Record<string, never>, LandingSta
           <div style={{ position: "relative", zIndex: 2, textAlign: "center", maxWidth: "860px", margin: "0 auto" }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: "9px", border: "1px solid var(--bd)", borderRadius: "999px", padding: "7px 14px", marginBottom: "30px", animation: "ztUp .7s ease" }}>
               <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#5bd6a0", boxShadow: "0 0 8px #5bd6a0", animation: "ztPulse 2.4s ease-in-out infinite" }} />
-              <span style={{ fontFamily: mono, fontSize: "11.5px", letterSpacing: "0.06em", color: "var(--dim)" }}>macOS &amp; Windows · v1.0</span>
+              <span style={{ fontFamily: mono, fontSize: "11.5px", letterSpacing: "0.06em", color: "var(--dim)" }}>macOS &amp; Windows · v0.1.0</span>
             </div>
             <h1 style={{ fontSize: "clamp(44px,7vw,88px)", fontWeight: 700, letterSpacing: "-0.045em", lineHeight: 0.98, marginBottom: "24px", animation: "ztUp .8s .05s ease" }}>
               Window switching
@@ -277,10 +277,10 @@ export default class Landing extends Component<Record<string, never>, LandingSta
               A calm, instant window switcher for macOS and Windows. Tap to land in the window you want — or hold, and every window steps gently into view while the rest of the world recedes.
             </p>
             <div style={{ display: "flex", gap: "12px", justifyContent: "center", alignItems: "center", flexWrap: "wrap", animation: "ztUp .8s .18s ease" }}>
-              <a href="#download" className="zt-cta" style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "15px", fontWeight: 600, background: "var(--tx)", color: "#0b0c0f", borderRadius: "12px", padding: "14px 22px", transition: "transform .2s" }}>Download for macOS</a>
+              <a href="https://cdn.nepjua.org/zentab/macos/releases/latest/ZenTab.dmg" download className="zt-cta" style={{ display: "inline-flex", alignItems: "center", gap: "9px", fontSize: "15px", fontWeight: 600, background: "var(--tx)", color: "#0b0c0f", borderRadius: "12px", padding: "14px 22px", transition: "transform .2s" }}>Download for macOS</a>
               <Link to="/overlay" className="zt-soft" style={{ fontSize: "15px", fontWeight: 500, color: "var(--dim)", border: "1px solid var(--bd)", borderRadius: "12px", padding: "14px 20px", transition: "all .2s" }}>Try the live overlay</Link>
             </div>
-            <div style={{ fontFamily: mono, fontSize: "11.5px", color: "var(--faint)", marginTop: "18px", animation: "ztUp .8s .24s ease" }}>Free forever · 4.2 MB · macOS &amp; Windows</div>
+            <div style={{ fontFamily: mono, fontSize: "11.5px", color: "var(--faint)", marginTop: "18px", animation: "ztUp .8s .24s ease" }}>Free forever · macOS &amp; Windows</div>
           </div>
 
           {/* LIVE HERO DEMO */}
@@ -559,21 +559,21 @@ export default class Landing extends Component<Record<string, never>, LandingSta
             <p style={{ fontSize: "16px", color: "var(--dim)" }}>One product. Two native apps. The same calm on both.</p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", maxWidth: "780px", margin: "0 auto" }}>
-            <a href="#download" className="zt-card-hover" style={{ background: "var(--card)", border: "1px solid var(--bd)", borderRadius: "20px", padding: "34px", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <a href="https://cdn.nepjua.org/zentab/macos/releases/latest/ZenTab.dmg" download className="zt-card-hover" style={{ background: "var(--card)", border: "1px solid var(--bd)", borderRadius: "20px", padding: "34px", display: "flex", flexDirection: "column", gap: "6px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
                 <span style={{ fontSize: "21px", fontWeight: 600, letterSpacing: "-0.02em" }}>macOS</span>
                 <span style={{ fontFamily: mono, fontSize: "11px", color: "#5bd6a0", border: "1px solid rgba(91,214,160,0.3)", borderRadius: "6px", padding: "3px 8px" }}>Available</span>
               </div>
-              <span style={{ fontSize: "14px", fontWeight: 600, background: "var(--tx)", color: "#0b0c0f", borderRadius: "10px", padding: "12px", textAlign: "center" }}>Download · v1.0</span>
-              <span style={{ fontFamily: mono, fontSize: "11px", color: "var(--faint)", marginTop: "8px" }}>Universal · macOS 13+ · 4.2 MB</span>
+              <span style={{ fontSize: "14px", fontWeight: 600, background: "var(--tx)", color: "#0b0c0f", borderRadius: "10px", padding: "12px", textAlign: "center" }}>Download for macOS</span>
+              <span style={{ fontFamily: mono, fontSize: "11px", color: "var(--faint)", marginTop: "8px" }}>Universal · macOS 13+ · 3.5 MB · .dmg</span>
             </a>
-            <a href="#download" className="zt-card-hover" style={{ background: "var(--card)", border: "1px solid var(--bd)", borderRadius: "20px", padding: "34px", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <a href="https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe" download className="zt-card-hover" style={{ background: "var(--card)", border: "1px solid var(--bd)", borderRadius: "20px", padding: "34px", display: "flex", flexDirection: "column", gap: "6px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
                 <span style={{ fontSize: "21px", fontWeight: 600, letterSpacing: "-0.02em" }}>Windows</span>
                 <span style={{ fontFamily: mono, fontSize: "11px", color: "#5bd6a0", border: "1px solid rgba(91,214,160,0.3)", borderRadius: "6px", padding: "3px 8px" }}>Available</span>
               </div>
-              <span style={{ fontSize: "14px", fontWeight: 600, background: "rgba(255,255,255,0.06)", border: "1px solid var(--bdhi)", color: "var(--tx)", borderRadius: "10px", padding: "12px", textAlign: "center" }}>Download · v1.0</span>
-              <span style={{ fontFamily: mono, fontSize: "11px", color: "var(--faint)", marginTop: "8px" }}>Windows 10 / 11 · 5.1 MB</span>
+              <span style={{ fontSize: "14px", fontWeight: 600, background: "rgba(255,255,255,0.06)", border: "1px solid var(--bdhi)", color: "var(--tx)", borderRadius: "10px", padding: "12px", textAlign: "center" }}>Download for Windows</span>
+              <span style={{ fontFamily: mono, fontSize: "11px", color: "var(--faint)", marginTop: "8px" }}>Windows 10 / 11 · 66 MB · portable .exe</span>
             </a>
           </div>
         </section>

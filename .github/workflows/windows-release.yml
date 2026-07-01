@@ -95,7 +95,7 @@ jobs:
 
             Download from the ZenTab CDN:
 
-            - **Portable exe (recommended):** https://cdn.nepjua.org/zentab/windows/releases/v${{ steps.version.outputs.version }}/ZenTab-${{ steps.version.outputs.version }}-win-x64-portable.exe
-            - **MSI installer:** https://cdn.nepjua.org/zentab/windows/releases/v${{ steps.version.outputs.version }}/ZenTab-${{ steps.version.outputs.version }}-win-x64.msi
+            - **MSI installer (recommended):** https://cdn.nepjua.org/zentab/windows/releases/v${{ steps.version.outputs.version }}/ZenTab-${{ steps.version.outputs.version }}-win-x64.msi
+            - **Portable exe:** https://cdn.nepjua.org/zentab/windows/releases/v${{ steps.version.outputs.version }}/ZenTab-${{ steps.version.outputs.version }}-win-x64-portable.exe
             - **Checksums:** https://cdn.nepjua.org/zentab/windows/releases/v${{ steps.version.outputs.version }}/SHA256SUMS.txt
-            - Always-latest stable: https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe
+            - Always-latest stable: https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64.msi (portable: https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe)

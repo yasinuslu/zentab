@@ -68,7 +68,7 @@ for the shared visual identity (the always-dark spotlight, the Electric `#5D6DFF
 | Platform | Get it | Requirements |
 | --- | --- | --- |
 | **macOS** | [Download `.dmg`](https://cdn.nepjua.org/zentab/macos/releases/latest/ZenTab.dmg) | Universal, macOS 13+ |
-| **Windows** | [Download portable `.exe`](https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe) | Windows 10 / 11 |
+| **Windows** | [Download installer `.msi`](https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64.msi) · [portable `.exe`](https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe) | Windows 10 / 11 |
 
 Prefer to watch it move first? **[Try the playable overlay in your browser](https://yasinuslu.github.io/zentab/overlay)** (no install).
 

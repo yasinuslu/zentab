@@ -567,14 +567,17 @@ export default class Landing extends Component<Record<string, never>, LandingSta
               <span style={{ fontSize: "14px", fontWeight: 600, background: "var(--tx)", color: "#0b0c0f", borderRadius: "10px", padding: "12px", textAlign: "center" }}>Download for macOS</span>
               <span style={{ fontFamily: mono, fontSize: "11px", color: "var(--faint)", marginTop: "8px" }}>Universal · macOS 13+ · 3.5 MB · .dmg</span>
             </a>
-            <a href="https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe" download className="zt-card-hover" style={{ background: "var(--card)", border: "1px solid var(--bd)", borderRadius: "20px", padding: "34px", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div className="zt-card-hover" style={{ background: "var(--card)", border: "1px solid var(--bd)", borderRadius: "20px", padding: "34px", display: "flex", flexDirection: "column", gap: "6px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
                 <span style={{ fontSize: "21px", fontWeight: 600, letterSpacing: "-0.02em" }}>Windows</span>
                 <span style={{ fontFamily: mono, fontSize: "11px", color: "#5bd6a0", border: "1px solid rgba(91,214,160,0.3)", borderRadius: "6px", padding: "3px 8px" }}>Available</span>
               </div>
-              <span style={{ fontSize: "14px", fontWeight: 600, background: "rgba(255,255,255,0.06)", border: "1px solid var(--bdhi)", color: "var(--tx)", borderRadius: "10px", padding: "12px", textAlign: "center" }}>Download for Windows</span>
-              <span style={{ fontFamily: mono, fontSize: "11px", color: "var(--faint)", marginTop: "8px" }}>Windows 10 / 11 · 66 MB · portable .exe</span>
-            </a>
+              <a href="https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64.msi" download style={{ fontSize: "14px", fontWeight: 600, background: "rgba(255,255,255,0.06)", border: "1px solid var(--bdhi)", color: "var(--tx)", borderRadius: "10px", padding: "12px", textAlign: "center" }}>Download for Windows</a>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "8px" }}>
+                <span style={{ fontFamily: mono, fontSize: "11px", color: "var(--faint)" }}>Windows 10 / 11 · .msi installer</span>
+                <a href="https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe" download className="zt-link" style={{ fontFamily: mono, fontSize: "11px", color: "var(--dim)" }}>or portable .exe</a>
+              </div>
+            </div>
           </div>
         </section>
 

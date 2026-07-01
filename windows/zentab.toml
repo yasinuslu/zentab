@@ -17,15 +17,15 @@
 #   hold_threshold_ms = 150        # hold past this to reveal the overlay; a quicker tap-and-
 #                                  # release switches invisibly
 #
-# The values below are DEV chords: they swap the real Alt+Tab / Alt+` / Ctrl+Alt+Tab for
-# Ctrl+Alt-based ones so iterating in the source tree never hijacks your normal Windows
-# keybindings. `dotnet run` copies this file next to the build output; the published exe and
-# MSI exclude it (CopyToPublishDirectory="Never"), so a shipped ZenTab uses the real gestures.
+# The dev build uses the REAL gestures (Alt+Tab / Alt+` / Ctrl+Alt+Tab) so testing feels
+# exactly like the shipped app — it does hijack your normal Windows Alt+Tab while running.
+# `dotnet run` copies this file next to the build output; the published exe and MSI exclude it
+# (CopyToPublishDirectory="Never"), so this override only affects local dev.
 
 [keys]
-other_apps  = "ctrl+alt+tab"   # like Alt+Tab
-current_app = "ctrl+alt+`"     # like Alt+`
-everything  = "ctrl+alt+f1"    # like Ctrl+Alt+Tab
+other_apps  = "alt+tab"        # everyday switch — apps on the monitor under the cursor
+current_app = "alt+`"          # windows of the current app
+everything  = "ctrl+alt+tab"   # the "I lost something" escape hatch
 
 # [behavior]
 # hold_threshold_ms = 150

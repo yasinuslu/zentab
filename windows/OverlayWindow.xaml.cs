@@ -27,6 +27,8 @@ public partial class OverlayWindow : Window
     private List<SwitchEntry> _entries = new();
     private bool _closing;
     private bool _everShown;
+    private bool _prepared;  // content is built + rendered off-screen, waiting to reveal
+    private bool _revealed;  // currently on-screen
 
     /// <summary>Mouse-click commit on a card.</summary>
     public event Action<SwitchEntry>? Committed;
@@ -58,8 +60,17 @@ public partial class OverlayWindow : Window
 
     public SwitchEntry? Selected => Cards.SelectedItem as SwitchEntry;
 
-    public void Show(IReadOnlyList<SwitchEntry> entries, int selectedIndex, SwitchMode mode, string keyGlyphs)
+    /// <summary>
+    /// Build the panel's content and render it fully off-screen — while the trigger is still being
+    /// held, before the reveal. This is the expensive half (regenerating the card containers, the
+    /// layout pass, uploading the preview image textures to the GPU); doing it here, during the
+    /// hold's dead time, means <see cref="Reveal"/> is just a move-on-screen with no first-frame
+    /// hitch. (Web analogy: keep the component mounted and rendered, then swap it into view.)
+    /// </summary>
+    public void Prepare(IReadOnlyList<SwitchEntry> entries, int selectedIndex, SwitchMode mode, string keyGlyphs)
     {
+        if (!_everShown) Prewarm();
+
         _entries = new List<SwitchEntry>(entries);
         Cards.ItemsSource = _entries;
         Cards.SelectedIndex = _entries.Count == 0 ? -1 : Math.Clamp(selectedIndex, 0, _entries.Count - 1);
@@ -70,31 +81,46 @@ public partial class OverlayWindow : Window
         ModeLabel.Text = ModeLabelText(mode);
         CountText.Text = CountLabelText(mode, _entries.Count);
 
+        // Render off-screen at full opacity so the visual tree + preview textures are realized on
+        // the GPU now, not at reveal. Parked far off any monitor, so nothing shows.
+        Left = Top = -32000;
+        Visibility = Visibility.Visible;
+        Scene.BeginAnimation(OpacityProperty, null);
+        Scene.Opacity = 1;
+        UpdateLayout(); // force measure/arrange (finalizes SizeToContent) during the hold
+        _prepared = true;
+        _revealed = false;
+    }
+
+    /// <summary>
+    /// Swap the pre-rendered panel into view: fade the dim in, position on the cursor's monitor,
+    /// and fade the (already-rendered) content up. No content build, layout, or texture upload
+    /// happens here — that was all done in <see cref="Prepare"/>.
+    /// </summary>
+    public void Reveal()
+    {
+        if (!_prepared) return;
+        _closing = false;
+        _revealed = true;
+
         _dim.ShowDim();
 
-        _closing = false;
         Scene.BeginAnimation(OpacityProperty, null);
         Scene.Opacity = 0;
-
-        // First display must go through Show() so the HWND / PresentationSource exists
-        // before we measure & position. After that we just toggle visibility.
-        if (!_everShown)
-        {
-            Owner = _dim; // keep the panel above the dim
-            base.Show();
-            _everShown = true;
-        }
-        else
-        {
-            Visibility = Visibility.Visible;
-        }
         Topmost = true;
-
-        UpdateLayout(); // finalize SizeToContent so ActualWidth/Height are correct
-        CenterOnCursorMonitor();
-
+        CenterOnCursorMonitor(); // move on-screen; size was already finalized in Prepare
         Scene.BeginAnimation(OpacityProperty, new DoubleAnimation(1, FadeIn));
         ScrollSelectionIntoView();
+    }
+
+    /// <summary>Drop a prepared-but-never-revealed panel (a quick tap that switched invisibly)
+    /// back to the idle hidden state, so a topmost window isn't left parked off-screen.</summary>
+    public void Discard()
+    {
+        if (_revealed || !_prepared) return;
+        _prepared = false;
+        Visibility = Visibility.Hidden;
+        Left = Top = -32000;
     }
 
     /// <summary>
@@ -126,14 +152,17 @@ public partial class OverlayWindow : Window
 
     public void Dismiss()
     {
-        if (_closing || Visibility != Visibility.Visible) return;
+        if (_closing || !_revealed) return;
         _closing = true;
+        _revealed = false;
+        _prepared = false;
         _dim.HideDim();
 
         var fade = new DoubleAnimation(0, FadeOut);
         fade.Completed += (_, _) =>
         {
-            if (_closing) Visibility = Visibility.Hidden; // Hidden keeps the HWND for next time
+            // Hidden keeps the HWND warm for next time; park off-screen so it never flashes.
+            if (_closing) { Visibility = Visibility.Hidden; Left = Top = -32000; }
         };
         Scene.BeginAnimation(OpacityProperty, fade);
     }

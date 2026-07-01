@@ -97,6 +97,9 @@ public sealed class SwitcherController : IDisposable
         _armedIndex = initial;
         _armedMode = mode;
         _armed = true;
+
+        // Render the panel off-screen now, during the hold, so revealing it later is instant.
+        _overlay.Prepare(entries, initial, mode, Profile.KeyDisplay(mode));
         _armTimer.Start();
     }
 
@@ -105,7 +108,7 @@ public sealed class SwitcherController : IDisposable
         if (!_armed) return;
         _armTimer.Stop();
         _armed = false;
-        _overlay.Show(_armedEntries, _armedIndex, _armedMode, Profile.KeyDisplay(_armedMode));
+        _overlay.Reveal(); // just swaps the pre-rendered panel into view
         _visible = true;
     }
 
@@ -117,6 +120,7 @@ public sealed class SwitcherController : IDisposable
             _armTimer.Stop();
             _armed = false;
             _hook.Capturing = false;
+            _overlay.Discard(); // drop the panel we rendered off-screen for a reveal that won't come
             var entry = _armedIndex >= 0 && _armedIndex < _armedEntries.Count ? _armedEntries[_armedIndex] : null;
             if (entry is not null) Native.Activate(entry.Primary);
             return;
@@ -147,6 +151,7 @@ public sealed class SwitcherController : IDisposable
             _armTimer.Stop();
             _armed = false;
             _hook.Capturing = false;
+            _overlay.Discard(); // drop the off-screen-rendered panel; no reveal will happen
             return;
         }
         if (!_visible) return;

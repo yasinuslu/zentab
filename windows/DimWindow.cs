@@ -23,8 +23,8 @@ namespace ZenTab;
 /// </summary>
 public sealed class DimWindow : Window
 {
-    private static readonly Duration FadeIn = new(TimeSpan.FromMilliseconds(120));
-    private static readonly Duration FadeOut = new(TimeSpan.FromMilliseconds(90));
+    private static readonly Duration FadeIn = new(TimeSpan.FromMilliseconds(60));
+    private static readonly Duration FadeOut = new(TimeSpan.FromMilliseconds(45));
 
     // Acrylic tint = the website scrim rgba(6,7,10,0.55), as 0xAABBGGRR.
     private const uint ScrimTint = 0x8C0A0706;

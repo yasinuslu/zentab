@@ -160,7 +160,7 @@
         </Style>
     </Window.Resources>
 
-    <!-- The frosted card. Its content (header / tiles / footer) fades in/out (~100 ms); the
+    <!-- The frosted card. Its content (header / tiles / footer) fades in/out (~60 ms); the
          window background stays opaque (the dim layer behind carries the rest of the recede). -->
     <Border x:Name="Scene"
             CornerRadius="12"

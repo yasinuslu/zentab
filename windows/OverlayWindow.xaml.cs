@@ -19,8 +19,8 @@ namespace ZenTab;
 /// </summary>
 public partial class OverlayWindow : Window
 {
-    private static readonly Duration FadeIn = new(TimeSpan.FromMilliseconds(110));
-    private static readonly Duration FadeOut = new(TimeSpan.FromMilliseconds(90));
+    private static readonly Duration FadeIn = new(TimeSpan.FromMilliseconds(60));
+    private static readonly Duration FadeOut = new(TimeSpan.FromMilliseconds(45));
 
     private readonly DimWindow _dim = new();
     private readonly WindowInteropHelper _interop;

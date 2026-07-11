@@ -3,6 +3,12 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "module": "ESNext",
+    // GObject.registerClass classes call _init() during construction; with the ES2022 default
+    // useDefineForClassFields=true, declared class fields (e.g. `entry!: WindowEntry`) are
+    // (re)defined on the instance AFTER _init runs, clobbering anything _init assigned back to
+    // undefined. Must stay false so `this.entry = entry` set in Tile._init survives — otherwise
+    // every tile's `entry` is undefined and setSelected() throws. esbuild honors this too.
+    "useDefineForClassFields": false,
     "moduleResolution": "Bundler",
     "strict": true,
     "noUncheckedIndexedAccess": true,

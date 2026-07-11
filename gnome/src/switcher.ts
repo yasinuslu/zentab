@@ -171,6 +171,14 @@ export class Switcher implements Disposable {
       return;
     }
 
+    // The grab actor is created `visible: false` so it never intercepts pointer input while
+    // idle — but a Clutter actor with visible=false hides its ENTIRE subtree, and the overlay's
+    // scrim/card/tiles are its children (parented via attachTo). So it must become visible for
+    // the session's duration or the revealed overlay never paints. The actor itself has no
+    // background, so it stays invisible to the eye during the tap phase (before the scrim is
+    // built and shown by _reveal); _end() hides it again.
+    this._grabActor.show();
+
     // Prefer the real accelerator's mask (threaded through from `Meta.KeyBinding.get_mask()` by
     // keybinding.ts); config.toml's own chord string is only a fallback for whatever caller
     // genuinely has no binding object to read from (see file header for why re-deriving from
@@ -402,6 +410,10 @@ export class Switcher implements Disposable {
     } catch (error) {
       logError(error, "Switcher._end: Main.popModal failed");
     }
+
+    // Back to idle: hide the grab actor again so it stops intercepting pointer input between
+    // sessions (mirrors the `.show()` in start()).
+    this._grabActor.hide();
   }
 
   /** The resolved chord's display string for the mode currently switching — passed through to

@@ -79,11 +79,15 @@ export default class ZenTabExtension extends Extension {
     this._keybindings?.destroy();
     this._keybindings = null;
 
-    this._switcher?.destroy();
-    this._switcher = null;
-
+    // Destroy the overlay BEFORE the switcher: Switcher owns the persistent `_grabActor` that
+    // OverlayView's scrim/card/tiles are parented under (via `attachTo`), so tearing the
+    // switcher down first would cascade-destroy those actors, leaving OverlayView.destroy() to
+    // run over already-disposed objects (the "already disposed / no handler with id" criticals).
     this._overlay?.destroy();
     this._overlay = null;
+
+    this._switcher?.destroy();
+    this._switcher = null;
 
     this._windows?.destroy();
     this._windows = null;

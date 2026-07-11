@@ -106,11 +106,19 @@ export class Switcher implements Disposable {
   private readonly _grabActor: St.Widget;
   private readonly _keyController: Clutter.KeyController;
   private readonly _bag = new SignalBag();
+  /** Unsubscribes this Switcher from the window model's cache-change notifications. Set in the
+   * constructor, called in destroy(). Non-GObject callback, so it lives outside `_bag`. */
+  private _unsubscribeWindows: (() => void) | null = null;
 
   constructor(windows: WindowSnapshotService, overlay: OverlayView, getConfig: () => Config) {
     this._windows = windows;
     this._overlay = overlay;
     this._getConfig = getConfig;
+
+    // React to windows opening/closing while a session is open — the source of truth for the
+    // tile list is the live window model, so an open overlay must follow it (this is what drops a
+    // closed window's tile after W/Q, and would surface a window that opened mid-session).
+    this._unsubscribeWindows = this._windows.subscribe(() => this._onWindowsChanged());
 
     this._grabActor = new St.Widget({ reactive: true, visible: false });
     this._grabActor.add_constraint(
@@ -262,6 +270,8 @@ export class Switcher implements Disposable {
    * actor. Call from `disable()`. */
   destroy(): void {
     if (this._session) this._end(/* commit */ false);
+    this._unsubscribeWindows?.();
+    this._unsubscribeWindows = null;
     this._bag.destroy();
     Main.layoutManager.removeChrome(this._grabActor);
     this._grabActor.destroy();
@@ -362,18 +372,45 @@ export class Switcher implements Disposable {
     if (!session) return;
     if (action === OverlayAction.CloseWindow) this._windows.closeWindow(entry);
     else this._windows.quitApp(entry);
+    // Deliberately NO synchronous re-fetch here: `closeWindow()`/`quitApp()` are asynchronous
+    // requests to the client — the window is still fully present the instant they return, so
+    // re-reading the list now would just re-render the same tiles (the earlier bug: the closed
+    // window lingered). The overlay is instead refreshed reactively by `_onWindowsChanged` when
+    // the window actually leaves the model (its `unmanaging` fires), which is exactly when the
+    // tile should vanish — and correctly leaves it in place if the app declines the close (an
+    // unsaved-changes prompt).
+  }
 
-    // Re-fetch immediately rather than waiting for the snapshot's async `unmanaging` signal,
-    // so the tile disappears the same frame it's closed instead of on the next signal tick.
-    const entries = this._windows.getEntries(session.mode);
+  /** The window model's cached identity set changed (a window opened, or — after W/Q — actually
+   * closed) while a session may be open. If one is, reconcile that session's overlay to what's
+   * really on screen now. No session → nothing to do (near-zero idle cost: this is a bare
+   * early-return on every unrelated window open/close all day). */
+  private _onWindowsChanged(): void {
+    if (!this._session) return;
+    this._refreshSessionEntries();
+  }
+
+  /** Re-reads the current session's mode from the live window model and reconciles the overlay:
+   * keeps the highlight on the same window if it still exists (else clamps to a valid neighbor),
+   * and ends the session outright if nothing is left to switch to. Uses the reconcile-free query
+   * (see `WindowSnapshotService.getEntries`) because the cache is already correct at call time —
+   * running the additive self-heal walk here could resurrect a window that's mid-`unmanaging`.
+   * Safe whether or not the overlay has revealed yet. */
+  private _refreshSessionEntries(): void {
+    const session = this._session;
+    if (!session) return;
+
+    const previouslySelectedId = session.entries[session.selectedIndex]?.id ?? null;
+    const entries = this._windows.getEntries(session.mode, /* reconcile */ false);
     if (entries.length === 0) {
-      // Nothing left to switch to — W/Q act on the switcher itself, they don't leave an empty
-      // overlay hanging open.
+      // Nothing left to switch to — don't leave an empty overlay hanging open.
       this._end(/* commit */ false);
       return;
     }
     session.entries = entries;
-    session.selectedIndex = Math.min(session.selectedIndex, entries.length - 1);
+    const sameWindowIndex = entries.findIndex((e) => e.id === previouslySelectedId);
+    session.selectedIndex =
+      sameWindowIndex >= 0 ? sameWindowIndex : Math.min(session.selectedIndex, entries.length - 1);
     if (session.revealed) {
       this._overlay.update(
         session.mode,

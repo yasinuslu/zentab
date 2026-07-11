@@ -43,6 +43,13 @@ export class WindowSnapshotService implements Disposable {
   private readonly _bag = new SignalBag();
   private _tracker: Shell.WindowTracker | null = null;
   private _started = false;
+  /** Subscribers notified whenever the cache's *identity* set changes (a window newly tracked
+   * or untracked) — see `subscribe()`. The Switcher uses this to keep an open session's overlay
+   * in sync when a window it's showing closes or a new one appears mid-session. */
+  private readonly _changeListeners = new Set<() => void>();
+  /** Re-entrancy guard for `_notifyChanged`: a listener may re-query the service (`getEntries` ->
+   * `_reconcile` -> `_track`) and re-enter notification. One level of dispatch is enough. */
+  private _notifying = false;
 
   /** Primes the cache from the windows already on screen (the one and only cold walk this
    * service ever does), then wires signals to stay current. Call once from enable(). */
@@ -129,6 +136,7 @@ export class WindowSnapshotService implements Disposable {
       actor,
       actorDestroyId,
     });
+    this._notifyChanged();
   }
 
   private _untrack(id: number): void {
@@ -136,6 +144,42 @@ export class WindowSnapshotService implements Disposable {
     if (!cached) return; // already removed by whichever of unmanaging/actor-destroy fired first
     this._cache.delete(id);
     this._disconnectEntry(cached);
+    // Notify AFTER the cache mutation so a subscriber that re-queries `getEntries()` sees the
+    // window already gone (this is what makes a W/Q-closed window's tile disappear the frame its
+    // `unmanaging` fires — see the Switcher's window-change handler).
+    this._notifyChanged();
+  }
+
+  /** Subscribe to cache-identity changes (a window newly tracked or untracked). The listener
+   * fires AFTER the cache mutation, so re-querying `getEntries(mode, false)` (reconcile off) from
+   * inside it sees the updated set. Returns an unsubscribe fn. This exists for one job: keeping
+   * an open switch session's overlay in sync when a window it's showing goes away — because
+   * `closeWindow()`/`quitApp()` are asynchronous requests to the client, the window is still
+   * cached the instant they return and only leaves (firing `unmanaging` -> `_untrack` -> here) a
+   * frame or more later, or never if the app declines the close. */
+  subscribe(listener: () => void): () => void {
+    this._changeListeners.add(listener);
+    return () => {
+      this._changeListeners.delete(listener);
+    };
+  }
+
+  private _notifyChanged(): void {
+    if (this._notifying) return;
+    this._notifying = true;
+    try {
+      // Snapshot to an array so a listener that (un)subscribes during dispatch can't mutate the
+      // set mid-iteration.
+      for (const listener of [...this._changeListeners]) {
+        try {
+          listener();
+        } catch (error) {
+          logError(error, "WindowSnapshotService._notifyChanged: listener threw");
+        }
+      }
+    } finally {
+      this._notifying = false;
+    }
   }
 
   /** Disconnects a cache entry's own signals. Safe to call from inside one of those very signal
@@ -176,9 +220,16 @@ export class WindowSnapshotService implements Disposable {
    * Runs the additive-only self-heal reconcile first (see `start()`'s comment on why this is
    * lazy rather than tied to a frequent signal like `restacked`) so a rare compositor race
    * never shows a stale list at the one moment it would actually matter: right before a switch
-   * session opens. */
-  getEntries(mode: Mode): WindowEntry[] {
-    this._reconcile();
+   * session opens.
+   *
+   * Pass `reconcile: false` for an *in-session refresh* driven by the cache-change subscription
+   * (a window closing after W/Q): the cache was just mutated to the correct set, and the
+   * additive `_reconcile()` walk would re-`_track` a window that's mid-`unmanaging` — its actor
+   * can still be in `global.get_window_actors()` for a beat after it left the cache — resurrecting
+   * the very tile we're trying to drop. The reconcile is only there to catch a window that never
+   * got a `window-created`, which a close-refresh has no reason to do. */
+  getEntries(mode: Mode, reconcile = true): WindowEntry[] {
+    if (reconcile) this._reconcile();
     switch (mode) {
       case Mode.EverydaySwitch:
         return this._everydaySwitch();

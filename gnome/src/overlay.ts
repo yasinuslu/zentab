@@ -105,16 +105,12 @@ const Tile = GObject.registerClass(
       this._actionRow.add_child(this._buildActionChip("W", OverlayAction.CloseWindow));
       this._actionRow.add_child(this._buildActionChip("Q", OverlayAction.QuitApp));
 
-      // TODO(thumbnail): this pane is where a live window preview attaches once GNOME Shell
-      // exposes a cheap source for one — a `Clutter.Clone` of the window actor's texture,
-      // composited over a `ShellBlurEffect` backdrop (see theme.ts's `BACKDROP` TODO(blur)).
-      // v1 ships icon+title identification only; do not implement blur/thumbnails here yet.
-      const thumbnail = new St.Widget({ x_expand: true, y_expand: true });
-      thumbnail.set_style(
-        `background-color: rgba(0, 0, 0, 0.3); border: 1px solid ${TILE.thumbnailBorder}; ` +
-          `border-radius: ${TILE.thumbnailRadius}px; margin: 4px 0;`,
-      );
-      root.add_child(thumbnail);
+      // Live window preview: a Clutter.Clone of the window's compositor actor (the same
+      // zero-copy GPU texture Mutter already composites — no screenshot, no portal, no capture
+      // round-trip), scaled to fit the thumbnail box. Falls back to a plain dark box for entries
+      // with no live actor (an app placeholder with no window, or a window whose actor isn't
+      // realised). TODO(blur) on the scrim behind the card is still deferred (see theme.ts).
+      root.add_child(this._buildThumbnail(entry));
 
       // Footer: app icon + title — the fast "which window is this" glance cue (darwin's own
       // reasoning for a deliberately prominent icon size, see OverlayTheme.Tile.iconSize).
@@ -155,6 +151,44 @@ const Tile = GObject.registerClass(
         return Clutter.EVENT_STOP;
       });
       return chip;
+    }
+
+    /** A live GPU-texture preview of the window: a `Clutter.Clone` of its compositor actor
+     * (the same texture Mutter already composites — zero-copy, no screenshot/portal), scaled to
+     * fit the fixed thumbnail box while preserving aspect ratio and centered. Returns a plain
+     * dark box when there is no actor to clone (an app placeholder with no window, or a window
+     * whose actor isn't realised). The clone is live: it tracks the real window's content. */
+    private _buildThumbnail(entry: WindowEntry): St.Widget {
+      const box = new St.Widget({
+        width: TILE.thumbnailWidth,
+        height: TILE.thumbnailHeight,
+        x_align: Clutter.ActorAlign.CENTER,
+        clip_to_allocation: true,
+        layout_manager: new Clutter.BinLayout(),
+      });
+      box.set_style(
+        `background-color: rgba(0, 0, 0, 0.3); border: 1px solid ${TILE.thumbnailBorder}; ` +
+          `border-radius: ${TILE.thumbnailRadius}px; margin: 4px 0;`,
+      );
+
+      const actor = entry.window?.get_compositor_private() as Clutter.Actor | null | undefined;
+      if (actor) {
+        const [actorWidth, actorHeight] = actor.get_size();
+        if (actorWidth > 0 && actorHeight > 0) {
+          const scale = Math.min(TILE.thumbnailWidth / actorWidth, TILE.thumbnailHeight / actorHeight);
+          const clone = new Clutter.Clone({
+            source: actor,
+            width: Math.round(actorWidth * scale),
+            height: Math.round(actorHeight * scale),
+            x_expand: false,
+            y_expand: false,
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+          });
+          box.add_child(clone);
+        }
+      }
+      return box;
     }
 
     setSelected(selected: boolean): void {

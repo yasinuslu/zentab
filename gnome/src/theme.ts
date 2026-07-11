@@ -58,6 +58,10 @@ export const TILE = {
   selectedGlow: "0 12px 34px rgba(93, 109, 255, 0.3)",
   thumbnailRadius: 10,
   thumbnailBorder: "rgba(255, 255, 255, 0.07)",
+  // Fixed size of the live-preview box inside each tile (a Clutter.Clone of the window actor
+  // is scaled to fit within this, preserving aspect ratio; leftover space is the dark box).
+  thumbnailWidth: 172,
+  thumbnailHeight: 80,
   // darwin/ZenTab/Overlay/OverlayTheme.swift Tile.spacing / Tile.maxColumns — the flow-grid
   // metrics the v1 St.BoxLayout grid wraps rows at (no CSS grid in St/Clutter).
   spacing: 12,

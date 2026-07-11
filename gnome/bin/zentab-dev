@@ -3,7 +3,11 @@ set -euo pipefail
 # Documents (does NOT auto-run) the nested-shell dev loop for iterating on the overlay and
 # switcher without touching your real GNOME session:
 #
-#   dbus-run-session -- gnome-shell --nested --wayland
+#   dbus-run-session -- gnome-shell --wayland
+#
+# (On GNOME 46+/50 there is no --nested flag: running as a Wayland compositor from inside an
+# existing session is nested by default. Passing --display-server would make it a full,
+# session-replacing display server instead, which is NOT what you want here.)
 #
 # That opens a second, fully separate Wayland compositor in a window. Install/enable ZenTab
 # inside THAT session (bin/zentab-install, then `gnome-extensions enable zentab@zentab.app`
@@ -18,4 +22,4 @@ set -euo pipefail
 echo "This script documents the dev loop; it does not run gnome-shell for you."
 echo "When you're ready to test interactively, run this yourself:"
 echo
-echo "  dbus-run-session -- gnome-shell --nested --wayland"
+echo "  dbus-run-session -- gnome-shell --wayland"

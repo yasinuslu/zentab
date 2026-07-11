@@ -12,11 +12,13 @@ it live, per the project's own convention (`feedback_autonomous_groundwork`).
 ## How to test (when NOT gaming)
 
 ```bash
-dbus-run-session -- gnome-shell --nested --wayland
+dbus-run-session -- gnome-shell --wayland
 ```
 
-Opens a second, fully separate Wayland compositor in a window — never touches your real
-session. Inside it: `bin/zentab-install` to symlink `dist/`, then
+On GNOME 46+/50 there is **no `--nested` flag** — running as a Wayland compositor from inside
+an existing session is nested by default (`--display-server` is what turns it into a full
+session-replacing server, which you do *not* want). This opens a second, fully separate Wayland
+compositor in a window — never touches your real session. Inside it: `bin/zentab-install` to symlink `dist/`, then
 `gnome-extensions enable zentab@zentab.app`. After any source change: `bin/zentab-build`, then
 close and relaunch the nested shell (an ESM bundle rewrite isn't picked up by a plain extension
 reload). See the README's "Dev loop" section for the full rationale.
@@ -165,9 +167,9 @@ If any of these bite in practice, revisit:
 
 ## Environment note
 
-This dev machine's system `PATH` doesn't have `glib-compile-schemas` (it's split into
-nixpkgs' `glib.dev` output rather than `glib`/`glib.bin`). Build/verify commands in this repo
-resolved it via `nix shell nixpkgs#glib.dev -c glib-compile-schemas ...` for this pass. Real
-GNOME desktops ship it as part of `glib` itself — this is a dev-shell quirk, not a
-shipped-product issue, but worth knowing if this exact devshell is reused for future `gnome/`
-work.
+`glib-compile-schemas` isn't on this NixOS machine's default `PATH` (nixpkgs splits it into the
+`glib.dev` output, not `glib`/`glib.bin`). Run the build under a nix shell that provides both
+Node and it, e.g. `nix shell nixpkgs#nodejs_24 nixpkgs#glib.dev -c bin/zentab-build`. Real GNOME
+desktops ship `glib-compile-schemas` as part of `glib` itself — this is only a dev-shell quirk,
+not a shipped-product issue. (A `flake.nix` dev shell would be the tidy fix, but locking it here
+needs a healthy `channels.nixos.org` fetch — deferred, do it when not on a flaky connection.)

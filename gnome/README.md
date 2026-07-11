@@ -83,9 +83,9 @@ this second compile is gitignored and never shipped — the one under `dist/sche
 GNOME Shell actually reads is produced by `esbuild.js` itself).
 
 > `glib-compile-schemas` must be on `PATH`. It ships as part of `glib` on virtually every
-> Linux desktop; if you're on a system where it isn't (e.g. a minimal Nix dev shell), it lives
-> in the `glib.dev` output — `nix shell nixpkgs#glib.dev` — since Nix splits `bin` and `dev`
-> outputs differently than most distros.
+> Linux desktop; on Nix it lives in the `glib.dev` output (not `glib`/`glib.bin`), so run the
+> build under `nix shell nixpkgs#glib.dev` (e.g. `nix shell nixpkgs#nodejs_24 nixpkgs#glib.dev
+> -c bin/zentab-build`).
 
 Then symlink `dist/` into GNOME's extensions directory:
 
@@ -106,10 +106,12 @@ Rebinding the real Alt+Tab while iterating is risky, so develop inside a **neste
 Shell session instead of your real one:
 
 ```bash
-dbus-run-session -- gnome-shell --nested --wayland
+dbus-run-session -- gnome-shell --wayland
 ```
 
-That opens a second, fully separate Wayland compositor in a window. Install and enable ZenTab
+On GNOME 46+/50 there is no `--nested` flag: run as a Wayland compositor from inside your
+existing session and it is nested by default (`--display-server` is what would make it a full,
+session-replacing server). That opens a second, fully separate Wayland compositor in a window. Install and enable ZenTab
 *inside that nested session* (run `bin/zentab-install` and `gnome-extensions enable
 zentab@zentab.app` from a terminal launched inside it), then iterate: edit source, run
 `bin/zentab-build`, close and relaunch the nested shell to pick up the new `dist/extension.js`

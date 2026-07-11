@@ -81,6 +81,11 @@ interface Session {
    * cleanly via Escape, W/Q, or click-outside once revealed, so this is a degraded-but-safe
    * fallback, not a stuck grab. */
   readonly modifierMask: number;
+  /** The non-modifier keysym of this mode's trigger chord (e.g. `Tab` for Alt+Tab, `grave` for
+   * Alt+`) — pressing it again while the chord's modifier stays held advances the selection,
+   * exactly like Tab does. Without this, only Tab cycles and a repeated Alt+` does nothing.
+   * `Tab`/`ISO_Left_Tab` are always cycle keys on top of this. */
+  readonly cycleKeysym: number;
   /** The `Clutter.Grab` `Main.pushModal()` returned for this session — `_grabActor` itself is
    * `Switcher`-lifetime, not session-lifetime (see file header), so this is the only
    * session-scoped piece of the grab. */
@@ -192,6 +197,7 @@ export class Switcher implements Disposable {
       selectedIndex,
       revealed: false,
       modifierMask: primaryModifier(rawMask),
+      cycleKeysym: this._cycleKeysymForMode(mode),
       grab,
       holdTimeoutId: null,
     };
@@ -308,7 +314,16 @@ export class Switcher implements Disposable {
     // grid wraps at `TILE.maxColumns`, so a flat-list Up/Down alias would silently stop meaning
     // "the tile above/below" the moment a session has more than one row (an ordinary 6+ window
     // case), and VISION says to delete rather than half-build an unrequested gesture like that.
-    if (keysym === Clutter.KEY_Tab || keysym === Clutter.KEY_ISO_Left_Tab) {
+    // Tab always cycles; so does the chord's own trigger key (VISION/native behaviour: holding
+    // the modifier and re-pressing the same key — Alt+`, `, ` — advances through that mode's
+    // list, not just Tab). Backward via Shift+Tab (or ISO_Left_Tab, which the compositor already
+    // emits for Shift+Tab); Shift + the trigger key isn't matched here because Shift changes the
+    // reported keysym (e.g. ` -> ~), and Shift+Tab already covers "go back" in every mode.
+    if (
+      keysym === Clutter.KEY_Tab ||
+      keysym === Clutter.KEY_ISO_Left_Tab ||
+      keysym === session.cycleKeysym
+    ) {
       const [, pressed, latched, locked] = controller.get_state();
       const shiftHeld = ((pressed | latched | locked) & Clutter.ModifierType.SHIFT_MASK) !== 0;
       const backward = keysym === Clutter.KEY_ISO_Left_Tab || shiftHeld;
@@ -430,6 +445,19 @@ export class Switcher implements Disposable {
       case Mode.GlobalEscapeHatch:
         return keys.everything.raw;
     }
+  }
+
+  /** The Clutter keysym of a mode's trigger chord's final (non-modifier) key, so re-pressing
+   * that key while the modifier is held cycles the list (native switcher behaviour). For a
+   * single printable-ASCII key the Clutter keysym equals its ASCII code (e.g. "`" -> 0x60 ===
+   * Clutter.KEY_grave, "a" -> 0x61 === Clutter.KEY_a); "tab" is the one special-cased name.
+   * Anything unrecognised falls back to Tab (which always cycles anyway), so an exotic configured
+   * chord degrades to Tab-only cycling rather than breaking. */
+  private _cycleKeysymForMode(mode: Mode): number {
+    const lastToken = this._keyHintForMode(mode).split("+").pop()?.trim().toLowerCase() ?? "";
+    if (lastToken === "tab") return Clutter.KEY_Tab;
+    if (lastToken.length === 1) return lastToken.charCodeAt(0);
+    return Clutter.KEY_Tab;
   }
 
   /** Derives the mode's configured chord's *full* modifier mask (e.g. "ctrl+alt+tab" ->

@@ -38,11 +38,14 @@ type PrivateMethodName = "_startSwitcher" | "_startA11ySwitcher";
  * `switch-group(-backward)` (GNOME's own "cycle this app's windows", conventionally Alt+`)
  * shares `_startSwitcher` with switch-applications/switch-windows in the same file.
  *
- * Mapping to ZenTab's three modes follows GNOME's own semantics: `switch-applications` +
- * `switch-windows` are both "cycle everything" families (-> everyday switch); `switch-group`
- * is GNOME's own "this app's windows" (-> current-app windows, matching Alt+` by default);
- * `switch-panels` is what Ctrl+Alt+Tab natively does (-> global escape hatch, per the task
- * spec's explicit note that this is the one that collides).
+ * Mapping to ZenTab's three modes follows GNOME's own semantics and what each gesture's key
+ * conventionally implies: `switch-windows` (Alt+Tab) is "the windows right here" (-> everyday
+ * switch, current monitor + workspace); `switch-applications` (Super+Tab by default) is the
+ * broad "everything, everywhere" gesture (-> global escape hatch — Super+Tab should surface
+ * every window on every workspace/monitor, not duplicate Alt+Tab's local scope); `switch-group`
+ * (Alt+`) is GNOME's own "this app's windows" (-> current-app windows); `switch-panels`
+ * (Ctrl+Alt+Tab) also maps to the escape hatch (the task spec's explicit collision note), so
+ * both Super+Tab and Ctrl+Alt+Tab reach "everything".
  */
 const OVERRIDES: ReadonlyArray<{
   bindingName: string;
@@ -50,8 +53,8 @@ const OVERRIDES: ReadonlyArray<{
   mode: Mode;
   originalMethodName: PrivateMethodName;
 }> = [
-  { bindingName: "switch-applications", actionMode: Shell.ActionMode.NORMAL, mode: Mode.EverydaySwitch, originalMethodName: "_startSwitcher" },
-  { bindingName: "switch-applications-backward", actionMode: Shell.ActionMode.NORMAL, mode: Mode.EverydaySwitch, originalMethodName: "_startSwitcher" },
+  { bindingName: "switch-applications", actionMode: Shell.ActionMode.NORMAL, mode: Mode.GlobalEscapeHatch, originalMethodName: "_startSwitcher" },
+  { bindingName: "switch-applications-backward", actionMode: Shell.ActionMode.NORMAL, mode: Mode.GlobalEscapeHatch, originalMethodName: "_startSwitcher" },
   { bindingName: "switch-windows", actionMode: Shell.ActionMode.NORMAL, mode: Mode.EverydaySwitch, originalMethodName: "_startSwitcher" },
   { bindingName: "switch-windows-backward", actionMode: Shell.ActionMode.NORMAL, mode: Mode.EverydaySwitch, originalMethodName: "_startSwitcher" },
   { bindingName: "switch-group", actionMode: Shell.ActionMode.NORMAL, mode: Mode.CurrentAppWindows, originalMethodName: "_startSwitcher" },

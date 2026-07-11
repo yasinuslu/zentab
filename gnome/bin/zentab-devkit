@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# zentab-devkit — launch a THROWAWAY, fully isolated nested GNOME Shell with ZenTab installed
+# and enabled, so testing never touches your real session's extensions, dconf, or Alt+Tab.
+#
+# GNOME 49+ removed the old `--nested` flag; the replacement is `--devkit` (which needs the
+# `mutter-devkit` helper that ships with mutter). This script isolates the session by pointing
+# XDG_*_HOME at a sandbox dir, so the enable step writes to a sandbox dconf, not ~/.config, and
+# the extension is symlinked into a sandbox extensions dir, not ~/.local/share. Your real
+# GNOME Shell (and its Alt+Tab) are left completely alone.
+#
+# Build first (dist/ must exist). On NixOS glib-compile-schemas lives in the glib.dev output:
+#   nix shell nixpkgs#nodejs_24 nixpkgs#glib.dev -c bin/zentab-build
+#
+# Then:   bin/zentab-devkit
+# Close the nested window (or Ctrl+C here) to end. Rebuild + rerun to pick up source changes
+# (an ESM bundle rewrite is not hot-reloaded; relaunch the session).
+
+uuid="zentab@zentab.app"
+here="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [ ! -f "$here/dist/extension.js" ]; then
+  echo "dist/extension.js not found — build first:" >&2
+  echo "  nix shell nixpkgs#nodejs_24 nixpkgs#glib.dev -c bin/zentab-build" >&2
+  exit 1
+fi
+
+sandbox="${ZENTAB_DEVKIT_HOME:-/tmp/zentab-devkit}"
+export XDG_DATA_HOME="$sandbox/data"
+export XDG_CONFIG_HOME="$sandbox/config"
+export XDG_STATE_HOME="$sandbox/state"
+export XDG_CACHE_HOME="$sandbox/cache"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+mkdir -p "$XDG_DATA_HOME/gnome-shell/extensions" "$XDG_CONFIG_HOME"
+
+# Symlink the freshly built bundle into the sandbox extensions dir (never ~/.local/share).
+ln -sfn "$here/dist" "$XDG_DATA_HOME/gnome-shell/extensions/$uuid"
+export ZT_UUID="$uuid"
+
+echo "ZenTab devkit sandbox: $sandbox"
+echo "Launching isolated nested GNOME Shell (--devkit) with $uuid enabled."
+echo "Your real session's extensions, dconf, and Alt+Tab are untouched."
+echo
+
+# Fresh D-Bus session -> a sandbox dconf service is used. Enable ZenTab there, then hand off to
+# the nested shell in the SAME session (it reads the sandbox dconf + sandbox extensions dir).
+exec dbus-run-session -- bash -c '
+  gsettings set org.gnome.shell disable-user-extensions false
+  gsettings set org.gnome.shell enabled-extensions "[\"$ZT_UUID\"]"
+  exec gnome-shell --devkit
+'

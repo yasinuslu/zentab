@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Documents (does NOT auto-run) the nested-shell dev loop for iterating on the overlay and
-# switcher without touching your real GNOME session:
+# Points you at the isolated dev loop for iterating on the overlay and switcher without touching
+# your real GNOME session. The actual launcher is `bin/zentab-devkit` — run THAT:
 #
-#   dbus-run-session -- gnome-shell --wayland
+#   bin/zentab-devkit
 #
-# (On GNOME 46+/50 there is no --nested flag: running as a Wayland compositor from inside an
-# existing session is nested by default. Passing --display-server would make it a full,
-# session-replacing display server instead, which is NOT what you want here.)
+# GNOME 49+ removed the old `--nested` flag. Its `--wayland` successor does NOT work for a
+# nested session from inside a running Wayland login: the native backend already holds the seat,
+# so `dbus-run-session -- gnome-shell --wayland` dies with EBUSY. The working replacement is
+# `--devkit` (needs the `mutter-devkit` helper that ships with mutter), which `bin/zentab-devkit`
+# launches inside a throwaway sandbox: it points XDG_*_HOME at a temp dir so the enable step
+# writes to a sandbox dconf (never ~/.config) and the extension is symlinked into a sandbox
+# extensions dir (never ~/.local/share). Your real GNOME Shell, its dconf, and its Alt+Tab are
+# left completely alone.
 #
-# That opens a second, fully separate Wayland compositor in a window. Install/enable ZenTab
-# inside THAT session (bin/zentab-install, then `gnome-extensions enable zentab@zentab.app`
-# run from a terminal launched inside the nested shell), and iterate: bin/zentab-build, then
-# close and relaunch the nested shell to pick up the new dist/extension.js (a plain extension
-# reload isn't enough for an ESM bundle that's been re-written on disk).
+# Iterate: edit source, run `bin/zentab-build`, then close and relaunch `bin/zentab-devkit` to
+# pick up the new dist/extension.js (a plain extension reload isn't enough for an ESM bundle
+# that's been re-written on disk).
 #
-# !! DO NOT run this while gaming, or during any session where the real GNOME Shell needs to
-# !! stay maximally responsive — a nested compositor is a real, separate GPU-composited
-# !! Wayland session, not a lightweight sandbox. Only run it yourself, deliberately, in a
-# !! terminal you're actively watching, never from an unattended script.
-echo "This script documents the dev loop; it does not run gnome-shell for you."
-echo "When you're ready to test interactively, run this yourself:"
+# On NixOS glib-compile-schemas lives in the glib.dev output, so build under a nix shell:
+#   nix shell nixpkgs#nodejs_24 nixpkgs#glib.dev -c bin/zentab-build
+echo "The isolated dev loop lives in bin/zentab-devkit — run that instead:"
 echo
-echo "  dbus-run-session -- gnome-shell --wayland"
+echo "  nix shell nixpkgs#nodejs_24 nixpkgs#glib.dev -c bin/zentab-build   # build first"
+echo "  bin/zentab-devkit                                                  # launch sandbox"

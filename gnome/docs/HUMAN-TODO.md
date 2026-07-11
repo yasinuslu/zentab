@@ -12,16 +12,21 @@ it live, per the project's own convention (`feedback_autonomous_groundwork`).
 ## How to test (when NOT gaming)
 
 ```bash
-dbus-run-session -- gnome-shell --wayland
+nix shell nixpkgs#nodejs_24 nixpkgs#glib.dev -c bin/zentab-build   # build first
+bin/zentab-devkit                                                  # launch the sandbox
 ```
 
-On GNOME 46+/50 there is **no `--nested` flag** — running as a Wayland compositor from inside
-an existing session is nested by default (`--display-server` is what turns it into a full
-session-replacing server, which you do *not* want). This opens a second, fully separate Wayland
-compositor in a window — never touches your real session. Inside it: `bin/zentab-install` to symlink `dist/`, then
-`gnome-extensions enable zentab@zentab.app`. After any source change: `bin/zentab-build`, then
-close and relaunch the nested shell (an ESM bundle rewrite isn't picked up by a plain extension
-reload). See the README's "Dev loop" section for the full rationale.
+GNOME 49+ removed the `--nested` flag, and its `--wayland` successor can't run nested from
+inside a running Wayland login (the native backend already holds the seat →
+`gnome-shell --wayland` dies with `EBUSY`). The working replacement is `--devkit`, wrapped by
+`bin/zentab-devkit` in a throwaway sandbox: it points `XDG_*_HOME` at a temp dir so enabling the
+extension writes to a sandbox dconf (never `~/.config`) and symlinks `dist/` into a sandbox
+extensions dir (never `~/.local/share`), then enables ZenTab there and runs
+`gnome-shell --devkit`. Your real session's extensions, dconf, and Alt+Tab are untouched — no
+manual `bin/zentab-install` / `gnome-extensions enable` needed. After any source change:
+`bin/zentab-build`, then close and relaunch `bin/zentab-devkit` (an ESM bundle rewrite isn't
+picked up by a plain extension reload). See the README's "Dev loop" section for the full
+rationale.
 
 ## Priority 1 — the architecture change this pass made, unverified
 
@@ -136,12 +141,14 @@ If any of these bite in practice, revisit:
   be unreachable in that state, but Escape still works, so this isn't a stuck-grab risk, just a
   rare-edge-case rough spot. Not fixed (would need `Switcher` to listen for
   `monitors-changed` during an open session).
-- **A closed window's tile staying selectable mid-session** (not via W/Q, but externally — the
-  app quitting on its own, crashing, etc.): the guarded-`activate()` fix (Priority 3 above)
-  means this can no longer hang the grab, but the stale tile can still show briefly until the
-  next W/Q-triggered refresh or the session ends. Not fixed as a live-refresh feature (would
-  need `Switcher` to subscribe to `WindowSnapshotService`'s per-window `unmanaging` signal for
-  the duration of an open session).
+- ~~**A closed window's tile staying selectable mid-session**~~ **(FIXED)** — `Switcher` now
+  subscribes to `WindowSnapshotService`'s cache-change notification (fired from `_track`/
+  `_untrack`, i.e. on each window's `unmanaging`) and reconciles an open session's overlay live.
+  This drops the tile the frame a window actually leaves whether it was closed via W/Q or
+  externally (the app quitting on its own, crashing, etc.), keeps the highlight on the same
+  window if it survived, and ends the session if the list empties. The W/Q path no longer
+  re-fetches synchronously — `delete()`/`request_quit()` are async, so a same-frame re-read just
+  showed the still-present window (the exact "stale tile lingers" bug).
 - **`setCustomKeybindingHandler`-style override-success detection for the OVERRIDES table**:
   this pass DID fix the override loop to call `Meta.keybindings_set_custom_handler` directly and
   check its real boolean result (previously silently swallowed by `Main.wm`'s own wrapper) — but
@@ -161,8 +168,9 @@ If any of these bite in practice, revisit:
 
 - **Blur-behind on the scrim** (`TODO(blur)` in `theme.ts`/`overlay.ts`) — flat dim scrim only,
   no GPU blur-behind, until St/Clutter exposes a cheap blur path.
-- **Live window thumbnails** (`TODO(thumbnail)` in `overlay.ts`) — icon + title identification
-  only, no `Clutter.Clone` window preview.
+- ~~**Live window thumbnails**~~ **(DONE)** — each tile now shows a live `Clutter.Clone` of the
+  window's compositor actor (zero-copy GPU texture, no screenshot/portal), scaled to fit, with a
+  plain dark box fallback for entries with no realised actor. See `overlay.ts`'s `_buildThumbnail`.
 - **No packaged release / EGO submission** — build-it-yourself only; no `gnome-vN*` CI workflow.
 
 ## Environment note

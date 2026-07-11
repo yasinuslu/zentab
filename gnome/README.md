@@ -102,25 +102,30 @@ enabled and running, via `config.ts`'s write-through).
 
 ## Dev loop
 
-Rebinding the real Alt+Tab while iterating is risky, so develop inside a **nested** GNOME
-Shell session instead of your real one:
+Rebinding the real Alt+Tab while iterating is risky, so develop inside a throwaway, fully
+isolated nested GNOME Shell session instead of your real one:
 
 ```bash
-dbus-run-session -- gnome-shell --wayland
+nix shell nixpkgs#nodejs_24 nixpkgs#glib.dev -c bin/zentab-build   # build first
+bin/zentab-devkit                                                  # launch the sandbox
 ```
 
-On GNOME 46+/50 there is no `--nested` flag: run as a Wayland compositor from inside your
-existing session and it is nested by default (`--display-server` is what would make it a full,
-session-replacing server). That opens a second, fully separate Wayland compositor in a window. Install and enable ZenTab
-*inside that nested session* (run `bin/zentab-install` and `gnome-extensions enable
-zentab@zentab.app` from a terminal launched inside it), then iterate: edit source, run
-`bin/zentab-build`, close and relaunch the nested shell to pick up the new `dist/extension.js`
-(a plain extension reload isn't enough for an ESM bundle rewritten on disk).
+GNOME 49+ removed the `--nested` flag, and its `--wayland` successor can't run nested from
+inside a running Wayland login (the native backend already holds the seat, so
+`gnome-shell --wayland` dies with `EBUSY`). The working replacement is `--devkit` (which needs
+the `mutter-devkit` helper that ships with mutter). `bin/zentab-devkit` wraps it in a sandbox:
+it points `XDG_*_HOME` at a temp dir so enabling the extension writes to a sandbox dconf (never
+`~/.config`) and symlinks the built `dist/` into a sandbox extensions dir (never
+`~/.local/share`), then enables ZenTab there and launches `gnome-shell --devkit`. Your real
+session's extensions, dconf, and Alt+Tab are untouched — no `bin/zentab-install` /
+`gnome-extensions enable` dance needed.
 
-`bin/zentab-dev` documents this loop without running it for you — a nested compositor is a
-real, separate GPU-composited session, not a lightweight sandbox, so launch it yourself,
-deliberately, in a terminal you're actively watching. Never run it unattended, and never while
-your real session needs to stay maximally responsive (e.g. while gaming).
+Iterate: edit source, run `bin/zentab-build`, then close and relaunch `bin/zentab-devkit` to
+pick up the new `dist/extension.js` (a plain extension reload isn't enough for an ESM bundle
+rewritten on disk). A devkit session is still a real, separate GPU-composited compositor, not a
+lightweight sandbox — launch it yourself, deliberately, in a terminal you're actively watching,
+and not while your real session needs to stay maximally responsive (e.g. while gaming).
+`bin/zentab-dev` just points you here.
 
 ## Configuration
 

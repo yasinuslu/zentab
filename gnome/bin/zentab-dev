@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Documents (does NOT auto-run) the nested-shell dev loop for iterating on the overlay and
+# switcher without touching your real GNOME session:
+#
+#   dbus-run-session -- gnome-shell --nested --wayland
+#
+# That opens a second, fully separate Wayland compositor in a window. Install/enable ZenTab
+# inside THAT session (bin/zentab-install, then `gnome-extensions enable zentab@zentab.app`
+# run from a terminal launched inside the nested shell), and iterate: bin/zentab-build, then
+# close and relaunch the nested shell to pick up the new dist/extension.js (a plain extension
+# reload isn't enough for an ESM bundle that's been re-written on disk).
+#
+# !! DO NOT run this while gaming, or during any session where the real GNOME Shell needs to
+# !! stay maximally responsive — a nested compositor is a real, separate GPU-composited
+# !! Wayland session, not a lightweight sandbox. Only run it yourself, deliberately, in a
+# !! terminal you're actively watching, never from an unattended script.
+echo "This script documents the dev loop; it does not run gnome-shell for you."
+echo "When you're ready to test interactively, run this yourself:"
+echo
+echo "  dbus-run-session -- gnome-shell --nested --wayland"

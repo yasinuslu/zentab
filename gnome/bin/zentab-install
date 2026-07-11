@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Symlinks the built extension into the user's GNOME Shell extensions directory so
+# `gnome-extensions enable zentab@zentab.app` picks it up.
+#
+# Run bin/zentab-build first.
+#
+# SAFETY: this only creates a symlink under ~/.local/share/gnome-shell/extensions/. It does
+# NOT reload, restart, or nested-launch gnome-shell, and does not touch gsettings/dconf itself
+# — config.ts's write-through only happens once the extension is actually enabled and running,
+# which this script does not trigger either.
+UUID="zentab@zentab.app"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+if [ ! -f dist/extension.js ]; then
+  echo "dist/extension.js not found — run bin/zentab-build first" >&2
+  exit 1
+fi
+
+TARGET="$HOME/.local/share/gnome-shell/extensions/$UUID"
+mkdir -p "$(dirname "$TARGET")"
+rm -rf "$TARGET"
+ln -s "$(pwd)/dist" "$TARGET"
+
+echo "Symlinked dist/ -> $TARGET"
+echo "Enable with: gnome-extensions enable $UUID"
+echo "(On Wayland a newly-installed extension typically needs a log out/in before GNOME Shell"
+echo " notices it; on X11, Alt+F2 r Enter reloads the shell in place instead.)"

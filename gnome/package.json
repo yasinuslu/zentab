@@ -1,0 +1,24 @@
+{
+  "name": "zentab-gnome",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ZenTab GNOME Shell extension — the three-mode window switcher, in-process, no daemon.",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "node esbuild.js",
+    "compile-schemas": "glib-compile-schemas schemas",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@girs/gjs": "^4.1.0",
+    "@girs/gnome-shell": "^50.0.4",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.63.0"
+  }
+}

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ZenTab's private GSettings schema. Its ONLY purpose is holding the three trigger-key
+  accelerators as `Meta.Display.add_keybinding` requires a GSettings-backed key — every other
+  ZenTab setting (hold_threshold_ms) lives purely in-process, parsed from
+  ~/.config/zentab/config.toml, and never touches dconf. Per VISION.md, only the trigger keys
+  are configurable; everything else is a fixed opinion, so this schema does not grow beyond
+  these three keys.
+
+  The values below are placeholders: config.ts overwrites them at startup (write-through) with
+  whatever config.toml resolves to (falling back to these same defaults on missing/malformed
+  config), so `dconf` always reflects the last-known-good parsed config, not stale user edits.
+-->
+<schemalist gettext-domain="zentab">
+  <schema id="org.gnome.shell.extensions.zentab" path="/org/gnome/shell/extensions/zentab/">
+    <key name="other-apps-keybinding" type="as">
+      <default>["&lt;Alt&gt;Tab"]</default>
+      <summary>Everyday switch trigger</summary>
+      <description>
+        Every window on the current monitor + current workspace, all apps. TOML key
+        [keys].other_apps. Default chord "alt+tab" -&gt; "&lt;Alt&gt;Tab".
+      </description>
+    </key>
+    <key name="current-app-keybinding" type="as">
+      <default>["&lt;Alt&gt;grave"]</default>
+      <summary>Current-app windows trigger</summary>
+      <description>
+        Every window of the active app, gathered from all workspaces + all monitors. TOML key
+        [keys].current_app. Default chord "alt+`" -&gt; "&lt;Alt&gt;grave".
+      </description>
+    </key>
+    <key name="everything-keybinding" type="as">
+      <default>["&lt;Primary&gt;&lt;Alt&gt;Tab"]</default>
+      <summary>Global escape hatch trigger</summary>
+      <description>
+        Every window, all apps/workspaces/monitors. TOML key [keys].everything. Default chord
+        "ctrl+alt+tab" -&gt; "&lt;Primary&gt;&lt;Alt&gt;Tab". Note: this default collides with
+        GNOME's built-in switch-group binding, which ZenTab supersedes via
+        setCustomKeybindingHandler rather than this private key (see keybinding.ts) — this key
+        only fires if the resolved chord does NOT match a built-in ZenTab already overrides.
+      </description>
+    </key>
+  </schema>
+</schemalist>

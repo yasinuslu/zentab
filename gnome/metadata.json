@@ -1,0 +1,10 @@
+{
+  "uuid": "zentab@zentab.app",
+  "name": "ZenTab",
+  "description": "A calm, opinionated window switcher: three hard-coded modes (everyday switch, current-app windows, global escape hatch), a stable non-MRU list, tap-to-commit / hold-to-browse, release-to-commit. Config is one TOML file. Free forever.",
+  "shell-version": ["48", "49", "50"],
+  "url": "https://github.com/yasinuslu/zentab",
+  "settings-schema": "org.gnome.shell.extensions.zentab",
+  "session-modes": ["user"],
+  "version-name": "0.1.0"
+}

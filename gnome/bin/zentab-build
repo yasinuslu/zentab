@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Builds the extension: typecheck -> esbuild bundle -> stage + compile dist/schemas.
+# Safe to run any time; touches nothing outside this gnome/ folder.
+#
+# esbuild.js itself stages metadata.json + schemas/*.gschema.xml into dist/ and compiles
+# dist/schemas/gschemas.compiled (the copy GNOME Shell actually reads at runtime). The
+# `glib-compile-schemas schemas` call below is a second, separate compile of the SOURCE tree's
+# schemas/ — pure verification that the .gschema.xml itself is well-formed, independent of the
+# build; its output (schemas/gschemas.compiled) is gitignored and never shipped.
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+npx tsc --noEmit
+node esbuild.js
+glib-compile-schemas schemas
+
+echo "Build complete: dist/extension.js"

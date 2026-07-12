@@ -1,0 +1,56 @@
+name: gnome Release
+
+# Bump gnome/package.json + metadata.json, then push a matching namespaced tag:
+#   git tag gnome-v0.1.0 && git push origin gnome-v0.1.0
+on:
+  push:
+    tags: ["gnome-v*"]
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: gnome
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: gnome/package-lock.json
+      - name: Install system packaging tools
+        run: sudo apt-get update && sudo apt-get install -y libglib2.0-bin zip
+      - run: npm ci
+      - name: Resolve version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#gnome-v}" >> "$GITHUB_OUTPUT"
+      - run: npm run lint
+      - name: Build installable extension ZIP
+        run: bin/zentab-package "${{ steps.version.outputs.version }}"
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ZenTab for GNOME ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: gnome/dist-packages/zentab@zentab.app.shell-extension.zip
+          body: |
+            ### Install (GNOME Shell 48–50)
+
+            1. Download `zentab@zentab.app.shell-extension.zip` from this release.
+            2. Install it:
+               ```bash
+               gnome-extensions install --force zentab@zentab.app.shell-extension.zip
+               ```
+            3. Log out and back in (required on Wayland after first install).
+            4. Enable it:
+               ```bash
+               gnome-extensions enable zentab@zentab.app
+               ```
+
+            ZenTab is not yet published on extensions.gnome.org. This ZIP is the standard
+            GNOME Shell extension archive and can also be inspected with `unzip -l`.

@@ -69,7 +69,25 @@ window has focus, this is almost certainly why.
 
 ## Install
 
-Build the bundle yourself (no releases are published for this platform yet):
+Download `zentab@zentab.app.shell-extension.zip` from the latest
+[GNOME release on GitHub](https://github.com/yasinuslu/zentab/releases?q=gnome-v), then:
+
+```bash
+gnome-extensions install --force zentab@zentab.app.shell-extension.zip
+```
+
+Log out and back in so GNOME Shell discovers it (required on Wayland), then enable it:
+
+```bash
+gnome-extensions enable zentab@zentab.app
+```
+
+GitHub Releases are the distribution channel. The ZIP has the standard GNOME Shell extension
+layout: `metadata.json`, `extension.js`, `schemas/`, and the license at its root.
+
+### Build from source
+
+Build the bundle yourself:
 
 ```bash
 npm install
@@ -99,6 +117,20 @@ notices it exists; on X11, Alt+F2 → `r` → Enter reloads the shell in place i
 `bin/zentab-install` only creates a symlink — it never reloads or restarts `gnome-shell`
 itself, and never touches gsettings/dconf (that only happens once the extension is actually
 enabled and running, via `config.ts`'s write-through).
+
+To create the same ZIP published by GitHub Releases:
+
+```bash
+bin/zentab-package
+```
+
+This writes `dist-packages/zentab@zentab.app.shell-extension.zip`. Cut a release with a
+matching namespaced tag after bumping both `package.json` and `metadata.json`:
+
+```bash
+git tag gnome-v0.1.0
+git push origin gnome-v0.1.0
+```
 
 ## Dev loop
 
@@ -228,8 +260,8 @@ no prefs dialog and no other knob.
 - **Digit 1–9 jump-to-tile** — present in the macOS/Windows editions, not yet implemented here;
   the index chip renders but isn't wired to a key yet (VISION.md is silent on whether it should
   be — a product call, not an oversight).
-- **A packaged release** — no `gnome-vN*` CI/release workflow or `ego` (extensions.gnome.org)
-  submission yet; today this is a build-it-yourself extension.
+- **Automated update UX** — GitHub Releases provide installable ZIPs; upgrades are currently
+  installed explicitly or through a pinned declarative package.
 - **Live-shell verification** — see [`docs/HUMAN-TODO.md`](docs/HUMAN-TODO.md) for everything
   in this codebase that was verified by theory (reading current GNOME source/`@girs` types)
   rather than by running the shell, under this pass's machine-safety constraint, and the exact

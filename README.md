@@ -4,7 +4,7 @@
 
 ### Window switching that feels instant.
 
-A calm, instant window switcher for **macOS** and **Windows**. Tap to land in the
+A calm, instant window switcher for **GNOME**, **macOS**, and **Windows**. Tap to land in the
 window you want, or hold and every window steps gently into view while the rest of
 the world recedes.
 
@@ -28,6 +28,7 @@ refuse to leave. Years of a great Linux switching experience that neither macOS 
 Windows ever matched (the [full origin story](darwin/README.md#why-zentab-exists) is in
 the macOS readme) turned into one product with two native builds:
 
+- **GNOME Shell** in TypeScript/GJS, running in-process as a shell extension.
 - **macOS** in Swift / AppKit, on private SkyLight + Accessibility APIs.
 - **Windows** in C# / WPF on .NET 10, on a thin Win32/DWM interop layer.
 
@@ -67,6 +68,7 @@ for the shared visual identity (the always-dark spotlight, the Electric `#5D6DFF
 
 | Platform | Get it | Requirements |
 | --- | --- | --- |
+| **GNOME** | [Download extension ZIP](https://github.com/yasinuslu/zentab/releases?q=gnome-v) | GNOME Shell 48–50 |
 | **macOS** | [Download `.dmg`](https://cdn.nepjua.org/zentab/macos/releases/latest/ZenTab.dmg) | Universal, macOS 13+ |
 | **Windows** | [Download installer `.msi`](https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64.msi) · [portable `.exe`](https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe) | Windows 10 / 11 |
 
@@ -77,14 +79,16 @@ builds are ad-hoc signed, so Gatekeeper shows a warning until notarization lands
 
 ## Build from source
 
-One repo, two apps. Each has its own README with the full details.
+One repo, three native implementations. Each has its own README with the full details.
 
 ```
+gnome/     GNOME Shell extension (TypeScript/GJS) -> see gnome/README.md
 darwin/    macOS app (Swift)    -> see darwin/README.md
 windows/   Windows app (C#/WPF) -> see windows/README.md
 website/   marketing site + live overlay demo (Bun + Vite + React)
 ```
 
+- **GNOME**: work from `gnome/`, build with `bin/zentab-build`, package with `bin/zentab-package`, and test with `bin/zentab-devkit`.
 - **macOS**: work from `darwin/`, build/run with `bin/run`, `bin/build`, `bin/test`. `project.yml` is the source of truth (regenerate the Xcode project with `bin/generate`).
 - **Windows**: work from `windows/`, build/run with `dotnet run`, `./dev.ps1`, `./build.ps1`.
 
@@ -106,6 +110,7 @@ Release tags are namespaced per platform so they don't collide:
 ```
 git tag darwin-v0.1.0  && git push origin darwin-v0.1.0     # cuts a macOS release
 git tag windows-v0.2.0 && git push origin windows-v0.2.0    # cuts a Windows release
+git tag gnome-v0.1.0   && git push origin gnome-v0.1.0      # cuts a GNOME extension ZIP
 ```
 
 Bundles ship to the `nepjua-cdn` Cloudflare R2 bucket (`cdn.nepjua.org`) under `zentab/`,

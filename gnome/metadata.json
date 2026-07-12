@@ -6,5 +6,6 @@
   "url": "https://github.com/yasinuslu/zentab",
   "settings-schema": "org.gnome.shell.extensions.zentab",
   "session-modes": ["user"],
+  "version": 1000,
   "version-name": "0.1.0"
 }

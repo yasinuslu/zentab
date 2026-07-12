@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Build the GNOME Shell extension and produce the standard installable zip layout:
+# metadata.json, extension.js, schemas/, and LICENSE at the archive root.
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+version="${1:-$(node -p "require('./package.json').version")}"
+out_dir="${2:-dist-packages}"
+uuid="$(node -p "require('./metadata.json').uuid")"
+metadata_version="$(node -p "require('./metadata.json')['version-name']")"
+package_version="$(node -p "require('./package.json').version")"
+
+if [ "$version" != "$metadata_version" ] || [ "$version" != "$package_version" ]; then
+  echo "Version mismatch: requested=$version metadata=$metadata_version package=$package_version" >&2
+  echo "Bump gnome/metadata.json and gnome/package.json together before packaging." >&2
+  exit 1
+fi
+
+bin/zentab-build
+
+archive="$(pwd)/$out_dir/$uuid.shell-extension.zip"
+staging="$(mktemp -d)"
+trap 'rm -rf "$staging"' EXIT
+
+cp dist/extension.js dist/metadata.json "$staging/"
+cp -R dist/schemas "$staging/schemas"
+cp ../LICENSE "$staging/LICENSE"
+
+mkdir -p "$(dirname "$archive")"
+rm -f "$archive"
+(
+  cd "$staging"
+  zip -X -q -r "$archive" extension.js metadata.json schemas LICENSE
+)
+
+echo "Package complete: $archive"

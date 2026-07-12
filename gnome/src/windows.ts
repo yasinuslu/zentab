@@ -244,12 +244,27 @@ export class WindowSnapshotService implements Disposable {
    * minimized/hidden — VISION: "real on-screen windows only"). "Current monitor" is the
    * monitor under the mouse cursor (`Meta.Display.get_current_monitor()`'s documented
    * semantics), matching the refinement already noted in windows/WindowService.cs and the
-   * overlay's own monitor-under-cursor positioning — not the focused window's monitor. */
+   * overlay's own monitor-under-cursor positioning — not the focused window's monitor.
+   *
+   * One carve-out to "no minimized": a *fullscreen* window is still surfaced even when
+   * minimized. Fullscreen exclusive games (especially Wine/Proton titles like CryEngine)
+   * minimize *themselves* the instant they lose focus, so the moment you Alt+Tab away the
+   * game drops out of its own switch list and you can't Alt+Tab back to it (it's only left
+   * in the global escape hatch, a surprising place to hunt for the thing you were just
+   * playing). A minimized-yet-fullscreen window was never one the user *tucked away*; it's a
+   * live task that self-minimized, so it stays in the everyday list. Regular minimized
+   * windows (the deliberate "hide this for now") remain excluded, as VISION wants.
+   * `is_fullscreen()` stays true while such a window is minimized (mutter keeps
+   * `_NET_WM_STATE_FULLSCREEN` alongside `_NET_WM_STATE_HIDDEN`), so this reliably readmits
+   * exactly the self-minimizing-game case and nothing else. */
   private _everydaySwitch(): WindowEntry[] {
     const monitor = global.display.get_current_monitor();
     const workspace = global.workspace_manager.get_active_workspace();
     return this._buildFromCache(
-      (win) => win.get_monitor() === monitor && win.get_workspace() === workspace && !win.minimized,
+      (win) =>
+        win.get_monitor() === monitor &&
+        win.get_workspace() === workspace &&
+        (!win.minimized || win.is_fullscreen()),
     );
   }
 

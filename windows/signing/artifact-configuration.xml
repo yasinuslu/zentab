@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration for the ZenTab Windows release.
+
+  SignPath stores this in its own web UI, not here; this file is the committed copy so the
+  shape of a signing request is reviewable in the repo and in diffs. Paste it into
+  SignPath > Project > Artifact Configurations after any change, and keep the slug in the
+  SIGNPATH_ARTIFACT_CONFIGURATION_SLUG repo variable pointing at it.
+
+  Why the root is <zip-file>: the release workflow hands SignPath one artifact, and
+  actions/upload-artifact always produces a ZIP. Both signable files sit at its root because
+  they share dist/ as their common ancestor.
+
+  Why the MSI has a nested <pe-file>: the MSI carries the same self-contained ZenTab.exe as
+  the portable download. Signing only the installer would leave the binary it drops into
+  Program Files unsigned, so SmartScreen would warn on the thing that actually runs every
+  day. SignPath deep-signs the payload first, then the installer around it, in one request.
+
+  The MSIX is absent on purpose. It goes to the Microsoft Store, which re-signs it with
+  Microsoft's own certificate during certification, and a Store package's Publisher must
+  match the Partner Center identity rather than our signing certificate.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="ZenTab-*-win-x64-portable.exe">
+      <authenticode-sign />
+    </pe-file>
+    <msi-file path="ZenTab-*-win-x64.msi">
+      <!-- Path as the file is laid down by the installer (INSTALLFOLDER\ZenTab.exe). -->
+      <pe-file path="ZenTab.exe">
+        <authenticode-sign />
+      </pe-file>
+      <authenticode-sign />
+    </msi-file>
+  </zip-file>
+</artifact-configuration>

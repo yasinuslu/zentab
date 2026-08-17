@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ZenTab MSIX package manifest — the Microsoft Store route.
+
+  Why MSIX at all: the Store re-signs MSIX packages with Microsoft's own certificate after
+  certification, so a Store install shows NO SmartScreen warning and costs nothing. That is
+  the only free path to a warning-free first run; the direct downloads (portable exe / MSI)
+  are Authenticode-signed by SignPath instead and still build SmartScreen reputation the
+  slow way. See docs/code-signing-policy.md.
+
+  This file is the single source of truth for the package identity. build.ps1 stamps only
+  <Identity Version="..."> from the release version; everything else is edited here.
+
+  ============================================================================
+  BEFORE THE FIRST STORE SUBMISSION, replace the three values marked STORE-TODO
+  with the ones Partner Center assigns under Product > Product identity. They must
+  match exactly or the submission is rejected. See windows/docs/HUMAN-TODO.md.
+  ============================================================================
+
+  Until then the values below are sideload placeholders: fine for local `Add-AppxPackage`
+  testing with a self-signed cert, not valid for the Store.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap5 uap10 rescap">
+
+  <!-- STORE-TODO: Name and Publisher come from Partner Center (Publisher is a CN=<GUID>).
+       Version is overwritten by build.ps1 with the release version as x.y.z.0 — the Store
+       requires the fourth field to be 0. -->
+  <Identity Name="yasinuslu.ZenTab"
+            Publisher="CN=yasinuslu"
+            Version="0.0.0.0"
+            ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>ZenTab</DisplayName>
+    <!-- STORE-TODO: must match the Partner Center publisher display name. -->
+    <PublisherDisplayName>yasinuslu</PublisherDisplayName>
+    <Description>An opinionated Alt+Tab alternative for Windows.</Description>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <!-- 10.0.19041 (Windows 10 2004) is the floor for uap10:RuntimeBehavior, which is how a
+       packaged classic Win32 app declares full trust without an EntryPoint. -->
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <!-- ZenTab installs a low-level keyboard hook and reads other processes' window titles and
+       DWM thumbnails, none of which a sandboxed app may do. runFullTrust is the capability
+       that keeps a packaged classic desktop app behaving exactly as the unpackaged one. -->
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Applications>
+    <Application Id="ZenTab"
+                 Executable="ZenTab.exe"
+                 uap10:RuntimeBehavior="packagedClassicApp"
+                 uap10:TrustLevel="mediumIL">
+
+      <!-- BackgroundColor is the plate behind the mark on tiles. It is the brand background
+           token from BRANDING.md, so the dark squircle body sits flush and only the white
+           frame and the Electric tile read. -->
+      <uap:VisualElements DisplayName="ZenTab"
+                          Description="An opinionated Alt+Tab alternative for Windows."
+                          BackgroundColor="#0B0C0F"
+                          Square150x150Logo="Assets\Square150x150Logo.png"
+                          Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Square71x71Logo="Assets\Square71x71Logo.png"
+                         Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- ZenTab launches at login, always — it is not a setting (VISION.md). The
+             unpackaged builds write the per-user Run key (Startup.cs); a packaged app may
+             not, because MSIX virtualizes that key, so the platform's startup task is the
+             equivalent. Enabled="true" means it is on from the first login after install;
+             the user can still turn it off in Task Manager > Startup apps. -->
+        <uap5:Extension Category="windows.startupTask"
+                        Executable="ZenTab.exe"
+                        EntryPoint="Windows.FullTrustApplication">
+          <uap5:StartupTask TaskId="ZenTabStartup" Enabled="true" DisplayName="ZenTab" />
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>

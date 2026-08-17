@@ -85,6 +85,26 @@ internal static class Native
 
     public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
+    // ---- Package identity (are we running from the MSIX / Store build?) --------
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetCurrentPackageFullName(ref uint length, StringBuilder? name);
+
+    private const int APPMODEL_ERROR_NO_PACKAGE = 15700;
+
+    /// <summary>
+    /// True when this process runs from an MSIX package (the Microsoft Store build), false
+    /// for the portable exe and the MSI install. The two builds differ in the few places
+    /// where the package identity changes what the OS allows — notably launch-at-login,
+    /// which a packaged app declares in its manifest instead of writing the Run key.
+    /// </summary>
+    public static bool IsPackaged()
+    {
+        uint length = 0;
+        // Query-only call: with a null buffer this reports the required length, or
+        // APPMODEL_ERROR_NO_PACKAGE when the process has no package identity at all.
+        return GetCurrentPackageFullName(ref length, null) != APPMODEL_ERROR_NO_PACKAGE;
+    }
+
     // ---- Messaging (close window) ---------------------------------------------
     [DllImport("user32.dll")]
     public static extern bool PostMessage(nint hWnd, uint msg, nint wParam, nint lParam);

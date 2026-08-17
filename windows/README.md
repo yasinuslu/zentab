@@ -56,12 +56,14 @@ idle cost is near zero (one foreground event hook, no polling).
 # compare against the matching line in SHA256SUMS.txt
 ```
 
-Or build the artifacts yourself — `build.ps1` produces both in `dist/`:
+Or build the artifacts yourself — `build.ps1` produces them in `dist/`:
 
 ```powershell
-./build.ps1                     # both: portable exe + MSI installer
+./build.ps1                     # the download pair: portable exe + MSI installer
 ./build.ps1 -Target portable    # just the portable single-file exe
 ./build.ps1 -Target installer   # just the MSI
+./build.ps1 -Target msix        # just the Microsoft Store package (needs the Windows SDK)
+./build.ps1 -Target release     # everything the release workflow ships
 ./build.ps1 -Version 0.2.0      # stamp a version into the exe, MSI, and filenames
 ```
 
@@ -69,14 +71,25 @@ Or build the artifacts yourself — `build.ps1` produces both in `dist/`:
 | --- | --- |
 | `dist/ZenTab-0.1.0-win-x64-portable.exe` | **Truly portable** — one self-contained file. Copy it anywhere and double-click; no .NET install, no setup, no files beside it. |
 | `dist/ZenTab-0.1.0-win-x64.msi` | **Installer** — installs to *Program Files*, adds a Start Menu shortcut, and starts ZenTab at login. Quit anytime from the tray icon's menu. |
+| `dist/ZenTab-0.1.0-win-x64.msix` | **Microsoft Store package** — submitted to Partner Center by hand and deliberately unsigned, because the Store re-signs it. Not published to the CDN. |
 
-Both bundle a **self-contained** build, so .NET does not need to be installed on the target
-machine, and both use the real Alt+Tab / Alt+` / Ctrl+Alt+Tab gestures (the portable exe
-ships without `zentab.toml`, and with no `%APPDATA%\zentab\config.toml` the built-in defaults
-apply — see [Configuration](#configuration)).
+The first two bundle a **self-contained** build, so .NET does not need to be installed on the
+target machine, and both use the real Alt+Tab / Alt+` / Ctrl+Alt+Tab gestures (the portable
+exe ships without `zentab.toml`, and with no `%APPDATA%\zentab\config.toml` the built-in
+defaults apply — see [Configuration](#configuration)).
 
-> Heads-up: this is an early build (0.1.0). The artifacts are unsigned, so SmartScreen may
-> warn on first run.
+### Signing and SmartScreen
+
+The two direct downloads are Authenticode-signed with a certificate donated by
+[SignPath Foundation](https://signpath.org/); the Store package is signed by Microsoft during
+certification, which is why a Store install shows no SmartScreen warning at all. Check any
+download with `Get-AuthenticodeSignature`. The full story — including why even a signed
+download still warns until it builds reputation — is in
+[`../docs/code-signing-policy.md`](../docs/code-signing-policy.md).
+
+> Heads-up: this is an early build (0.1.0), and signing is not live yet (see
+> [`docs/HUMAN-TODO.md`](docs/HUMAN-TODO.md)). Until it is, the artifacts are unsigned and
+> SmartScreen will warn on first run.
 
 ## Build & run from source
 
@@ -133,11 +146,14 @@ trigger.
 - `Config.cs` / `zentab.toml` — the TOML config (trigger chords + hold threshold)
 - `App.xaml` / `.cs` — tray-resident entry point
 - `app.manifest` — PerMonitorV2 DPI awareness
-- `build.ps1` — one script → portable exe + WiX MSI (+ checksums) in `dist/`
+- `build.ps1` — one script → portable exe + WiX MSI + Store MSIX (+ checksums) in `dist/`
 - `installer/ZenTab.wxs` — the WiX MSI definition
+- `msix/AppxManifest.xml` — the Store package manifest (identity, logos, startup task)
+- `signing/artifact-configuration.xml` — what SignPath signs, committed for review
 - `assets/` — the brand mark (`zentab.svg`) + app icon (`zentab.ico`) + its generator
-  (`make-icon.ps1`)
+  (`make-icon.ps1`); `assets/msix/` holds the package logos
 - `docs/review-notes.md` — review backlog (bugs, feel/perf, packaging)
+- `docs/HUMAN-TODO.md` — the account-level steps only Yasin can do (Store, SignPath)
 
 > CI + release workflows live at the repo root in [`../.github/workflows/`](../.github/workflows/)
 > (`windows-ci.yml`, `windows-release.yml`), path-scoped to `windows/**`. Cut a release by
@@ -149,7 +165,9 @@ trigger.
 
 ## Not yet done (next steps)
 
-- **Code signing** — the exe and MSI are unsigned, so SmartScreen warns on first run.
+- **Code signing** — the pipeline is built (SignPath for the downloads, the Store for the
+  MSIX) but not yet switched on, so shipped artifacts are still unsigned and SmartScreen
+  warns on first run. What's left is account setup: [`docs/HUMAN-TODO.md`](docs/HUMAN-TODO.md).
 - **Per-monitor-DPI correctness** for panel/thumbnail placement on mixed-DPI multi-monitor.
 - **Cross-desktop window curation (Phase 2)** — bring/send windows across virtual desktops,
   and the per-window (not per-app) everyday list, to fully match the macOS scopes. Gated on

@@ -38,6 +38,9 @@ final class AppModel: ObservableObject {
     // Restore the native switchers if we ever die without a clean quit (the disabled
     // state persists across process exit), so Cmd+Tab is never permanently lost.
     NativeHotkeyRestore.installCrashGuards()
+    // ZenTab is useless unless it's already resident when you reach for the switcher, so
+    // it launches at login by default — no toggle (VISION.md). Dev builds opt out.
+    LoginItem.ensureRegistered(profile: profile)
     config = ConfigStore.load(profile: profile)
     refreshPermissions()
     // Start the window registry's observers off the summon path. AX permission is

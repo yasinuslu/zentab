@@ -20,6 +20,7 @@
 		44F4865690A3E30090934586 /* config.toml in Resources */ = {isa = PBXBuildFile; fileRef = 17062CB8C07D2691E221AFE6 /* config.toml */; };
 		46CB6872E8EBEFDD1D0C5026 /* WindowSwitchabilityProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4081C693E839489FA91BBEB2 /* WindowSwitchabilityProbe.swift */; };
 		488C74E74EFFD744F2B66D90 /* HIServicesSPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = E65D4503B08575E79E2AEB2F /* HIServicesSPI.swift */; };
+		5345FB553241C0D4DABB26C3 /* LoginItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52B4DCCDAC38C4418132CE0E /* LoginItem.swift */; };
 		541A880C29DBA6E27CC52BC6 /* WindowEnumerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA237BC209BACEE03479F9C5 /* WindowEnumerator.swift */; };
 		59E62825276711B3AE23FED5 /* LaunchProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D1D9174ED8FD2CA0A4FF149 /* LaunchProfile.swift */; };
 		618E806B988620E172A13E45 /* NativeHotkeyRestore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41363FE7B5390C064877D81D /* NativeHotkeyRestore.swift */; };
@@ -86,6 +87,7 @@
 		4A1A77506ECACA9398BCEDC4 /* OverlaySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlaySession.swift; sourceTree = "<group>"; };
 		4EBD932CC863F5804AAA20E0 /* ZenTabApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenTabApp.swift; sourceTree = "<group>"; };
 		525600181727B1500BEC9252 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		52B4DCCDAC38C4418132CE0E /* LoginItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItem.swift; sourceTree = "<group>"; };
 		556FD0EDD87634D487E85A8D /* TileGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileGridView.swift; sourceTree = "<group>"; };
 		5D1D9174ED8FD2CA0A4FF149 /* LaunchProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchProfile.swift; sourceTree = "<group>"; };
 		63934F2C629A4A581F13C591 /* TOMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOMLParser.swift; sourceTree = "<group>"; };
@@ -191,6 +193,7 @@
 		8E53E0068D252A6201087341 /* System */ = {
 			isa = PBXGroup;
 			children = (
+				52B4DCCDAC38C4418132CE0E /* LoginItem.swift */,
 				CEE7D07C25D65DEB5BC91169 /* Permissions.swift */,
 			);
 			path = System;
@@ -388,6 +391,7 @@
 				9FA8B2D7C769A64DDB5C2390 /* HotkeyTap.swift in Sources */,
 				28C370C05D35E040E5BFF206 /* Keybinding.swift in Sources */,
 				59E62825276711B3AE23FED5 /* LaunchProfile.swift in Sources */,
+				5345FB553241C0D4DABB26C3 /* LoginItem.swift in Sources */,
 				432FD983C0554A21EC61F30A /* Main.swift in Sources */,
 				198AB7E7827DB4043A08A8C5 /* MenuBarContent.swift in Sources */,
 				400977C582141E7D8E80224F /* NativeHotkeyConflict.swift in Sources */,

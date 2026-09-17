@@ -34,7 +34,7 @@ public partial class App : System.Windows.Application
 
         // ZenTab is useless unless it's already resident when you press Alt+Tab, so it
         // launches at login by default — no toggle (VISION.md). Debug builds opt out.
-        Startup.EnsureLaunchOnLogin();
+        LoginItem.EnsureLaunchOnLogin();
 
         CreateTray(_controller.Profile);
     }

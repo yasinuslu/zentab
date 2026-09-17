@@ -122,7 +122,7 @@ if ($wantInstaller) {
 #        itself to a temp directory on every cold start; inside a package the loose files are
 #        already local and the extraction is pure cost.
 #      - launch-at-login comes from the manifest's windows.startupTask extension rather than
-#        the Run key (Startup.cs stands down when it sees a package identity).
+#        the Run key (LoginItem.cs stands down when it sees a package identity).
 if ($wantMsix) {
     # Windows SDK tools. Same directory for both; prefer the newest SDK installed.
     function Find-SdkTool([string]$exeName) {

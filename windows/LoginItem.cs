@@ -18,7 +18,7 @@ namespace ZenTab;
 /// msix/AppxManifest.xml instead, which the OS honors natively — same always-on behavior,
 /// different mechanism — so this code stands down when it detects a package identity.
 /// </summary>
-internal static class Startup
+internal static class LoginItem
 {
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string ValueName = "ZenTab";

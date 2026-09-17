@@ -81,7 +81,7 @@
 
       <Extensions>
         <!-- ZenTab launches at login, always — it is not a setting (VISION.md). The
-             unpackaged builds write the per-user Run key (Startup.cs); a packaged app may
+             unpackaged builds write the per-user Run key (LoginItem.cs); a packaged app may
              not, because MSIX virtualizes that key, so the platform's startup task is the
              equivalent. Enabled="true" means it is on from the first login after install;
              the user can still turn it off in Task Manager > Startup apps. -->

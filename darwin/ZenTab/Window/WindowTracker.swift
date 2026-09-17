@@ -12,7 +12,7 @@ struct AXObserverBox: @unchecked Sendable {
 /// identity for free (no AX round-trip per event). App-level subscriptions pass
 /// `wid == 0` (their subject window varies per event and is read from `element`);
 /// per-window subscriptions pass the real wid (reliable even after destruction).
-private func packRefcon(_ pid: pid_t, _ wid: CGWindowID = 0) -> UnsafeMutableRawPointer? {
+func packRefcon(_ pid: pid_t, _ wid: CGWindowID = 0) -> UnsafeMutableRawPointer? {
   let packed = (UInt(UInt32(bitPattern: pid)) << 32) | UInt(wid)
   return UnsafeMutableRawPointer(bitPattern: packed)
 }
@@ -51,10 +51,10 @@ final class WindowTracker {
   static let shared = WindowTracker()
   private init() {}
 
-  private let registry = WindowRegistry.shared
+  let registry = WindowRegistry.shared
   /// Heavy AX work (brute-force seed, per-event attribute reads) runs here, serialized
   /// and at low priority so it never spikes CPU or blocks the main thread / summon.
-  private let seedQueue = DispatchQueue(
+  let seedQueue = DispatchQueue(
     label: "org.nepjua.ZenTab.windowTracker.seed", qos: .utility)
   /// Window ids we have already given a per-window subscription, so repeated focus
   /// events don't re-subscribe the same window.
@@ -67,11 +67,10 @@ final class WindowTracker {
   /// public constant; the WindowServer/AX string is "AXFullScreen".
   private nonisolated static let fullscreenAttribute = "AXFullScreen"
 
-  private nonisolated static let appNotifications = [
+  nonisolated static let appNotifications = [
     kAXWindowCreatedNotification,
     kAXFocusedWindowChangedNotification,
     kAXMainWindowChangedNotification,
-    kAXApplicationActivatedNotification,
     kAXApplicationHiddenNotification,
     kAXApplicationShownNotification,
   ]
@@ -93,6 +92,9 @@ final class WindowTracker {
     center.addObserver(
       self, selector: #selector(appTerminated(_:)),
       name: NSWorkspace.didTerminateApplicationNotification, object: nil)
+    center.addObserver(
+      self, selector: #selector(appActivated(_:)),
+      name: NSWorkspace.didActivateApplicationNotification, object: nil)
     for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular {
       addApp(app)
     }
@@ -112,6 +114,24 @@ final class WindowTracker {
     removeApp(pid: app.processIdentifier)
   }
 
+  /// The self-healing path. NSWorkspace delivers activation for every app regardless of
+  /// AX state, so switching to an app repairs whatever the event stream missed: an app
+  /// that became `.regular` after launch gets tracked, an app whose subscription gave
+  /// up gets another round, and the app's current-Space windows are re-read (focus
+  /// events only carry the one focused window, so a multi-window app shows them all).
+  @objc private func appActivated(_ note: Notification) {
+    guard
+      let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+      app.activationPolicy == .regular
+    else { return }
+    guard let record = registry.app(for: app.processIdentifier) else {
+      addApp(app)
+      return
+    }
+    if !record.subscribed { subscribe(record) }
+    refreshAppWindowsThrottled(pid: record.pid)
+  }
+
   private func addApp(_ runningApp: NSRunningApplication) {
     let pid = runningApp.processIdentifier
     guard pid > 0, pid != ProcessInfo.processInfo.processIdentifier, !registry.isTracking(pid: pid)
@@ -129,13 +149,7 @@ final class WindowTracker {
     let record = AppObservation(pid: pid, runningApplication: runningApp, appElement: appElement)
     record.observer = observer
     registry.setApp(record)
-
-    // Subscribe + seed off-main: an unresponsive app must never stall launch.
-    let appBox = AXElementBox(element: appElement)
-    let observerBox = AXObserverBox(observer: observer)
-    seedQueue.async { [weak self] in
-      self?.subscribeAndSeed(pid: pid, app: appBox, observer: observerBox)
-    }
+    subscribe(record)
   }
 
   private func removeApp(pid: pid_t) {
@@ -165,12 +179,6 @@ final class WindowTracker {
       if wid != 0 { registry.setMinimized(true, wid: wid) }
     case kAXWindowDeminiaturizedNotification:
       if wid != 0 { registry.setMinimized(false, wid: wid) }
-    case kAXApplicationActivatedNotification:
-      // Focus events only carry the one focused window; refresh the whole app's
-      // current-Space window list when you switch to it, so a multi-window app shows
-      // all its windows. Attribute-only (no brute-force) and throttled, so it stays
-      // cheap and event-driven (no polling).
-      refreshAppWindowsThrottled(pid: pid)
     default:
       // Hidden/Shown: app `isHidden` is read live at snapshot time, nothing to cache.
       break
@@ -178,7 +186,8 @@ final class WindowTracker {
   }
 
   /// Re-read an app's current-Space windows (attribute list only) at most once per
-  /// second per app, off-main, and upsert them.
+  /// second per app, off-main, and upsert them. Attribute-only and throttled, so it
+  /// stays cheap and event-driven (no polling).
   private func refreshAppWindowsThrottled(pid: pid_t) {
     let now = DispatchTime.now().uptimeNanoseconds
     if let last = lastActivationRefresh[pid], now - last < 1_000_000_000 { return }
@@ -203,19 +212,9 @@ final class WindowTracker {
 
   // MARK: - Seeding (seed queue)
 
-  /// Subscribe the app element to the lifecycle notifications, then seed its existing
-  /// windows (attribute list for the current Space + brute-force for other Spaces).
-  private nonisolated func subscribeAndSeed(pid: pid_t, app: AXElementBox, observer: AXObserverBox) {
-    for notification in Self.appNotifications {
-      AXObserverAddNotification(
-        observer.observer, app.element, notification as CFString, packRefcon(pid))
-    }
-    seedWindows(pid: pid, app: app, bruteForce: true)
-  }
-
   /// Read an app's windows off-main (`bruteForce` adds the other-Space remote-token
   /// scan; off for the cheap activation refresh) and upsert them on main.
-  private nonisolated func seedWindows(pid: pid_t, app: AXElementBox, bruteForce: Bool) {
+  nonisolated func seedWindows(pid: pid_t, app: AXElementBox, bruteForce: Bool) {
     var seen = Set<CGWindowID>()
     var details: [WindowDetail] = []
     for window in Self.allWindows(pid: pid, appElement: app.element, bruteForce: bruteForce) {

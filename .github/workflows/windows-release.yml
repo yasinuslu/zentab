@@ -5,13 +5,23 @@ name: windows Release
 # (The tag is prefixed because this monorepo also ships a macOS app under its
 # own darwin-v* tags — see darwin-release.yml.)
 #
-# This builds the portable exe + MSI (version derived from the tag), generates
-# checksums, and uploads them to R2 (cdn.nepjua.org) as the release binaries —
-# both immutable versioned copies and a rolling "latest stable" pointer:
+# This builds the portable exe + MSI (version derived from the tag), gets them
+# Authenticode-signed by SignPath, generates checksums, and uploads them to R2
+# (cdn.nepjua.org) as the release binaries — both immutable versioned copies and a
+# rolling "latest stable" pointer:
 #   https://cdn.nepjua.org/zentab/windows/releases/v<version>/ZenTab-<version>-win-x64-portable.exe
 #   https://cdn.nepjua.org/zentab/windows/releases/latest/ZenTab-win-x64-portable.exe
 # A GitHub Release is still created for the changelog, but it carries NO binaries
 # (those live on R2).
+#
+# It also builds the Microsoft Store package and attaches it to the workflow run. That one
+# is NOT published anywhere automatically: it is unsigned by design (the Store re-signs it)
+# and Partner Center submissions are a manual step. See docs/code-signing-policy.md for why
+# the two distribution channels are signed differently.
+#
+# Signing degrades gracefully. Until the SignPath secrets/variables exist the workflow still
+# produces and publishes a release, unsigned, and says so loudly in the log — so this can be
+# merged before the SignPath Foundation application is approved.
 on:
   push:
     tags: ["windows-v*"]
@@ -23,6 +33,9 @@ on:
 
 permissions:
   contents: write
+  # SignPath's action reads this run's metadata to prove which commit and workflow produced
+  # the artifact — that provenance check is the whole basis of its trust model.
+  actions: read
 
 defaults:
   run:
@@ -35,6 +48,13 @@ jobs:
       R2_API_URL: ${{ secrets.R2_API_URL }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      # Only the API token is secret; the org id and slugs are just addresses, so they live
+      # in repo variables where they are readable in the log when something goes wrong.
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+      SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+      SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+      SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+      SIGNPATH_ARTIFACT_CONFIGURATION_SLUG: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
     steps:
       - uses: actions/checkout@v4
 
@@ -58,9 +78,91 @@ jobs:
           "tag=$tag"   >> $env:GITHUB_OUTPUT
           Write-Host "Building ZenTab $v (tag $tag)"
 
-      - name: Build artifacts (portable exe + MSI + checksums)
+      - name: Build artifacts (portable exe + MSI + Store MSIX + checksums)
         shell: pwsh
-        run: ./build.ps1 -Version ${{ steps.version.outputs.version }}
+        run: ./build.ps1 -Version ${{ steps.version.outputs.version }} -Target release
+
+      # The Store package is not published by CI: Partner Center submissions are manual and
+      # the package is unsigned until Microsoft signs it. Attach it to the run so cutting a
+      # release is all it takes to have something to upload.
+      - name: Attach the Store package to this run
+        uses: actions/upload-artifact@v7
+        with:
+          name: store-msix
+          if-no-files-found: error
+          path: windows/dist/ZenTab-${{ steps.version.outputs.version }}-win-x64.msix
+
+      - name: Check signing configuration
+        id: signing
+        shell: pwsh
+        run: |
+          $required = @('SIGNPATH_API_TOKEN', 'SIGNPATH_ORGANIZATION_ID', 'SIGNPATH_PROJECT_SLUG',
+                        'SIGNPATH_SIGNING_POLICY_SLUG', 'SIGNPATH_ARTIFACT_CONFIGURATION_SLUG')
+          $missing = @($required | Where-Object {
+            [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_))
+          })
+          if ($missing.Count -gt 0) {
+            "configured=false" >> $env:GITHUB_OUTPUT
+            $names = $missing -join ', '
+            Write-Host "::warning::SignPath is not configured (missing: $names). This release will ship UNSIGNED binaries. See windows/docs/HUMAN-TODO.md."
+          } else {
+            "configured=true" >> $env:GITHUB_OUTPUT
+            Write-Host "SignPath configured; the exe and MSI will be signed before publishing."
+          }
+
+      - name: Upload the unsigned binaries for signing
+        id: unsigned
+        if: steps.signing.outputs.configured == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-binaries
+          # Short-lived: this is build output on its way to the signing service, and the
+          # signed copies are what gets published.
+          retention-days: 5
+          if-no-files-found: error
+          # Both files share windows/dist as their common ancestor, so they land at the root
+          # of the generated ZIP — which is what signing/artifact-configuration.xml expects.
+          path: |
+            windows/dist/ZenTab-${{ steps.version.outputs.version }}-win-x64-portable.exe
+            windows/dist/ZenTab-${{ steps.version.outputs.version }}-win-x64.msi
+
+      # Signs the portable exe, the payload exe inside the MSI, and the MSI itself, in one
+      # request. SignPath Foundation requires a human to approve each request, so this step
+      # blocks until Yasin approves it in the SignPath UI (or the timeout below expires).
+      - name: Sign with SignPath
+        if: steps.signing.outputs.configured == 'true'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          # Long enough to walk to a laptop and approve; short enough that a forgotten
+          # request fails the release rather than holding a runner for an hour.
+          wait-for-completion-timeout-in-seconds: 1800
+          output-artifact-directory: windows/signed
+
+      - name: Swap in the signed binaries and re-hash
+        if: steps.signing.outputs.configured == 'true'
+        shell: pwsh
+        run: |
+          $v = '${{ steps.version.outputs.version }}'
+          foreach ($name in @("ZenTab-$v-win-x64-portable.exe", "ZenTab-$v-win-x64.msi")) {
+            $signed = Join-Path "signed" $name
+            if (-not (Test-Path $signed)) { throw "SignPath did not return $name" }
+            # Refuse to publish anything the signing step silently skipped. The presence of a
+            # signer certificate is the real test; Status can legitimately be something other
+            # than Valid on a runner that doesn't trust the whole chain.
+            $sig = Get-AuthenticodeSignature $signed
+            if (-not $sig.SignerCertificate) { throw "$name came back from SignPath unsigned ($($sig.Status))" }
+            Write-Host "$name -> $($sig.Status): $($sig.SignerCertificate.Subject)"
+            Copy-Item $signed (Join-Path "dist" $name) -Force
+          }
+          # The published hashes must be the hashes of the signed files people download.
+          ./build.ps1 -Version $v -Target checksums
 
       - name: Upload release binaries to R2
         shell: pwsh

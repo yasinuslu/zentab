@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Create a STABLE self-signed code-signing identity for local ZenTab builds.
+#
+# Why this exists: macOS TCC (the Accessibility / Screen-Recording grants ZenTab
+# needs) remembers an app by its *code signature*. Ad-hoc signing (`codesign -s -`,
+# what bin/release does without an identity, and what CI ships) has no stable
+# designated requirement, so TCC matches on the raw binary hash — which changes on
+# every build. Result: each time you replace /Applications/ZenTab.app with a fresh
+# build, macOS sees a "new" app and you must remove + re-add it under Accessibility.
+#
+# Signing every build with ONE persistent self-signed certificate fixes that: the
+# app's designated requirement is anchored to this cert's identity, identical across
+# rebuilds, so you grant Accessibility ONCE and every future replacement keeps it.
+# (This is the account-free stand-in for Developer ID; notarization is still the
+# committed end state once the Apple account is unblocked — see docs/HUMAN-TODO.md.)
+#
+# Run this once. It needs your login-keychain password (to let codesign use the key
+# without prompting). Safe to re-run: it no-ops if the identity already exists.
+set -euo pipefail
+
+IDENTITY="ZenTab Local Dev"
+KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
+
+if security find-identity -v -p codesigning 2>/dev/null | grep -qF "$IDENTITY"; then
+  echo "✓ Code-signing identity '$IDENTITY' already exists. Nothing to do."
+  echo "  (bin/release will sign with it automatically.)"
+  exit 0
+fi
+
+echo "Creating self-signed code-signing identity '$IDENTITY'…"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+# A code-signing cert needs the codeSigning EKU; express it via a config file so this
+# works on the LibreSSL that ships with macOS.
+cat >"$TMP/cert.conf" <<EOF
+[ req ]
+distinguished_name = dn
+x509_extensions    = ext
+prompt             = no
+[ dn ]
+CN = $IDENTITY
+[ ext ]
+keyUsage             = critical, digitalSignature
+extendedKeyUsage     = critical, codeSigning
+basicConstraints     = critical, CA:false
+EOF
+
+# 10-year self-signed leaf + private key, then bundle into a PKCS#12 for import.
+openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+  -keyout "$TMP/key.pem" -out "$TMP/cert.pem" -config "$TMP/cert.conf" 2>/dev/null
+
+openssl pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
+  -name "$IDENTITY" -out "$TMP/identity.p12" -passout pass:zentab 2>/dev/null
+
+# Import the identity and grant codesign access to the private key.
+security import "$TMP/identity.p12" -k "$KEYCHAIN" -P zentab -T /usr/bin/codesign >/dev/null
+
+# Free codesign from the per-use "allow?" prompt. This is the step that needs your
+# keychain password; if you skip it (Ctrl-C), codesign just prompts once on first use
+# and you can click "Always Allow".
+echo "Authorizing codesign to use the key (enter your login-keychain password)…"
+security set-key-partition-list -S apple-tool:,apple:,codesign: -k "" -D "$IDENTITY" \
+  -t private "$KEYCHAIN" >/dev/null 2>&1 || \
+  security set-key-partition-list -S apple-tool:,apple:,codesign: -D "$IDENTITY" \
+    -t private "$KEYCHAIN" >/dev/null || \
+  echo "  (skipped — codesign will ask once on first use; click \"Always Allow\".)"
+
+echo
+echo "✓ Created '$IDENTITY'. Next:"
+echo "  1. bin/release            # now signs with this stable identity"
+echo "  2. Install the built app, grant Accessibility once."
+echo "  3. If ZenTab was granted before under ad-hoc signing, clear the stale entry:"
+echo "       tccutil reset Accessibility org.nepjua.ZenTab"
+echo "     then grant again. From here on, replacing the app keeps the grant."

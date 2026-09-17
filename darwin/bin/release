@@ -13,7 +13,20 @@
 source "$(dirname "$0")/lib.sh"
 
 VERSION="${1:-0.1.0}"
-echo "Packaging ZenTab $VERSION (Release, ad-hoc signed)..."
+
+# Prefer a stable self-signed identity (bin/dev-cert) when it's on this machine: TCC
+# (Accessibility / Screen Recording) then keeps its grant across rebuilds, so replacing
+# /Applications/ZenTab.app doesn't force a permission re-add. Absent it — e.g. in CI —
+# fall back to ad-hoc, which builds fine but resets the grant each install.
+SIGN_IDENTITY="-"
+STABLE_ID="ZenTab Local Dev"
+if security find-identity -v -p codesigning 2>/dev/null | grep -qF "$STABLE_ID"; then
+  SIGN_IDENTITY="$STABLE_ID"
+  echo "Packaging ZenTab $VERSION (Release, signed '$STABLE_ID' — TCC grants persist)..."
+else
+  echo "Packaging ZenTab $VERSION (Release, ad-hoc signed)..."
+  echo "  tip: run bin/dev-cert once so Accessibility survives a reinstall."
+fi
 
 rm -rf dist
 mkdir -p dist
@@ -24,7 +37,7 @@ xcb archive \
   -configuration Release \
   -destination 'generic/platform=macOS' \
   -archivePath "$ARCHIVE" \
-  CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO \
+  CODE_SIGN_IDENTITY="$SIGN_IDENTITY" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO \
   MARKETING_VERSION="$VERSION"
 
 APP="$ARCHIVE/Products/Applications/ZenTab.app"

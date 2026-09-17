@@ -48,6 +48,24 @@ If something misbehaves, the runtime (event tap, overlay, enumeration, focus, na
 hotkey claim) is the hand-verified shell; the pure logic — trigger→symbolic-hotkey
 mapping, capture-health classification, launch-profile defaults — is covered by `bin/test`.
 
+## 0.5. Stop re-granting Accessibility on every reinstall (one command)
+
+macOS keys the Accessibility / Screen-Recording grants to an app's *code signature*.
+Ad-hoc-signed builds (the default) have no stable identity, so every time you replace
+`/Applications/ZenTab.app` with a fresh build, TCC treats it as a new app and you must
+remove + re-add it. Signing local builds with one persistent self-signed certificate
+fixes it — grant once, then reinstall freely.
+
+- [ ] `bin/dev-cert` (once; needs your login-keychain password). Creates the
+      `ZenTab Local Dev` code-signing identity. `bin/release` picks it up automatically.
+- [ ] If ZenTab was already granted under ad-hoc signing, clear the stale entry once:
+      `tccutil reset Accessibility org.nepjua.ZenTab` (and, if using thumbnails,
+      `tccutil reset ScreenCapture org.nepjua.ZenTab`), then grant again.
+
+This is local-only and account-free. CI keeps ad-hoc signing until Developer ID +
+notarization lands (below); to make R2 "latest from main" builds persist grants too,
+the same cert (or a real Developer ID cert) would need to sign in CI.
+
 ## 1. Signed + notarized releases (optional, recommended before public distribution)
 
 Today `release.yml` ships an **ad-hoc-signed, un-notarized** `.dmg`. It runs, but

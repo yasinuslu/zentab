@@ -120,6 +120,11 @@ optimization. Every design and implementation choice is judged against it.
   not 60). Motion is a quick, soft fade (~80–120 ms): calm but not slow.
 - **Near-zero idle cost.** ZenTab is resident all day. When not summoned it is effectively
   invisible to CPU, GPU, and memory — no polling spin, minimal working set.
+- **Launches at login, always — not a setting.** A switcher that isn't already running when
+  you reach for the shortcut is broken, so ZenTab registers itself to start with the computer
+  and keeps it that way; there is no checkbox to turn it off (macOS `SMAppService`, Windows
+  per-user Run key). The one thing it won't override is an explicit OS-level opt-out (e.g.
+  macOS System Settings ▸ Login Items) — it reports the truth rather than fighting the OS.
 
 ## In-overlay actions
 

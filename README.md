@@ -77,6 +77,12 @@ Prefer to watch it move first? **[Try the playable overlay in your browser](http
 macOS needs Accessibility (mandatory) and Screen Recording (for live thumbnails). Interim
 builds are ad-hoc signed, so Gatekeeper shows a warning until notarization lands.
 
+On Windows, the downloads above are Authenticode-signed with a certificate donated by
+[SignPath Foundation](https://signpath.org/), and a Microsoft Store build is on the way — a
+Store install is the one route with no SmartScreen warning at all, because Microsoft signs
+the package itself. [`docs/code-signing-policy.md`](docs/code-signing-policy.md) covers how
+each is signed and how to verify a download.
+
 ## Build from source
 
 One repo, three native implementations. Each has its own README with the full details.
@@ -104,6 +110,12 @@ change only the Windows jobs.
 - `*-ci.yml`: build + test on PRs and pushes to `main`.
 - `*-main.yml`: on every push to `main`, overwrite the rolling "latest from main" bundles on R2.
 - `*-release.yml`: on a version tag, upload versioned + "latest stable" bundles to R2 and cut a notes-only GitHub Release.
+
+The Windows release also gets the exe and MSI Authenticode-signed by SignPath (one manual
+approval per release) before publishing, and attaches an unsigned Store `.msix` to the run
+for manual submission to Partner Center. Both degrade gracefully: with no SignPath
+credentials configured the release still ships, unsigned, with a warning in the log. See
+[`docs/code-signing-policy.md`](docs/code-signing-policy.md).
 
 Release tags are namespaced per platform so they don't collide:
 

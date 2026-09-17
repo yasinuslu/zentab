@@ -46,3 +46,11 @@ jobs:
       # RID-specific publish needs its own restore (win-x64 target).
       - name: Publish smoke test
         run: dotnet publish -c Release -r win-x64
+
+      # Pack the Store package too. The MSIX is otherwise only ever built while cutting a
+      # release, and its failure modes — a manifest schema slip, a renamed logo asset, a
+      # Windows SDK tool that moved — are all invisible to the compiler. The package itself
+      # is thrown away; only the fact that it packs matters.
+      - name: Store package smoke test (MSIX)
+        shell: pwsh
+        run: ./build.ps1 -Target msix

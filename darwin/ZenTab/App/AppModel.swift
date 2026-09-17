@@ -23,6 +23,7 @@ final class AppModel: ObservableObject {
   private(set) var config = Config.default
   private var overlay: OverlayController?
   private var hotkeyTap: HotkeyTap?
+  private var secureInputHotkeys: SecureInputHotkeys?
   private var watchdog: CaptureWatchdog?
   private var permissionTimer: Timer?
   private var dumpSignalSource: DispatchSourceSignal?
@@ -38,6 +39,9 @@ final class AppModel: ObservableObject {
     // Restore the native switchers if we ever die without a clean quit (the disabled
     // state persists across process exit), so Cmd+Tab is never permanently lost.
     NativeHotkeyRestore.installCrashGuards()
+    // ZenTab is useless unless it's already resident when you reach for the switcher, so
+    // it launches at login by default — no toggle (VISION.md). Dev builds opt out.
+    LoginItem.ensureRegistered(profile: profile)
     config = ConfigStore.load(profile: profile)
     refreshPermissions()
     // Start the window registry's observers off the summon path. AX permission is
@@ -67,6 +71,7 @@ final class AppModel: ObservableObject {
   /// Graceful-quit cleanup: hand the native switchers back to macOS and stop the tap.
   func shutdown() {
     watchdog?.release()
+    secureInputHotkeys?.stop()
     hotkeyTap?.stop()
   }
 
@@ -247,6 +252,13 @@ final class AppModel: ObservableObject {
 
     self.overlay = overlay
     self.hotkeyTap = tap
+    // Same chords, in trigger order, as Carbon hot keys: they still fire under Secure
+    // Event Input, where the tap never sees the key-down.
+    let fallback = SecureInputHotkeys(bindings: triggers.map(\.binding)) { index, backward in
+      tap.fallbackTriggerPressed(index: index, backward: backward)
+    }
+    fallback.start()
+    self.secureInputHotkeys = fallback
     self.watchdog = watchdog
     switcherRunning = true
     // Claim Cmd+Tab immediately (only now that the tap is live), so there's no window

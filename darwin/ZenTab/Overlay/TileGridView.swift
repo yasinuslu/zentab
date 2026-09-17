@@ -250,7 +250,8 @@ final class TileGridView: NSView {
     let cardW = innerW + pad * 2
     let headerH = s(OverlayTheme.Header.height)
     let footerH = s(OverlayTheme.Footer.height)
-    let cardH = 2 * pad + footerH + s(OverlayTheme.Footer.topGap) + contentH + s(OverlayTheme.Header.bottomGap) + headerH
+    let cardH =
+      2 * pad + footerH + s(OverlayTheme.Footer.topGap) + contentH + s(OverlayTheme.Header.bottomGap) + headerH
     let cardX = ((bounds.width - cardW) / 2).rounded()
     let cardY = ((bounds.height - cardH) / 2).rounded()
 
@@ -362,7 +363,8 @@ final class TileGridView: NSView {
 
     // ELSEWHERE head + "↓ bring here" hint on one line, over the grid.
     setAttr(
-      elsewhereHead, "ELSEWHERE", font: headFont, color: OverlayTheme.Zone.headColor, kern: s(OverlayTheme.Zone.headKern),
+      elsewhereHead, "ELSEWHERE", font: headFont, color: OverlayTheme.Zone.headColor,
+      kern: s(OverlayTheme.Zone.headKern),
       alignment: .left)
     elsewhereHead.frame = CGRect(x: eOriginX, y: contentTop - headH, width: innerWidth, height: headH)
     elsewhereHead.isHidden = false
@@ -443,7 +445,9 @@ final class TileGridView: NSView {
       fill(tile, with: windows[index], at: index, size: size, zone: zone, selected: index == selectedIndex)
     }
   }
+}
 
+extension TileGridView {
   // MARK: - Thumbnails & selection
 
   /// Upgrade tiles to live thumbnails as capture completes (progressive).

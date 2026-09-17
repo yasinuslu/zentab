@@ -23,6 +23,7 @@ final class AppModel: ObservableObject {
   private(set) var config = Config.default
   private var overlay: OverlayController?
   private var hotkeyTap: HotkeyTap?
+  private var secureInputHotkeys: SecureInputHotkeys?
   private var watchdog: CaptureWatchdog?
   private var permissionTimer: Timer?
   private var dumpSignalSource: DispatchSourceSignal?
@@ -70,6 +71,7 @@ final class AppModel: ObservableObject {
   /// Graceful-quit cleanup: hand the native switchers back to macOS and stop the tap.
   func shutdown() {
     watchdog?.release()
+    secureInputHotkeys?.stop()
     hotkeyTap?.stop()
   }
 
@@ -250,6 +252,13 @@ final class AppModel: ObservableObject {
 
     self.overlay = overlay
     self.hotkeyTap = tap
+    // Same chords, in trigger order, as Carbon hot keys: they still fire under Secure
+    // Event Input, where the tap never sees the key-down.
+    let fallback = SecureInputHotkeys(bindings: triggers.map(\.binding)) { index, backward in
+      tap.fallbackTriggerPressed(index: index, backward: backward)
+    }
+    fallback.start()
+    self.secureInputHotkeys = fallback
     self.watchdog = watchdog
     switcherRunning = true
     // Claim Cmd+Tab immediately (only now that the tap is live), so there's no window

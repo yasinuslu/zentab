@@ -32,8 +32,11 @@ final class AppObservation {
   var observer: AXObserver?
   let appName: String
   let bundleURL: URL?
-  /// Set once the first subscription succeeds; gates the one-time seed.
-  var seeded = false
+  /// Set once the app-level AX subscription took (and the seed ran). Until then the app
+  /// sends us no window events, so `WindowTracker` keeps retrying.
+  var subscribed = false
+  /// A subscription attempt (or its backoff wait) is in flight; don't start another.
+  var subscribing = false
 
   init(pid: pid_t, runningApplication: NSRunningApplication, appElement: AXUIElement) {
     self.pid = pid

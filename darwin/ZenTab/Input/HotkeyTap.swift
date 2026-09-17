@@ -51,6 +51,9 @@ final class HotkeyTap: @unchecked Sendable {
   private var active = false
   /// The held modifiers of the chord that summoned; releasing any of them confirms.
   private var activeHold: NSEvent.ModifierFlags = []
+  /// Arrival times (uptime ns) of trigger key-downs the tap acted on in the last second,
+  /// so the Carbon fallback can drop its echo of a press the tap already handled.
+  private var recentTapTriggers: [UInt64] = []
 
   private var machPort: CFMachPort?
   private var runLoop: CFRunLoop?
@@ -118,8 +121,30 @@ final class HotkeyTap: @unchecked Sendable {
   /// This is the slow, belt-and-suspenders complement to the in-callback re-enable
   /// (which only fires on the explicit `tapDisabledBy*` events).
   func ensureEnabled() {
+    reconcileHold()
     guard let machPort, !CGEvent.tapIsEnabled(tap: machPort) else { return }
     CGEvent.tapEnable(tap: machPort, enable: true)
+  }
+
+  /// Confirm a session whose modifier release we never saw. The release arrives as a
+  /// `.flagsChanged` event, which is lost if it lands while the tap is disabled (timeout,
+  /// user input); the session would then stay "held" forever — the overlay stuck up, and
+  /// every W/Q/Space/arrow absorbed. The physical key state is the ground truth.
+  func reconcileHold() {
+    let held = NSEvent.ModifierFlags(
+      rawValue: UInt(CGEventSource.flagsState(.combinedSessionState).rawValue))
+    guard endSessionIfReleased(modifiers: held) else { return }
+    dispatchMain { self.handlers.confirm() }
+  }
+
+  /// A trigger chord arrived through the Carbon hot-key fallback (`SecureInputHotkeys`),
+  /// which still fires under Secure Event Input — when a password field or a terminal's
+  /// secure keyboard entry is active, macOS stops delivering key-downs to event taps, and
+  /// with the native Cmd+Tab disabled the shortcut would otherwise do nothing at all.
+  /// Called on the main thread. A press the tap already acted on is dropped.
+  func fallbackTriggerPressed(index: Int, backward: Bool) {
+    guard triggers.indices.contains(index), !consumeTapEcho() else { return }
+    triggerPressed(triggers[index], backward: backward, fromTap: false)
   }
 
   // MARK: - Tap-thread state (lock-guarded)
@@ -144,6 +169,40 @@ final class HotkeyTap: @unchecked Sendable {
     lock.unlock()
   }
 
+  /// Atomically end the session if `modifiers` no longer cover its hold, so the tap
+  /// callback and `reconcileHold` can never both confirm the same release.
+  private func endSessionIfReleased(modifiers: NSEvent.ModifierFlags) -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    guard active,
+      !modifiers.intersection(Keybinding.triggerModifierMask).isSuperset(of: activeHold)
+    else { return false }
+    active = false
+    activeHold = []
+    return true
+  }
+
+  private func recordTapTrigger() {
+    let now = DispatchTime.now().uptimeNanoseconds
+    lock.lock()
+    recentTapTriggers.removeAll { now - $0 > Self.echoWindow }
+    recentTapTriggers.append(now)
+    lock.unlock()
+  }
+
+  /// Whether a fallback press is the echo of one the tap already handled.
+  private func consumeTapEcho() -> Bool {
+    let now = DispatchTime.now().uptimeNanoseconds
+    lock.lock()
+    defer { lock.unlock() }
+    recentTapTriggers.removeAll { now - $0 > Self.echoWindow }
+    guard !recentTapTriggers.isEmpty else { return false }
+    recentTapTriggers.removeFirst()
+    return true
+  }
+
+  private static let echoWindow: UInt64 = 1_000_000_000
+
   // MARK: - Callback
 
   /// Non-capturing closure, so it converts to the C `CGEventTapCallBack` pointer.
@@ -159,15 +218,12 @@ final class HotkeyTap: @unchecked Sendable {
     switch type {
     case .tapDisabledByTimeout, .tapDisabledByUserInput:
       if let machPort { CGEvent.tapEnable(tap: machPort, enable: true) }
+      reconcileHold()  // the release may have happened while we were off
       return passthrough
 
     case .flagsChanged:
-      let (isActive, hold) = snapshot
-      guard isActive else { return passthrough }
       let modifiers = NSEvent.ModifierFlags(rawValue: UInt(event.flags.rawValue))
-      let stillHeld = modifiers.intersection(Keybinding.triggerModifierMask).isSuperset(of: hold)
-      if !stillHeld {
-        endSession()
+      if endSessionIfReleased(modifiers: modifiers) {
         dispatchMain { self.handlers.confirm() }
       }
       return passthrough  // never absorb modifier changes
@@ -175,6 +231,12 @@ final class HotkeyTap: @unchecked Sendable {
     case .keyDown:
       let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
       let modifiers = NSEvent.ModifierFlags(rawValue: UInt(event.flags.rawValue))
+      // A key-down without the hold modifiers means the release was missed: the session
+      // is stale. Drop it (no focus change — the user has moved on) and treat this key
+      // fresh, instead of absorbing it as an in-overlay action.
+      if endSessionIfReleased(modifiers: modifiers) {
+        dispatchMain { self.handlers.cancel() }
+      }
       // Absorb keys we handle so the focused app never sees the trigger / Esc.
       return handleKeyDown(keyCode: keyCode, modifiers: modifiers) ? nil : passthrough
 
@@ -212,24 +274,28 @@ final class HotkeyTap: @unchecked Sendable {
       default:
         break
       }
-      // Pressing any trigger key again (while held) cycles.
-      guard triggers.contains(where: { $0.binding.matches(keyCode: keyCode, modifiers: modifiers) })
-      else { return false }
-      let backward = modifiers.contains(.shift)
-      dispatchMain { self.handlers.cycle(backward) }
-      return true
     }
 
-    // Not active: the first matching trigger summons its mode.
     guard
       let trigger = triggers.first(where: {
         $0.binding.matches(keyCode: keyCode, modifiers: modifiers)
       })
     else { return false }
+    triggerPressed(trigger, backward: modifiers.contains(.shift), fromTap: true)
+    return true
+  }
+
+  /// A trigger chord was pressed: the first press summons its mode, any trigger pressed
+  /// again while held cycles. Shared by the tap and the Carbon fallback.
+  private func triggerPressed(_ trigger: Trigger, backward: Bool, fromTap: Bool) {
+    if fromTap { recordTapTrigger() }
+    if snapshot.active {
+      dispatchMain { self.handlers.cycle(backward) }
+      return
+    }
     beginSession(hold: trigger.binding.holdModifiers)
     let mode = trigger.mode
     dispatchMain { self.handlers.summon(mode) }
-    return true
   }
 
   /// Hop a main-actor handler onto the main thread, preserving FIFO order.

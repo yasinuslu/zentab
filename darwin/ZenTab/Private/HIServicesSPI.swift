@@ -36,3 +36,13 @@ func zt_GetProcessForPID(
 /// HIServices. (Technique from alt-tab / yabai.)
 @_silgen_name("_AXUIElementCreateWithRemoteToken")
 func _AXUIElementCreateWithRemoteToken(_ data: CFData) -> Unmanaged<AXUIElement>?
+
+/// HIToolbox's secure-input toggles (public C API, but not imported into Swift). Only the
+/// `secure-input-on/off` test hooks use them, to force Secure Event Input on demand.
+@_silgen_name("EnableSecureEventInput")
+@discardableResult
+func zt_EnableSecureEventInput() -> OSStatus
+
+@_silgen_name("DisableSecureEventInput")
+@discardableResult
+func zt_DisableSecureEventInput() -> OSStatus

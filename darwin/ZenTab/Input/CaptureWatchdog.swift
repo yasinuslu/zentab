@@ -36,9 +36,25 @@ final class CaptureWatchdog {
   func tick() {
     let next = checkAndRepair()
     guard next != health else { return }
+    Log.input.notice("capture health: \(next.summary, privacy: .public)")
     health = next
     onHealthChange?(next)
   }
+
+  /// Rebuild the tap from scratch, then re-check. For moments the system is known to
+  /// drop or wedge event taps without telling us (wake from sleep, unlock, display
+  /// reconfiguration), where waiting for a symptom would mean a dead shortcut.
+  func recover(reason: String) {
+    guard Permissions.isAccessibilityTrusted else { return tick() }
+    tap.recreate(reason: reason)
+    lastRecreate = .now
+    tick()
+  }
+
+  /// When the watchdog last rebuilt the tap, so a tap that can't be rebuilt (e.g. the
+  /// permission is half-revoked) is retried every few seconds rather than every tick.
+  private var lastRecreate: Date = .distantPast
+  private static let recreateBackoff: TimeInterval = 10
 
   /// Hand every managed native hotkey back to macOS. Called on graceful quit so
   /// Cmd+Tab works again the moment ZenTab isn't running.
@@ -55,6 +71,12 @@ final class CaptureWatchdog {
     }
 
     tap.ensureEnabled()
+    // Re-enabling can't revive a dead tap (invalid port, finished thread) or one the
+    // system refuses to turn back on: rebuild it.
+    if !tap.isEnabled, Date.now.timeIntervalSince(lastRecreate) > Self.recreateBackoff {
+      lastRecreate = .now
+      tap.recreate(reason: tap.isAlive ? "watchdog: re-enable didn't take" : "watchdog: tap dead")
+    }
     guard tap.isEnabled else {
       setManaged(enabled: true)
       return .evaluate(accessibilityTrusted: true, tapEnabled: false, stillEnabled: [])
@@ -63,7 +85,9 @@ final class CaptureWatchdog {
     // The tap is live: claim the conflicting hotkeys, then verify the claim held.
     setManaged(enabled: false)
     let escaped = managed.filter { CGSIsSymbolicHotKeyEnabled($0.rawValue) }
-    return .evaluate(accessibilityTrusted: true, tapEnabled: true, stillEnabled: Set(escaped))
+    return .evaluate(
+      accessibilityTrusted: true, tapEnabled: true, stillEnabled: Set(escaped),
+      secureInput: .current)
   }
 
   private func setManaged(enabled: Bool) {

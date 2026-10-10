@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import notify
 
 /// App-wide state shared by the lifecycle (`AppDelegate`) and the menu bar
 /// (`MenuBarContent`). Owns the long-lived switcher objects and tracks the two TCC
@@ -26,6 +27,8 @@ final class AppModel: ObservableObject {
   private var secureInputHotkeys: SecureInputHotkeys?
   private var watchdog: CaptureWatchdog?
   private var permissionTimer: Timer?
+  /// Wake / unlock / display-change observers that rebuild the tap (see `installRecoveryTriggers`).
+  private var recoveryObservers: [NSObjectProtocol] = []
   private var dumpSignalSource: DispatchSourceSignal?
   private var previewSignalSource: DispatchSourceSignal?
   /// Dev-only red/green "hands off" light under the notch, driven from a shell test loop.
@@ -50,6 +53,7 @@ final class AppModel: ObservableObject {
     if Permissions.isAccessibilityTrusted { WindowTracker.shared.start() }
     startSwitcherIfPossible()
     installDumpSignal()
+    installRecoveryTriggers()
     // Dev-only "hands off" light under the notch while an automated test loop drives the app.
     if profile == .development {
       let pill = StatusPill()
@@ -220,6 +224,46 @@ final class AppModel: ObservableObject {
     }
     previewSource.resume()
     previewSignalSource = previewSource
+  }
+
+  /// Rebuild the event tap at the moments macOS is known to drop or wedge taps without
+  /// a `tapDisabledBy*` event: wake from sleep, screens waking, the session becoming
+  /// active again (unlock, fast user switching) and display reconfiguration. The 2 s
+  /// watchdog would catch a tap that reads as disabled; these catch the ones that don't.
+  ///
+  /// Also listens for test notifications (`notifyutil -p org.nepjua.ZenTab.test.<name>`),
+  /// so each failure can be forced from a shell and the self-heal watched in the log.
+  private func installRecoveryTriggers() {
+    let workspace = NSWorkspace.shared.notificationCenter
+    let triggers: [(NotificationCenter, Notification.Name, String)] = [
+      (workspace, NSWorkspace.didWakeNotification, "wake"),
+      (workspace, NSWorkspace.screensDidWakeNotification, "screens woke"),
+      (workspace, NSWorkspace.sessionDidBecomeActiveNotification, "session active"),
+      (.default, NSApplication.didChangeScreenParametersNotification, "display change"),
+    ]
+    for (center, name, reason) in triggers {
+      recoveryObservers.append(
+        center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+          MainActor.assumeIsolated { self?.watchdog?.recover(reason: reason) }
+        })
+    }
+
+    let hooks: [(String, @MainActor (AppModel) -> Void)] = [
+      ("disable-tap", { $0.hotkeyTap?.simulateSystemDisable() }),
+      ("kill-tap", { $0.hotkeyTap?.simulateTapDeath() }),
+      ("secure-input-on", { _ in zt_EnableSecureEventInput() }),
+      ("secure-input-off", { _ in zt_DisableSecureEventInput() }),
+    ]
+    for (name, action) in hooks {
+      var token: Int32 = 0
+      notify_register_dispatch("org.nepjua.ZenTab.test.\(name)", &token, .main) { [weak self] _ in
+        MainActor.assumeIsolated {
+          guard let self else { return }
+          Log.input.notice("test hook: \(name, privacy: .public)")
+          action(self)
+        }
+      }
+    }
   }
 
   private func startSwitcherIfPossible() {

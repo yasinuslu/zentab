@@ -9,9 +9,9 @@ import CoreGraphics
 /// must return its absorb/pass decision synchronously; all switcher work is hopped
 /// to the main actor.
 ///
-/// `@unchecked Sendable`: `triggers`/`handlers` are immutable; `active`/`activeHold`
-/// are lock-guarded; `machPort`/`runLoop`/`thread` are set once before the tap
-/// thread starts.
+/// `@unchecked Sendable`: `triggers`/`handlers` are immutable; `active`/`activeHold`,
+/// `machPort` and `runLoop` are lock-guarded (`recreate` swaps them); `thread` is only
+/// touched on the main actor.
 final class HotkeyTap: @unchecked Sendable {
   /// A chord that triggers a given mode.
   struct Trigger {
@@ -80,17 +80,21 @@ final class HotkeyTap: @unchecked Sendable {
         userInfo: Unmanaged.passUnretained(self).toOpaque())
     else { return false }
 
+    lock.lock()
     machPort = port
+    lock.unlock()
+    // Hand the port to the thread directly (boxed: CFMachPort isn't Sendable), so a
+    // later `recreate` swapping `machPort` can't race this thread's setup.
+    let box = PortBox(port: port)
     let thread = Thread { [weak self] in
-      // Read the port back through `self` (set before this thread starts) rather
-      // than capturing the non-Sendable CFMachPort across the @Sendable boundary.
-      guard let self, let port = self.machPort else { return }
+      guard let self else { return }
+      let runLoop = CFRunLoopGetCurrent()
       self.lock.lock()
-      self.runLoop = CFRunLoopGetCurrent()
+      self.runLoop = runLoop
       self.lock.unlock()
-      let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, port, 0)
-      CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
-      CGEvent.tapEnable(tap: port, enable: true)
+      let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, box.port, 0)
+      CFRunLoopAddSource(runLoop, source, .commonModes)
+      CGEvent.tapEnable(tap: box.port, enable: true)
       CFRunLoopRun()
     }
     thread.name = "org.nepjua.ZenTab.hotkey"
@@ -101,20 +105,50 @@ final class HotkeyTap: @unchecked Sendable {
   }
 
   func stop() {
-    if let machPort { CGEvent.tapEnable(tap: machPort, enable: false) }
     lock.lock()
+    let port = machPort
     let runLoop = self.runLoop
+    machPort = nil
+    self.runLoop = nil
     lock.unlock()
+    if let port {
+      CGEvent.tapEnable(tap: port, enable: false)
+      CFMachPortInvalidate(port)
+    }
     if let runLoop { CFRunLoopStop(runLoop) }
   }
 
-  /// Is the tap currently delivering events? The OS disables it on secure input and
-  /// can time it out; the watchdog polls this so capture health reflects reality.
-  /// `machPort` is set once in `start()` before the tap thread runs, so reading it
-  /// from the main actor afterwards is safe.
+  /// Throw the tap away and build a fresh one on a new thread. The heavy repair, for
+  /// when re-enabling isn't enough: the port was invalidated, the tap thread died, or
+  /// the system dropped the tap across sleep/wake or a display change. Session state
+  /// (held chord, Carbon echo window) lives on `self`, so it survives.
+  @discardableResult
+  func recreate(reason: String) -> Bool {
+    stop()
+    let live = start()
+    Log.input.notice(
+      "tap re-created (\(reason, privacy: .public)): \(live ? "live" : "FAILED", privacy: .public)")
+    return live
+  }
+
+  private var currentPort: CFMachPort? {
+    lock.lock()
+    defer { lock.unlock() }
+    return machPort
+  }
+
+  /// Is the tap currently delivering events? The OS disables it on timeout / user
+  /// input; the watchdog polls this so capture health reflects reality.
   var isEnabled: Bool {
-    guard let machPort else { return false }
-    return CGEvent.tapIsEnabled(tap: machPort)
+    guard isAlive, let port = currentPort else { return false }
+    return CGEvent.tapIsEnabled(tap: port)
+  }
+
+  /// Does the tap still exist at all: a valid port served by a running thread?
+  /// `tapIsEnabled` alone can't tell a dead port or a stopped runloop from a live tap.
+  var isAlive: Bool {
+    guard let port = currentPort, CFMachPortIsValid(port), let thread else { return false }
+    return !thread.isFinished
   }
 
   /// Re-enable the tap if the OS turned it off. Idempotent; cheap to call on a timer.
@@ -122,8 +156,28 @@ final class HotkeyTap: @unchecked Sendable {
   /// (which only fires on the explicit `tapDisabledBy*` events).
   func ensureEnabled() {
     reconcileHold()
-    guard let machPort, !CGEvent.tapIsEnabled(tap: machPort) else { return }
-    CGEvent.tapEnable(tap: machPort, enable: true)
+    guard isAlive, let port = currentPort, !CGEvent.tapIsEnabled(tap: port) else { return }
+    CGEvent.tapEnable(tap: port, enable: true)
+    let live = CGEvent.tapIsEnabled(tap: port)
+    Log.input.notice(
+      "watchdog: tap found disabled, re-enabled: \(live ? "live" : "still off", privacy: .public)")
+  }
+
+  /// Test hook: switch the tap off the way the system can, without the
+  /// `tapDisabledBy*` event, so the watchdog's re-enable path runs for real.
+  func simulateSystemDisable() {
+    if let port = currentPort { CGEvent.tapEnable(tap: port, enable: false) }
+  }
+
+  /// Test hook: kill the tap outright (invalidate the port, stop its runloop), the
+  /// failure a re-enable can't fix, so the re-create path runs for real.
+  func simulateTapDeath() {
+    lock.lock()
+    let port = machPort
+    let runLoop = self.runLoop
+    lock.unlock()
+    if let port { CFMachPortInvalidate(port) }
+    if let runLoop { CFRunLoopStop(runLoop) }
   }
 
   /// Confirm a session whose modifier release we never saw. The release arrives as a
@@ -217,7 +271,9 @@ final class HotkeyTap: @unchecked Sendable {
 
     switch type {
     case .tapDisabledByTimeout, .tapDisabledByUserInput:
-      if let machPort { CGEvent.tapEnable(tap: machPort, enable: true) }
+      if let port = currentPort { CGEvent.tapEnable(tap: port, enable: true) }
+      let cause = type == .tapDisabledByTimeout ? "timeout" : "user input"
+      Log.input.notice("tap disabled by \(cause, privacy: .public); re-enabled")
       reconcileHold()  // the release may have happened while we were off
       return passthrough
 
@@ -302,4 +358,10 @@ final class HotkeyTap: @unchecked Sendable {
   private func dispatchMain(_ work: @escaping @MainActor () -> Void) {
     DispatchQueue.main.async { MainActor.assumeIsolated { work() } }
   }
+}
+
+/// Carries the tap's port into its thread closure (CFMachPort isn't Sendable; after the
+/// hand-off only that thread and the lock-guarded `machPort` reference it).
+private struct PortBox: @unchecked Sendable {
+  let port: CFMachPort
 }

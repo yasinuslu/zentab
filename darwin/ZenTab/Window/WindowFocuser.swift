@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import os
 
 /// Brings an arbitrary window of another app to the front *and* makes it key,
 /// including across Spaces.
@@ -18,6 +19,12 @@ import ApplicationServices
 /// so we re-derive the AX window from (pid, windowID) here.
 enum WindowFocuser {
   private static let queue = DispatchQueue(label: "org.nepjua.ZenTab.focus", qos: .userInteractive)
+  /// The newest focus request. Focuses run one at a time on `queue`; one stuck behind a
+  /// slow app (AX calls can block up to the 1 s messaging timeout each) must not replay
+  /// later as a burst of stale switches, so only the newest request runs.
+  private static let latest = OSAllocatedUnfairLock(initialState: 0)
+  /// A focus slower than this is logged: the switch felt like it didn't happen.
+  private static let slowFocus: UInt64 = 250_000_000
 
   @MainActor
   static func focus(_ window: WindowInfo) {
@@ -39,17 +46,58 @@ enum WindowFocuser {
     // de-minimize step was silently skipped for off-Space targets). Boxed to cross the
     // queue hop.
     let axBox = WindowRegistry.shared.axElement(for: windowID)
+    let generation = latest.withLock { value in
+      value += 1
+      return value
+    }
+    let screen = ScreenContext(uuid: mainScreenUUID, axBox: axBox)
     queue.async {
+      guard latest.withLock({ $0 }) == generation else {
+        Log.focus.notice("skipped a stale focus of pid \(pid): a newer switch superseded it")
+        return
+      }
+      let start = DispatchTime.now().uptimeNanoseconds
       perform(
         pid: pid, windowID: windowID, isMinimized: isMinimized,
-        originFrontPID: originFrontPID, screen: ScreenContext(uuid: mainScreenUUID, axBox: axBox))
+        originFrontPID: originFrontPID, screen: screen)
+      let elapsed = DispatchTime.now().uptimeNanoseconds - start
+      if elapsed > slowFocus {
+        Log.focus.notice(
+          "slow focus: pid \(pid) window \(windowID) took \(elapsed / 1_000_000) ms")
+      }
+      verify(pid: pid, windowID: windowID, generation: generation, retry: {
+        perform(
+          pid: pid, windowID: windowID, isMinimized: false,
+          originFrontPID: originFrontPID, screen: screen)
+      })
+    }
+  }
+
+  /// Half a second after a focus finished, check the target really is frontmost. If it's
+  /// not (and no newer switch was asked for), log it and run the focus once more: the
+  /// symptom is a shortcut that "does nothing", which is otherwise invisible.
+  private static func verify(
+    pid: pid_t, windowID: CGWindowID, generation: Int, retry: @escaping @Sendable () -> Void
+  ) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+      MainActor.assumeIsolated {
+        guard latest.withLock({ $0 }) == generation else { return }
+        let front = NSWorkspace.shared.frontmostApplication?.processIdentifier ?? -1
+        guard front != pid else { return }
+        Log.focus.error(
+          "focus missed: wanted pid \(pid) window \(windowID), front is pid \(front); retrying")
+        queue.async {
+          guard latest.withLock({ $0 }) == generation else { return }
+          retry()
+        }
+      }
     }
   }
 
   /// The two main-only handles `perform` needs, bundled so the off-main entry point
   /// stays within the parameter budget: the display UUID (for the origin Space) and
   /// the registry's cached AX element (for the cross-Space raise / de-minimize).
-  private struct ScreenContext {
+  private struct ScreenContext: Sendable {
     let uuid: String?
     let axBox: AXElementBox?
   }

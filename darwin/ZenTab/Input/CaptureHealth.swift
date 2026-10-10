@@ -15,6 +15,11 @@ enum CaptureHealth: Equatable {
   /// The tap exists but the OS disabled it (secure-input field, etc.) and it would
   /// not re-enable. Native hotkeys are restored so the user isn't stranded.
   case tapDisabled
+  /// Secure Event Input is on (a password field, a terminal's secure keyboard entry,
+  /// the lock screen). The tap sees no key-downs: the trigger still works through the
+  /// Carbon fallback, but the in-switcher keys (Esc, W, Q, arrows) don't. `holder` names
+  /// the app holding it, when the system says.
+  case secureInput(holder: String?)
   /// Something re-enabled native hotkeys we'd disabled and we couldn't reclaim them.
   case nativeHotkeyEscaped(Set<SymbolicHotkey>)
 
@@ -22,10 +27,12 @@ enum CaptureHealth: Equatable {
   static func evaluate(
     accessibilityTrusted: Bool,
     tapEnabled: Bool,
-    stillEnabled: Set<SymbolicHotkey>
+    stillEnabled: Set<SymbolicHotkey>,
+    secureInput: SecureInputState = .off
   ) -> CaptureHealth {
     if !accessibilityTrusted { return .noAccessibility }
     if !tapEnabled { return .tapDisabled }
+    if case .on(let holder) = secureInput { return .secureInput(holder: holder) }
     if !stillEnabled.isEmpty { return .nativeHotkeyEscaped(stillEnabled) }
     return .capturing
   }
@@ -55,6 +62,9 @@ enum CaptureHealth: Equatable {
       return "Not capturing — Accessibility permission needed"
     case .tapDisabled:
       return "Not capturing — input is temporarily blocked (secure field?)"
+    case .secureInput(let holder):
+      return "Limited — Secure Input is on (held by \(holder ?? "an unknown app")); "
+        + "only the trigger works until it ends"
     case .nativeHotkeyEscaped:
       return "Not capturing — macOS reclaimed the shortcut; retrying"
     }

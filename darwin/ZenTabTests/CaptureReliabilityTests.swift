@@ -70,6 +70,25 @@ struct CaptureHealthTests {
         == .tapDisabled)
   }
 
+  @Test("Secure Input on a live tap is reported, naming the holder")
+  func secureInput() {
+    let health = CaptureHealth.evaluate(
+      accessibilityTrusted: true, tapEnabled: true, stillEnabled: [],
+      secureInput: .on(holder: "1Password"))
+    #expect(health == .secureInput(holder: "1Password"))
+    #expect(health.menuBarIcon == .symbol("exclamationmark.triangle.fill"))
+    #expect(health.summary.contains("1Password"))
+  }
+
+  @Test("A disabled tap outranks Secure Input")
+  func tapDisabledOutranksSecureInput() {
+    #expect(
+      CaptureHealth.evaluate(
+        accessibilityTrusted: true, tapEnabled: false, stillEnabled: [],
+        secureInput: .on(holder: nil))
+        == .tapDisabled)
+  }
+
   @Test("A native hotkey that escaped our claim is surfaced")
   func nativeHotkeyEscaped() {
     #expect(

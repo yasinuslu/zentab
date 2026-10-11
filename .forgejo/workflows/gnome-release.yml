@@ -20,7 +20,7 @@ jobs:
     # nixpkgs (node 24, glib-compile-schemas, zip, gh).
     runs-on: nix
     env:
-      tools: nix shell nixpkgs#nodejs_24 nixpkgs#glib.bin nixpkgs#zip nixpkgs#unzip nixpkgs#gh -c
+      tools: nix shell nixpkgs#nodejs_24 nixpkgs#glib.dev nixpkgs#zip nixpkgs#unzip nixpkgs#gh -c
     steps:
       - uses: actions/checkout@v4
       - run: $tools npm ci

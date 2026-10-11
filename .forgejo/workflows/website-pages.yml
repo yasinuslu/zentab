@@ -1,0 +1,41 @@
+# Build the marketing site (website/) on the forge (nika) and publish it to GitHub Pages
+# (https://yasinuslu.github.io/zentab/) through the `gh-pages` branch: the job pushes the built
+# site there, the forge mirrors the branch to GitHub, and Pages serves it ("Deploy from a
+# branch": gh-pages, /). Path-scoped so app-only changes don't redeploy the site.
+name: website Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - ".forgejo/workflows/website-pages.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: nix
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        working-directory: website
+        run: |
+          bun install --frozen-lockfile
+          BASE_PATH=/zentab/ bun run build
+          touch dist/.nojekyll
+
+      # One parentless commit each time, pushed over gh-pages: the branch is a deploy target, not
+      # history. Built in the checkout's own repo so the job token's push auth applies.
+      - name: Push to gh-pages
+        run: |
+          export GIT_INDEX_FILE="$RUNNER_TEMP/pages-index"
+          site() { git --git-dir="$GITHUB_WORKSPACE/.git" --work-tree="$GITHUB_WORKSPACE/website/dist" "$@"; }
+          site add -A -f
+          commit=$(site -c user.name="forgejo-actions" -c user.email="actions@git.burmese-shiner.ts.net" \
+            commit-tree "$(site write-tree)" -m "website: ${GITHUB_SHA::7}")
+          git push -f origin "$commit:refs/heads/gh-pages"

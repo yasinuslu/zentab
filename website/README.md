@@ -45,9 +45,9 @@ src/
 ## Deploy
 
 Deployed to **GitHub Pages** at `https://yasinuslu.github.io/zentab/` by
-[`../.github/workflows/website-pages.yml`](../.github/workflows/website-pages.yml) on every push
+[`../.forgejo/workflows/website-pages.yml`](../.forgejo/workflows/website-pages.yml) (forge CI on nika, published through the `gh-pages` branch) on every push
 to `main` that touches `website/**` (or via the workflow's manual run button). One-time setup:
-repo **Settings → Pages → Source: GitHub Actions**.
+repo **Settings → Pages → Source: Deploy from a branch, `gh-pages` / (root)**.
 
 - The CI build runs with `BASE_PATH=/zentab/` so Vite emits asset URLs and a router `basename`
   under the project subpath. Local `bun dev`/`bun run build` default to `/`; reproduce the Pages

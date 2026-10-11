@@ -16,27 +16,25 @@ defaults:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # Host job: the runner's container mode cannot run JS actions under podman yet. Tools from
+    # nixpkgs (node 24, glib-compile-schemas, zip, gh).
+    runs-on: nix
+    env:
+      tools: nix shell nixpkgs#nodejs_24 nixpkgs#glib nixpkgs#zip nixpkgs#unzip nixpkgs#gh -c
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: gnome/package-lock.json
-      - name: Install system packaging tools
-        run: apt-get update && apt-get install -y libglib2.0-bin zip
-      - run: npm ci
+      - run: $tools npm ci
       - name: Resolve version
         run: echo "version=${GITHUB_REF_NAME#gnome-v}" >> "$GITHUB_ENV"
-      - run: npm run lint
+      - run: $tools npm run lint
       - name: Build installable extension ZIP
-        run: bin/zentab-package "$version"
+        run: $tools bin/zentab-package "$version"
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
         run: |
           set -euo pipefail
+          gh() { $tools gh "$@"; }
           for _ in $(seq 60); do
             gh api "repos/yasinuslu/zentab/git/ref/tags/$GITHUB_REF_NAME" >/dev/null 2>&1 && break
             sleep 5

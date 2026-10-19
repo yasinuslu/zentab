@@ -1,4 +1,4 @@
-# GNOME extension CI on the forge (git.burmese-shiner.ts.net, nika). The macOS and Windows jobs
+# GNOME extension CI on the forge (git.nepjua.org, nika). The macOS and Windows jobs
 # stay on GitHub Actions (.github/workflows/darwin-*, windows-*) until the forge has runners for
 # them; every Linux job runs here.
 name: gnome CI

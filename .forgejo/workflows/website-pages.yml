@@ -36,6 +36,6 @@ jobs:
           export GIT_INDEX_FILE="$RUNNER_TEMP/pages-index"
           site() { git --git-dir="$GITHUB_WORKSPACE/.git" --work-tree="$GITHUB_WORKSPACE/website/dist" "$@"; }
           site add -A -f
-          commit=$(site -c user.name="forgejo-actions" -c user.email="actions@git.burmese-shiner.ts.net" \
+          commit=$(site -c user.name="forgejo-actions" -c user.email="actions@git.nepjua.org" \
             commit-tree "$(site write-tree)" -m "website: ${GITHUB_SHA::7}")
           git push -f origin "$commit:refs/heads/gh-pages"

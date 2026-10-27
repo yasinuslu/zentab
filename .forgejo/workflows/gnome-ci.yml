@@ -1,18 +1,11 @@
+# No CI on pull requests or work branches (his call 2026-10-27, until he says otherwise): only the
+# release branch builds and deploys.
 # GNOME extension CI on the forge (git.nepjua.org, nika). The macOS and Windows jobs
 # stay on GitHub Actions (.github/workflows/darwin-*, windows-*) until the forge has runners for
 # them; every Linux job runs here.
 name: gnome CI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "gnome/**"
-      - ".forgejo/workflows/gnome-ci.yml"
-  pull_request:
-    paths:
-      - "gnome/**"
-      - ".forgejo/workflows/gnome-ci.yml"
   workflow_dispatch:
 
 concurrency:

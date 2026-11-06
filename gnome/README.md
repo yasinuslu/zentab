@@ -199,7 +199,9 @@ than 2:1 (21:9, 32:9) is split at `ratio` and each half behaves like its own mon
 | --- | --- |
 | **Alt+Tab** | lists only the windows of the half under the pointer; the overlay dims and centres on that half. Move the mouse to the other half while Alt is still held and the switcher jumps there with that half's windows |
 | **Maximize** (Super+Up, double-click, maximize button, drag to the top edge) | fills the window's half; do it again (or Super+Down) to restore |
-| **Open a window** | it opens in the half under the pointer, not across the split |
+| **Open a window** | it fills the half under the pointer (poor man's tiling) |
+| **Switch to a window** (Alt+Tab, click, anything that focuses it) | it fills its half at once, at the current divider |
+| **Drag the divider** (the inner edge of a window that fills its half) | the windows on the other side follow live; the new ratio is saved to `config.toml` |
 | **Super+Shift+Left/Right** | moves the window to the other half (then on to the next real monitor), keeping it maximized or tiled |
 | **Super+Left/Right** | tiles to the left/right half *of the half*; the same key again restores |
 | **Drag** a window across the split | it belongs to the half holding its centre, so it joins that half's Alt+Tab |
@@ -226,6 +228,8 @@ initial `configure` of a new window, and the `move-to-monitor-*` / `toggle-tiled
 - **Top bar, overview, notifications and OSDs** still span the whole monitor; the overview shows
   both halves' windows together.
 - **Edge snapping at the split line** doesn't exist (it doesn't between two real monitors either).
+- **Floating windows don't stay floating**: anything you switch to fills its half (dialogs and
+  fixed-size windows excepted). Super+Down floats a window until you switch away and back.
 - GNOME's own app switcher is unaffected; only ZenTab's Alt+Tab is split. ZenTab supersedes it,
   so this matters only with ZenTab's switch modes remapped away.
 

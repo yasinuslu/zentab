@@ -348,13 +348,14 @@ export class ConfigManager implements Disposable {
   }
 }
 
-/** `text` (a config.toml) with `[virtual_monitors] enabled` set to `enabled`, touching nothing
- * else: the line is rewritten in place, added under an existing section, or the section is
- * appended. Comments and every other setting survive. */
-export function withVirtualMonitorsEnabled(text: string, enabled: boolean): string {
+/** `text` (a config.toml) with `[virtual_monitors] <key>` set to `value`, touching nothing
+ * else: the line is rewritten in place (its comment kept), added under an existing section, or
+ * the section is appended. Comments and every other setting survive. */
+export function withVirtualMonitorsSetting(text: string, key: "enabled" | "ratio", value: string): string {
   const lines = text.split("\n");
   let section: string | null = null;
   let sectionLine = -1;
+  const keyRe = new RegExp(`^${key}\\s*=`);
   for (let i = 0; i < lines.length; i++) {
     const line = stripComment(lines[i]!).trim();
     const header = /^\[([\w.-]+)]$/.exec(line);
@@ -363,21 +364,21 @@ export function withVirtualMonitorsEnabled(text: string, enabled: boolean): stri
       if (section === "virtual_monitors") sectionLine = i;
       continue;
     }
-    if (section === "virtual_monitors" && /^enabled\s*=/.test(line)) {
-      lines[i] = lines[i]!.replace(/(enabled\s*=\s*)(true|false)/, `$1${enabled}`);
+    if (section === "virtual_monitors" && keyRe.test(line)) {
+      lines[i] = lines[i]!.replace(new RegExp(`(${key}\\s*=\\s*)[^\\s#]+`), `$1${value}`);
       return lines.join("\n");
     }
   }
   if (sectionLine >= 0) {
-    lines.splice(sectionLine + 1, 0, `enabled = ${enabled}`);
+    lines.splice(sectionLine + 1, 0, `${key} = ${value}`);
     return lines.join("\n");
   }
   const sep = text.length === 0 || text.endsWith("\n\n") ? "" : text.endsWith("\n") ? "\n" : "\n\n";
-  return `${text}${sep}[virtual_monitors]\nenabled = ${enabled}\n`;
+  return `${text}${sep}[virtual_monitors]\n${key} = ${value}\n`;
 }
 
-/** Writes `[virtual_monitors] enabled` into config.toml (creating the file if needed). */
-export function writeVirtualMonitorsEnabled(enabled: boolean): void {
+/** Writes `[virtual_monitors] <key> = value` into config.toml (creating the file if needed). */
+export function writeVirtualMonitorsSetting(key: "enabled" | "ratio", value: string): void {
   let text = "";
   try {
     const [ok, bytes] = GLib.file_get_contents(getConfigPath());
@@ -387,8 +388,8 @@ export function writeVirtualMonitorsEnabled(enabled: boolean): void {
   }
   try {
     GLib.mkdir_with_parents(getConfigDir(), 0o755);
-    GLib.file_set_contents(getConfigPath(), withVirtualMonitorsEnabled(text, enabled));
+    GLib.file_set_contents(getConfigPath(), withVirtualMonitorsSetting(text, key, value));
   } catch (error) {
-    logError(error, "writeVirtualMonitorsEnabled");
+    logError(error, "writeVirtualMonitorsSetting");
   }
 }

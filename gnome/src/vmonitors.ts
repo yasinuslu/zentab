@@ -14,6 +14,9 @@
 //   - Super+Shift+Left/Right moves a window to the neighbouring half (then to the next real
 //     monitor), keeping its maximized/tiled state, like moving between real monitors.
 //   - Super+Left/Right tiles to the left/right half *of the half*, like on a real monitor.
+//   - Poor man's tiling: a window you switch to (or drop after a drag) fills its half at once,
+//     and dragging the inner edge of a half-filling window moves the divider itself; the
+//     windows on the other side follow live, and the new ratio is saved to config.toml.
 //
 // Workspaces stay shared (Mutter still sees one monitor). Fullscreen, the top bar, the overview
 // and notifications still span the whole physical monitor — see README "Virtual monitors".
@@ -255,15 +258,30 @@ export class VirtualMonitorManager implements Disposable {
   /** Re-entrancy guard: our own maximize/move calls emit the signals we listen to. */
   private _applying = false;
   private _active = false;
+  /** Set while the inner edge of a half-filling window is being dragged: that drag moves the
+   * divider. `part` is the dragged window's side (0 = left half, 1 = right half). */
+  private _divider: { t: Tracked; physical: number; part: number } | null = null;
+  private _reflowPending = false;
+  /** The half each window filled when the split was last turned off, so turning it back on
+   * (Super+\\, the button) puts every window back where it was instead of all on one side. */
+  private readonly _lastHalf = new Map<number, string>();
+  private _syncedRatio: number;
+  private readonly _onRatioChanged: (ratio: number) => void;
 
-  constructor(layout: VirtualMonitorLayout) {
+  /** `onRatioChanged`: the divider was dragged to a new ratio (persist it). */
+  constructor(layout: VirtualMonitorLayout, onRatioChanged: (ratio: number) => void = () => {}) {
     this._layout = layout;
+    this._onRatioChanged = onRatioChanged;
+    this._syncedRatio = layout.ratio;
   }
 
-  /** Turns the behaviors on or off to match the layout's `enabled` (called on config change). */
+  /** Turns the behaviors on or off to match the layout's `enabled` (called on config change),
+   * and re-fits the halves when the ratio changed (a hand edit of config.toml). */
   sync(): void {
     if (this._layout.enabled && !this._active) this._enable();
     else if (!this._layout.enabled && this._active) this._disable(true);
+    else if (this._active && this._layout.ratio !== this._syncedRatio && !this._divider) this._reflowAll(null);
+    this._syncedRatio = this._layout.ratio;
   }
 
   /** Extension disable, which also runs on every screen lock: windows keep their geometry, so
@@ -282,7 +300,14 @@ export class VirtualMonitorManager implements Disposable {
     // half under the pointer: nothing better is known about where they "belong").
     for (const t of this._tracked.values()) {
       if (maxFlags(t.win) === Meta.MaximizeFlags.BOTH && !t.win.is_fullscreen() && this._isPlaceable(t.win)) {
-        if (this._layout.isSplit(t.win.get_monitor())) this._place(t, this._layout.current(), "max");
+        const physical = t.win.get_monitor();
+        if (this._layout.isSplit(physical)) {
+          const key = this._lastHalf.get(t.win.get_id());
+          const vm = this._layout.monitorsOf(physical).find((m) => m.key === key) ?? this._layout.current();
+          this._place(t, vm, "max");
+        }
+      } else {
+        this._adopt(t);
       }
     }
     this._bag.track(
@@ -291,22 +316,40 @@ export class VirtualMonitorManager implements Disposable {
     );
     this._bag.track(
       global.display,
-      global.display.connect("grab-op-begin", () => {
+      global.display.connect("grab-op-begin", (_d: Meta.Display, win: Meta.Window | null, op: Meta.GrabOp) => {
         this._grabbing = true;
+        this._divider = win ? this._dividerGrab(win, op) : null;
       }),
     );
     this._bag.track(
       global.display,
-      global.display.connect("grab-op-end", () => {
+      global.display.connect("grab-op-end", (_d: Meta.Display, win: Meta.Window | null) => {
         this._grabbing = false;
+        const divider = this._divider;
+        this._divider = null;
         const pending = [...this._maxAfterGrab];
         this._maxAfterGrab.clear();
         this._later(() => {
+          if (divider) {
+            // Snap everything (the dragged window too) to the final divider, then save it.
+            this._reflowAll(null);
+            this._syncedRatio = this._layout.ratio;
+            this._onRatioChanged(this._layout.ratio);
+          }
           for (const t of pending) {
             if (this._tracked.get(t.win.get_id()) !== t) continue;
             if (maxFlags(t.win) === Meta.MaximizeFlags.BOTH) this._place(t, this._layout.current(), "max");
           }
+          // A window dropped after a drag fills the half it was dropped in.
+          if (win && !divider && !pending.some((t) => t.win === win)) this._fit(win, this._layout.current());
         });
+      }),
+    );
+    this._bag.track(
+      global.display,
+      global.display.connect("notify::focus-window", () => {
+        const win = global.display.get_focus_window();
+        if (win && !this._grabbing) this._later(() => this._fit(win, null));
       }),
     );
 
@@ -363,8 +406,16 @@ export class VirtualMonitorManager implements Disposable {
         }
       }
     }
+    if (remaximize) {
+      this._lastHalf.clear();
+      for (const t of this._tracked.values()) {
+        if (t.placement === "max" && t.placedOn) this._lastHalf.set(t.win.get_id(), t.placedOn);
+      }
+    }
     this._tracked.clear();
     this._maxAfterGrab.clear();
+    this._divider = null;
+    this._reflowPending = false;
     this._grabbing = false;
     log("virtual monitors off");
   }
@@ -386,7 +437,12 @@ export class VirtualMonitorManager implements Disposable {
 
     t.ids.push(win.connect("notify::maximized-horizontally", () => this._onMaximizeChanged(t)));
     t.ids.push(win.connect("notify::maximized-vertically", () => this._onMaximizeChanged(t)));
-    t.ids.push(win.connect("size-changed", () => this._rememberFloating(t)));
+    t.ids.push(
+      win.connect("size-changed", () => {
+        if (this._divider?.t === t) this._onDividerDragged();
+        else this._rememberFloating(t);
+      }),
+    );
     t.ids.push(win.connect("position-changed", () => this._rememberFloating(t)));
     t.ids.push(win.connect("unmanaging", () => this._untrack(id)));
     if (isNew) {
@@ -436,6 +492,9 @@ export class VirtualMonitorManager implements Disposable {
     const rect = rectOf(t.win);
     const target = this._initialTarget(rect);
     if (target) this._moveResize(t.win, centeredIn(rect, this._layout.workArea(target)));
+    // Poor man's tiling: a new resizable window fills its half right away, like on focus (a new
+    // window is not always focused on map, so this doesn't wait for that).
+    if (t.win.allows_resize()) this._later(() => this._fit(t.win, target));
   }
 
   /** The half a new window at `rect` should open in, or null to leave it where it is. */
@@ -494,6 +553,106 @@ export class VirtualMonitorManager implements Disposable {
     }
   }
 
+  /** Poor man's tiling: `win` fills its half (`vm`, else the half holding its centre). A window
+   * already tiled to a quarter keeps that tile, just re-fitted. Left alone: dialogs, fixed-size
+   * windows, fullscreen, and anything on an unsplit monitor. */
+  private _fit(win: Meta.Window, vm: VirtualMonitor | null): void {
+    const t = this._tracked.get(win.get_id());
+    if (!t || !this._isPlaceable(win) || !win.allows_resize() || win.is_fullscreen() || win.minimized) return;
+    if (!this._layout.isSplit(win.get_monitor())) return;
+    const target = vm && vm.physical === win.get_monitor() ? vm : this._layout.forWindow(win);
+    const placement = t.placement ?? "max";
+    const want = this._targetRect(target, placement);
+    const have = rectOf(win);
+    const inPlace =
+      t.placement === placement &&
+      t.placedOn === target.key &&
+      have.x === want.x &&
+      have.y === want.y &&
+      have.width === want.width &&
+      have.height === want.height;
+    if (!inPlace) this._place(t, target, placement);
+  }
+
+  /** A grab that starts on the inner edge (the one on the split) of a window filling its half
+   * is a divider drag. Moves and outer-edge resizes are not. */
+  private _dividerGrab(win: Meta.Window, op: Meta.GrabOp): { t: Tracked; physical: number; part: number } | null {
+    const t = this._tracked.get(win.get_id());
+    if (!t || t.placement === null) return null;
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const G = Meta.GrabOp as any;
+    const moving = [G.MOVING, G.KEYBOARD_MOVING, G.MOVING_UNCONSTRAINED].filter((v) => v !== undefined);
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+    if (moving.includes(op)) return null;
+    const physical = win.get_monitor();
+    const splitX = this._layout.splitX(physical);
+    if (splitX === null) return null;
+    const vm = this._layout.forWindow(win);
+    const rect = rectOf(win);
+    const edge = vm.part === 0 ? rect.x + rect.width : rect.x;
+    // Only a window whose edge sits on the divider (a half-filling one, or the inner tile).
+    if (Math.abs(edge - splitX) > 2) return null;
+    return { t, physical, part: vm.part };
+  }
+
+  /** The dragged inner edge moved: it is the new divider. The other windows follow live. */
+  private _onDividerDragged(): void {
+    const d = this._divider;
+    if (!d) return;
+    const rect = rectOf(d.t.win);
+    const edge = d.part === 0 ? rect.x + rect.width : rect.x;
+    const geo = global.display.get_monitor_geometry(d.physical);
+    const ratio = (edge - geo.x) / geo.width;
+    if (Math.abs(ratio - this._layout.ratio) * geo.width < 1) return;
+    this._layout.configure(this._layout.enabled, ratio);
+    if (this._reflowPending) return;
+    this._reflowPending = true;
+    this._later(() => {
+      this._reflowPending = false;
+      if (this._divider) this._reflowAll(this._divider.t);
+    });
+  }
+
+  /** Re-fits every window ZenTab holds in a half to the current divider (`except` the one
+   * being dragged, which Mutter is already resizing). */
+  private _reflowAll(except: Tracked | null): void {
+    for (const t of this._tracked.values()) {
+      if (t === except || t.placement === null || t.placedOn === null) continue;
+      const physical = t.win.get_monitor();
+      const vm = this._layout.monitorsOf(physical).find((m) => m.key === t.placedOn);
+      if (!vm) continue;
+      this._moveResize(t.win, this._targetRect(vm, t.placement));
+    }
+  }
+
+  /** A window that already sits exactly in a half (or a quarter tile) when the split turns on:
+   * the previous enable placed it there, and an extension disable (every screen lock) forgets
+   * that. Taking it back keeps the divider drag and "split off re-maximizes" working after an
+   * unlock. */
+  private _adopt(t: Tracked): void {
+    if (maxFlags(t.win) !== Meta.MaximizeFlags.VERTICAL || !this._isPlaceable(t.win)) return;
+    const physical = t.win.get_monitor();
+    if (!this._layout.isSplit(physical)) return;
+    const have = rectOf(t.win);
+    for (const vm of this._layout.monitorsOf(physical)) {
+      for (const placement of ["max", "left", "right"] as const) {
+        const want = this._targetRect(vm, placement);
+        if (have.x === want.x && have.width === want.width) {
+          t.placement = placement;
+          t.placedOn = vm.key;
+          return;
+        }
+      }
+    }
+  }
+
+  private _targetRect(vm: VirtualMonitor, placement: Placement): Rect {
+    const area = this._layout.workArea(vm);
+    if (placement === "max") return area;
+    const half = Math.round(area.width / 2);
+    return placement === "left" ? { ...area, width: half } : { ...area, x: area.x + half, width: area.width - half };
+  }
+
   private _vmForRect(physical: number, rect: Rect): VirtualMonitor {
     return this._layout.at(physical, rect.x + rect.width / 2);
   }
@@ -528,12 +687,7 @@ export class VirtualMonitorManager implements Disposable {
   /** Maximizes `t.win` inside `vm` ("max"), or tiles it to its left/right half. */
   private _place(t: Tracked, vm: VirtualMonitor, placement: Placement): void {
     const win = t.win;
-    const area = this._layout.workArea(vm);
-    let rect: Rect = area;
-    if (placement !== "max") {
-      const half = Math.round(area.width / 2);
-      rect = placement === "left" ? { ...area, width: half } : { ...area, x: area.x + half, width: area.width - half };
-    }
+    const rect = this._targetRect(vm, placement);
     t.placement = placement;
     t.placedOn = vm.key;
     this._applying = true;

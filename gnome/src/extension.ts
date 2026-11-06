@@ -4,7 +4,7 @@
 // so the extension is clean to disable at the lock screen and clean to re-enable afterward.
 import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 
-import { ConfigManager, writeVirtualMonitorsEnabled } from "./config.js";
+import { ConfigManager, writeVirtualMonitorsSetting } from "./config.js";
 import { KeybindingController } from "./keybinding.js";
 import { Mode } from "./model.js";
 import { OverlayView } from "./overlay.js";
@@ -42,7 +42,10 @@ export default class ZenTabExtension extends Extension {
         this._splitToggle?.sync();
       });
       layout.configure(initial.virtualMonitors.enabled, initial.virtualMonitors.ratio);
-      const virtualMonitors = new VirtualMonitorManager(layout);
+      // Dragging the divider saves the new ratio, so it survives a re-login like the on/off.
+      const virtualMonitors = new VirtualMonitorManager(layout, (ratio) =>
+        writeVirtualMonitorsSetting("ratio", ratio.toFixed(3)),
+      );
       this._virtualMonitors = virtualMonitors;
       virtualMonitors.sync();
 
@@ -50,7 +53,7 @@ export default class ZenTabExtension extends Extension {
       const splitToggle = new SplitToggle(settings, layout, (enabled) => {
         layout.configure(enabled, layout.ratio);
         virtualMonitors.sync();
-        writeVirtualMonitorsEnabled(enabled);
+        writeVirtualMonitorsSetting("enabled", String(enabled));
       });
       this._splitToggle = splitToggle;
       splitToggle.enable();

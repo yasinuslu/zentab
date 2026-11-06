@@ -204,7 +204,9 @@ than 2:1 (21:9, 32:9) is split at `ratio` and each half behaves like its own mon
 | **Super+Left/Right** | tiles to the left/right half *of the half*; the same key again restores |
 | **Drag** a window across the split | it belongs to the half holding its centre, so it joins that half's Alt+Tab |
 
-Turn it on or off by saving `config.toml`; it applies live, and survives a Shell restart or
+Turn it on or off with the **Split screen** button in Quick Settings (top-right menu; shown only
+while a monitor is wider than 2:1), or by saving `config.toml`. The button just rewrites
+`enabled` in the file. Either way it applies live, and survives a Shell restart or
 re-login because the file is the source of truth. Turning it off re-maximizes the windows that
 were maximized into a half.
 

@@ -194,7 +194,11 @@ no prefs dialog and no other knob.
   (→ global escape hatch, the one that collides with the default Ctrl+Alt+Tab). This replaces
   only what happens when the binding fires — it never mutates the user's stored keybindings —
   so it's fully reversible in `disable()`. A configured chord with no built-in match instead
-  gets its own private `Main.wm.addKeybinding` against ZenTab's own gschema.
+  gets its own private `Main.wm.addKeybinding` against ZenTab's own gschema. A chord a built-in already
+  owns gets none (Mutter keeps one index entry per chord, so a duplicate overwrites the
+  built-in and removing it on `disable()` deletes the entry); instead the built-in runs the
+  mode whose configured chord fired. Stock GNOME binds both Super+Tab and Alt+Tab to
+  `switch-applications`, so this is what makes stock Alt+Tab the everyday switch.
 - **The window model** (`windows.ts`): a pre-warmed `WindowSnapshotService` primes once from
   `global.get_window_actors()`, then stays current via `window-created` / each window's own
   `unmanaging` signal, with a few cheap additive-only self-heal passes for the rare compositor

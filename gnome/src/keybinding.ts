@@ -4,12 +4,18 @@
 // with no dconf writes and a trivially reversible disable(); (2) ALSO register a private
 // keybinding per mode on our own gschema (seeded by config.ts's write-through), via
 // `Main.wm.addKeybinding`, so a chord the user re-mapped to something with no built-in
-// (e.g. `other_apps = "super+tab"`) still works. `Meta.Display.add_keybinding` is a no-op
-// (returns `Meta.KeyBindingAction.NONE`) when the accelerator is already grabbed elsewhere —
-// so when the configured chord happens to match a default we already override via (1), (2)
-// simply fails to grab and nothing double-fires.
+// (e.g. `other_apps = "super+tab"`) still works.
+//
+// (2) is skipped for a chord that one of the built-ins in (1) already owns. Mutter does NOT
+// refuse such a duplicate: it logs "Overwriting existing binding of keysym ..." and keeps one
+// index entry per chord, and removing the duplicate in disable() deletes that entry outright.
+// Instead, a built-in that fires checks which configured chord it fired for (`_modeForChord`):
+// stock GNOME binds BOTH <Super>Tab and <Alt>Tab to `switch-applications`, so the chord, not
+// the binding name, says whether this is the everyday switch (Alt+Tab) or the escape hatch
+// (Super+Tab). Before this, stock Alt+Tab only reached the everyday switch through the
+// duplicate, and after one disable (every screen lock) it opened the escape hatch.
 import Clutter from "gi://Clutter";
-import type Gio from "gi://Gio";
+import Gio from "gi://Gio";
 import Meta from "gi://Meta";
 import Shell from "gi://Shell";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
@@ -85,11 +91,42 @@ const OVERRIDES: ReadonlyArray<{
   },
 ];
 
+/** Canonical form of a GTK accelerator for equality checks: modifiers lowercased, aliased
+ * (`<Control>`/`<Ctrl>` -> primary, `<Mod1>` -> alt) and sorted, key lowercased, and
+ * `Above_Tab` (Mutter's layout-independent name for the key above Tab) folded into `grave`. */
+export function normalizeAccelerator(accelerator: string): string {
+  const aliases: Record<string, string> = { control: "primary", ctrl: "primary", mod1: "alt", meta: "super" };
+  const modifiers: string[] = [];
+  let rest = accelerator.trim();
+  for (let m = /^<([^>]+)>/.exec(rest); m; m = /^<([^>]+)>/.exec(rest)) {
+    const mod = m[1]!.toLowerCase();
+    modifiers.push(aliases[mod] ?? mod);
+    rest = rest.slice(m[0].length);
+  }
+  const key = rest.toLowerCase() === "above_tab" ? "grave" : rest.toLowerCase();
+  return [...modifiers.sort(), key].join("+");
+}
+
+/** A fired chord (modifier mask + keysym name) in `normalizeAccelerator`'s form. Shift+Tab
+ * arrives as ISO_Left_Tab, folded back to Tab. */
+function chordKey(mask: number, keyName: string): string {
+  const modifiers: string[] = [];
+  if (mask & Clutter.ModifierType.CONTROL_MASK) modifiers.push("primary");
+  if (mask & Clutter.ModifierType.MOD1_MASK) modifiers.push("alt");
+  if (mask & (Clutter.ModifierType.MOD4_MASK | Clutter.ModifierType.SUPER_MASK)) modifiers.push("super");
+  const key = keyName.toLowerCase() === "iso_left_tab" ? "tab" : keyName.toLowerCase();
+  return [...modifiers.sort(), key].join("+");
+}
+
+const WM_KEYBINDINGS_SCHEMA = "org.gnome.desktop.wm.keybindings";
+
 export class KeybindingController implements Disposable {
   private readonly _settings: Gio.Settings;
   private readonly _onFire: ModeFireHandler;
   private _overriddenNames: string[] = [];
   private _privateBindingNames: string[] = [];
+  private _wmSettings: Gio.Settings | null = null;
+  private _settingsChangedIds: Array<{ settings: Gio.Settings; id: number }> = [];
 
   constructor(settings: Gio.Settings, onFire: ModeFireHandler) {
     this._settings = settings;
@@ -108,7 +145,7 @@ export class KeybindingController implements Disposable {
         // success signal to act on.
         const ok = Meta.keybindings_set_custom_handler(
           o.bindingName,
-          (_display, _window, _event, binding) => {
+          (_display, _window, event, binding) => {
             // `binding.is_reversed()` is the same call `windowManager.js`'s own
             // `_startSwitcher`/`_startA11ySwitcher` use to pick forward vs backward — each
             // `-backward` name in OVERRIDES is registered by Mutter as its own binding with the
@@ -119,7 +156,8 @@ export class KeybindingController implements Disposable {
             // built-in action (e.g. both `<Super>Tab` and `<Alt>Tab` fire `switch-applications`),
             // so this must come from whichever one actually fired, never re-derived from
             // config.toml's chord string.
-            this._onFire(o.mode, binding.is_reversed(), binding.get_mask());
+            const mask = binding.get_mask();
+            this._onFire(this._modeForChord(mask, event.get_key_symbol()) ?? o.mode, binding.is_reversed(), mask);
           },
         );
         if (ok) {
@@ -136,7 +174,55 @@ export class KeybindingController implements Disposable {
       }
     }
 
+    try {
+      this._wmSettings = new Gio.Settings({ schema_id: WM_KEYBINDINGS_SCHEMA });
+    } catch (error) {
+      logError(error, "KeybindingController.enable: no org.gnome.desktop.wm.keybindings");
+    }
+    this._syncPrivateBindings();
+    // config.toml edits arrive as writes to our keys, and a user can rebind the built-ins: either
+    // can turn a duplicate into a unique chord or back, so re-decide which private bindings exist.
+    for (const settings of [this._settings, this._wmSettings]) {
+      if (!settings) continue;
+      const id = settings.connect("changed", () => this._syncPrivateBindings());
+      this._settingsChangedIds.push({ settings, id });
+    }
+  }
+
+  /** The mode whose configured chord is the one that just fired (modifiers without Shift, which
+   * only means "backward", plus the base key), or null to keep the built-in's own mode. */
+  private _modeForChord(mask: number, keyval: number): Mode | null {
+    const fired = chordKey(mask & ~Clutter.ModifierType.SHIFT_MASK, Clutter.keyval_name(keyval) ?? "");
     for (const [mode, settingsKey] of Object.entries(SETTINGS_KEY_BY_MODE) as [Mode, string][]) {
+      for (const accel of this._settings.get_strv(settingsKey)) {
+        if (normalizeAccelerator(accel) === fired) return mode;
+      }
+    }
+    return null;
+  }
+
+  /** Accelerators owned by the built-ins this controller overrides, normalized. */
+  private _builtinAccelerators(): Set<string> {
+    const taken = new Set<string>();
+    if (!this._wmSettings) return taken;
+    for (const name of this._overriddenNames) {
+      try {
+        for (const accel of this._wmSettings.get_strv(name)) taken.add(normalizeAccelerator(accel));
+      } catch (error) {
+        logError(error, `KeybindingController: could not read "${name}"`);
+      }
+    }
+    return taken;
+  }
+
+  /** (Re)creates the private bindings, skipping any chord a built-in in OVERRIDES already owns
+   * (that built-in fires ZenTab already; a duplicate would corrupt Mutter's binding index). */
+  private _syncPrivateBindings(): void {
+    this._removePrivateBindings();
+    const taken = this._builtinAccelerators();
+    for (const [mode, settingsKey] of Object.entries(SETTINGS_KEY_BY_MODE) as [Mode, string][]) {
+      const accelerators = this._settings.get_strv(settingsKey);
+      if (accelerators.length > 0 && accelerators.every((a) => taken.has(normalizeAccelerator(a)))) continue;
       try {
         const action = Main.wm.addKeybinding(
           settingsKey,
@@ -155,9 +241,20 @@ export class KeybindingController implements Disposable {
         );
         if (action !== Meta.KeyBindingAction.NONE) this._privateBindingNames.push(settingsKey);
       } catch (error) {
-        logError(error, `KeybindingController.enable: could not add private binding "${settingsKey}"`);
+        logError(error, `KeybindingController: could not add private binding "${settingsKey}"`);
       }
     }
+  }
+
+  private _removePrivateBindings(): void {
+    for (const settingsKey of this._privateBindingNames) {
+      try {
+        Main.wm.removeKeybinding(settingsKey);
+      } catch (error) {
+        logError(error, `KeybindingController: could not remove "${settingsKey}"`);
+      }
+    }
+    this._privateBindingNames = [];
   }
 
   /** Symmetric with enable(): restores every overridden built-in handler to `Main.wm`'s own
@@ -187,14 +284,10 @@ export class KeybindingController implements Disposable {
     }
     this._overriddenNames = [];
 
-    for (const settingsKey of this._privateBindingNames) {
-      try {
-        Main.wm.removeKeybinding(settingsKey);
-      } catch (error) {
-        logError(error, `KeybindingController.disable: could not remove "${settingsKey}"`);
-      }
-    }
-    this._privateBindingNames = [];
+    for (const { settings, id } of this._settingsChangedIds) settings.disconnect(id);
+    this._settingsChangedIds = [];
+    this._wmSettings = null;
+    this._removePrivateBindings();
   }
 
   destroy(): void {

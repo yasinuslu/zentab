@@ -4,8 +4,8 @@
   accelerators as `Meta.Display.add_keybinding` requires a GSettings-backed key — every other
   ZenTab setting (hold_threshold_ms) lives purely in-process, parsed from
   ~/.config/zentab/config.toml, and never touches dconf. Per VISION.md, only the trigger keys
-  are configurable; everything else is a fixed opinion, so this schema does not grow beyond
-  these three keys.
+  are configurable; everything else is a fixed opinion, so this schema holds those three keys plus the
+  fixed Split screen shortcut.
 
   The values below are placeholders: config.ts overwrites them at startup (write-through) with
   whatever config.toml resolves to (falling back to these same defaults on missing/malformed
@@ -38,6 +38,14 @@
         GNOME's built-in switch-group binding, which ZenTab supersedes via
         setCustomKeybindingHandler rather than this private key (see keybinding.ts) — this key
         only fires if the resolved chord does NOT match a built-in ZenTab already overrides.
+      </description>
+    </key>
+    <key name="toggle-split-keybinding" type="as">
+      <default>["&lt;Super&gt;backslash"]</default>
+      <summary>Split screen on/off</summary>
+      <description>
+        Flips virtual monitors (the Split screen button). Fixed, not read from config.toml;
+        it is here only because Mutter keybindings need a GSettings key.
       </description>
     </key>
   </schema>

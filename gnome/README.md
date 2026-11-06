@@ -197,15 +197,16 @@ than 2:1 (21:9, 32:9) is split at `ratio` and each half behaves like its own mon
 
 | You do | With the split on |
 | --- | --- |
-| **Alt+Tab** | lists only the windows of the half under the pointer; the overlay dims and centres on that half |
+| **Alt+Tab** | lists only the windows of the half under the pointer; the overlay dims and centres on that half. Move the mouse to the other half while Alt is still held and the switcher jumps there with that half's windows |
 | **Maximize** (Super+Up, double-click, maximize button, drag to the top edge) | fills the window's half; do it again (or Super+Down) to restore |
 | **Open a window** | it opens in the half under the pointer, not across the split |
 | **Super+Shift+Left/Right** | moves the window to the other half (then on to the next real monitor), keeping it maximized or tiled |
 | **Super+Left/Right** | tiles to the left/right half *of the half*; the same key again restores |
 | **Drag** a window across the split | it belongs to the half holding its centre, so it joins that half's Alt+Tab |
 
-Turn it on or off with the **Split screen** button in Quick Settings (top-right menu; shown only
-while a monitor is wider than 2:1), or by saving `config.toml`. The button just rewrites
+Turn it on or off with **Super+\\** (a notice says which way it went), the **Split screen**
+button in Quick Settings (top-right menu; shown only while a monitor is wider than 2:1), or by
+saving `config.toml`. The button just rewrites
 `enabled` in the file. Either way it applies live, and survives a Shell restart or
 re-login because the file is the source of truth. Turning it off re-maximizes the windows that
 were maximized into a half.

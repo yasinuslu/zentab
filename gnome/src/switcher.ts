@@ -62,6 +62,7 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 
 import { Config, Mode, OverlayAction, WindowEntry } from "./model.js";
 import { OverlayView } from "./overlay.js";
+import type { VirtualMonitorLayout } from "./vmonitors.js";
 import { WindowSnapshotService } from "./windows.js";
 import { Disposable, SignalBag, logError } from "./util.js";
 
@@ -91,6 +92,10 @@ interface Session {
    * session-scoped piece of the grab. */
   readonly grab: Clutter.Grab;
   holdTimeoutId: number | null;
+  /** The (virtual) monitor the session is showing: the pointer's when it started, then wherever
+   * the pointer moves while the modifier is held, so the switcher follows the mouse across the
+   * split (or to another real monitor) and lists that monitor's windows. */
+  monitorKey: string;
 }
 
 export class Switcher implements Disposable {
@@ -110,8 +115,16 @@ export class Switcher implements Disposable {
    * constructor, called in destroy(). Non-GObject callback, so it lives outside `_bag`. */
   private _unsubscribeWindows: (() => void) | null = null;
 
-  constructor(windows: WindowSnapshotService, overlay: OverlayView, getConfig: () => Config) {
+  private readonly _layout: VirtualMonitorLayout;
+
+  constructor(
+    windows: WindowSnapshotService,
+    overlay: OverlayView,
+    getConfig: () => Config,
+    layout: VirtualMonitorLayout,
+  ) {
     this._windows = windows;
+    this._layout = layout;
     this._overlay = overlay;
     this._getConfig = getConfig;
 
@@ -137,6 +150,17 @@ export class Switcher implements Disposable {
       ),
     );
     this._grabActor.add_action(this._keyController);
+
+    // Pointer motion during a session: the grab actor is the grab root, so its captured-event
+    // sees every event of the session first. Only motion matters here, and it never stops the
+    // event (tile hover still runs).
+    this._bag.track(
+      this._grabActor,
+      this._grabActor.connect("captured-event", (_actor: Clutter.Actor, event: Clutter.Event) => {
+        if (this._session && event.type() === Clutter.EventType.MOTION) this._followPointer();
+        return Clutter.EVENT_PROPAGATE;
+      }),
+    );
 
     Main.layoutManager.addChrome(this._grabActor);
     // The overlay's scrim/card/tiles must be genuine descendants of the grabbed actor once
@@ -208,6 +232,7 @@ export class Switcher implements Disposable {
       cycleKeysym: this._cycleKeysymForMode(mode),
       grab,
       holdTimeoutId: null,
+      monitorKey: this._layout.current().key,
     };
     this._session = session;
 
@@ -275,6 +300,41 @@ export class Switcher implements Disposable {
     this._bag.destroy();
     Main.layoutManager.removeChrome(this._grabActor);
     this._grabActor.destroy();
+  }
+
+  /** The pointer crossed into another (virtual) monitor with the modifier still held: rebuild
+   * the list for that monitor and move the card there, with the selection on that monitor's
+   * most recent window that isn't focused (the same pick a fresh Alt+Tab there would make). */
+  private _followPointer(): void {
+    const session = this._session;
+    if (!session) return;
+    const key = this._layout.current().key;
+    if (key === session.monitorKey) return;
+    session.monitorKey = key;
+    const entries = this._windows.getEntries(session.mode, /* reconcile */ false);
+    if (entries.length === 0) {
+      // An empty half: keep showing the last list rather than ending the session under a held
+      // modifier; it follows again as soon as the pointer reaches a monitor with windows.
+      return;
+    }
+    const previouslySelectedId = session.entries[session.selectedIndex]?.id ?? null;
+    session.entries = entries;
+    const same = entries.findIndex((e) => e.id === previouslySelectedId);
+    if (same >= 0) {
+      session.selectedIndex = same;
+    } else {
+      const focusWindow = global.display.get_focus_window();
+      const initial = this._windows.getMostRecentOther(entries, focusWindow?.get_id());
+      session.selectedIndex = Math.max(0, entries.findIndex((e) => e.id === initial?.id));
+    }
+    if (session.revealed) {
+      this._overlay.moveToMonitorUnderCursor(
+        session.mode,
+        this._keyHintForMode(session.mode),
+        entries,
+        entries[session.selectedIndex]?.id ?? null,
+      );
+    }
   }
 
   private _reveal(): void {

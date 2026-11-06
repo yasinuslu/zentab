@@ -309,6 +309,19 @@ export class OverlayView implements Disposable {
     this.setSelected(selectedId);
   }
 
+  /** The pointer moved to another (virtual) monitor mid-session: re-centre the card there with
+   * that monitor's tiles, no fade (the switch should feel instant under a held modifier). */
+  moveToMonitorUnderCursor(
+    mode: Mode,
+    keyHint: string,
+    entries: readonly WindowEntry[],
+    selectedId: number | null,
+  ): void {
+    if (!this._scrim) return;
+    this._positionOnMonitorUnderCursor();
+    this.update(mode, keyHint, entries, selectedId);
+  }
+
   setSelected(id: number | null): void {
     this._selectedId = id;
     for (const tile of this._tiles) {

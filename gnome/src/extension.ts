@@ -47,7 +47,7 @@ export default class ZenTabExtension extends Extension {
       virtualMonitors.sync();
 
       // Quick Settings "Split screen": apply at once, then persist to config.toml.
-      const splitToggle = new SplitToggle(layout, (enabled) => {
+      const splitToggle = new SplitToggle(settings, layout, (enabled) => {
         layout.configure(enabled, layout.ratio);
         virtualMonitors.sync();
         writeVirtualMonitorsEnabled(enabled);
@@ -80,7 +80,7 @@ export default class ZenTabExtension extends Extension {
       }, layout);
       this._overlay = overlay;
 
-      switcher = new Switcher(windows, overlay, () => configManager.current);
+      switcher = new Switcher(windows, overlay, () => configManager.current, layout);
       this._switcher = switcher;
 
       const keybindings = new KeybindingController(

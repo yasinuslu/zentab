@@ -67,7 +67,21 @@ export class VirtualMonitorLayout {
   }
 
   isSplit(physical: number): boolean {
-    if (!this._enabled || physical < 0) return false;
+    return this._enabled && this._isWide(physical);
+  }
+
+  /** Whether any monitor is wide enough to split (whether or not the split is on). */
+  hasWideMonitor(): boolean {
+    for (let i = 0; i < global.display.get_n_monitors(); i++) if (this._isWide(i)) return true;
+    return false;
+  }
+
+  get ratio(): number {
+    return this._ratio;
+  }
+
+  private _isWide(physical: number): boolean {
+    if (physical < 0) return false;
     const geo = global.display.get_monitor_geometry(physical);
     return geo.height > 0 && geo.width / geo.height >= MIN_SPLIT_ASPECT;
   }

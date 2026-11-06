@@ -4,10 +4,11 @@
 // so the extension is clean to disable at the lock screen and clean to re-enable afterward.
 import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 
-import { ConfigManager } from "./config.js";
+import { ConfigManager, writeVirtualMonitorsEnabled } from "./config.js";
 import { KeybindingController } from "./keybinding.js";
 import { Mode } from "./model.js";
 import { OverlayView } from "./overlay.js";
+import { SplitToggle } from "./splitToggle.js";
 import { Switcher } from "./switcher.js";
 import { logError } from "./util.js";
 import { VirtualMonitorLayout, VirtualMonitorManager } from "./vmonitors.js";
@@ -20,6 +21,7 @@ export default class ZenTabExtension extends Extension {
   private _switcher: Switcher | null = null;
   private _keybindings: KeybindingController | null = null;
   private _virtualMonitors: VirtualMonitorManager | null = null;
+  private _splitToggle: SplitToggle | null = null;
 
   // Creation order: config -> windows -> overlay -> switcher -> keybindings. Each later stage
   // depends on the ones before it (Switcher needs both the live window snapshot and the
@@ -37,11 +39,21 @@ export default class ZenTabExtension extends Extension {
       const initial = configManager.start((config) => {
         layout.configure(config.virtualMonitors.enabled, config.virtualMonitors.ratio);
         this._virtualMonitors?.sync();
+        this._splitToggle?.sync();
       });
       layout.configure(initial.virtualMonitors.enabled, initial.virtualMonitors.ratio);
       const virtualMonitors = new VirtualMonitorManager(layout);
       this._virtualMonitors = virtualMonitors;
       virtualMonitors.sync();
+
+      // Quick Settings "Split screen": apply at once, then persist to config.toml.
+      const splitToggle = new SplitToggle(layout, (enabled) => {
+        layout.configure(enabled, layout.ratio);
+        virtualMonitors.sync();
+        writeVirtualMonitorsEnabled(enabled);
+      });
+      this._splitToggle = splitToggle;
+      splitToggle.enable();
 
       // Assigned to `this._windows` *before* `.start()` runs (not after) so that if `.start()`
       // itself throws, the catch block's `this.disable()` can still reach this
@@ -103,6 +115,9 @@ export default class ZenTabExtension extends Extension {
 
     this._windows?.destroy();
     this._windows = null;
+
+    this._splitToggle?.destroy();
+    this._splitToggle = null;
 
     this._virtualMonitors?.destroy();
     this._virtualMonitors = null;

@@ -100,8 +100,9 @@ edge case.
       `switch-windows = ['<Alt>Tab']`, `switch-applications = ['<Super>Tab']`): after the
       extension is disabled and a fresh copy enabled, Alt+Tab fires the `switch-applications`
       override (mask = Alt only), so it opens the **Everything** mode instead of the everyday
-      switch. Same on the `main` build, so not caused by virtual monitors. Check whether a plain
-      disable/enable (or lock/unlock) in a real session does the same.
+      switch. Same on the `main` build, so not caused by virtual monitors. Lock/unlock does it
+      too on stock GNOME keybindings (both `<Super>Tab` and `<Alt>Tab` on `switch-applications`).
+      Root cause and fix: zentab PR #2 (duplicate private keybindings).
 - [ ] **Close the selected window from outside ZenTab while a session is open** (e.g. hold the
       chord to reveal the overlay, then from a terminal `wmctrl -c` or otherwise kill the
       currently-highlighted window while still holding the modifier) — confirm release-to-commit

@@ -9,6 +9,10 @@
 //   [behavior]
 //   hold_threshold_ms = 150
 //
+//   [virtual_monitors]      # GNOME only, see vmonitors.ts
+//   enabled = false
+//   ratio = 0.5
+//
 // GJS ships no TOML library, so this hand-rolls just enough of the format for this schema —
 // two flat sections, string/number scalars, `#` comments — with a graceful fallback to
 // DEFAULT_CONFIG on anything missing or malformed. It is NOT a general-purpose TOML parser
@@ -51,6 +55,10 @@ interface RawConfig {
   behavior?: {
     hold_threshold_ms?: number;
   };
+  virtual_monitors?: {
+    enabled?: boolean;
+    ratio?: number;
+  };
 }
 
 /**
@@ -61,7 +69,7 @@ interface RawConfig {
  */
 export function parseToml(text: string): RawConfig {
   const result: RawConfig = {};
-  let section: "keys" | "behavior" | null = null;
+  let section: "keys" | "behavior" | "virtual_monitors" | null = null;
 
   for (const rawLine of text.split("\n")) {
     const line = stripComment(rawLine).trim();
@@ -70,7 +78,7 @@ export function parseToml(text: string): RawConfig {
     const sectionMatch = /^\[([\w.-]+)]$/.exec(line);
     if (sectionMatch) {
       const name = sectionMatch[1];
-      section = name === "keys" || name === "behavior" ? name : null;
+      section = name === "keys" || name === "behavior" || name === "virtual_monitors" ? name : null;
       continue;
     }
 
@@ -85,6 +93,12 @@ export function parseToml(text: string): RawConfig {
     } else if (section === "behavior" && key === "hold_threshold_ms") {
       const value = Number(rawValue.trim());
       if (Number.isFinite(value)) (result.behavior ??= {}).hold_threshold_ms = value;
+    } else if (section === "virtual_monitors" && key === "enabled") {
+      const value = rawValue.trim();
+      if (value === "true" || value === "false") (result.virtual_monitors ??= {}).enabled = value === "true";
+    } else if (section === "virtual_monitors" && key === "ratio") {
+      const value = Number(rawValue.trim());
+      if (Number.isFinite(value) && value > 0 && value < 1) (result.virtual_monitors ??= {}).ratio = value;
     }
   }
 
@@ -218,6 +232,10 @@ export function resolveConfig(raw: RawConfig): Config {
     behavior: {
       holdThresholdMs: raw.behavior?.hold_threshold_ms ?? DEFAULT_CONFIG.behavior.holdThresholdMs,
     },
+    virtualMonitors: {
+      enabled: raw.virtual_monitors?.enabled ?? DEFAULT_CONFIG.virtualMonitors.enabled,
+      ratio: raw.virtual_monitors?.ratio ?? DEFAULT_CONFIG.virtualMonitors.ratio,
+    },
   };
 }
 
@@ -324,7 +342,8 @@ export class ConfigManager implements Disposable {
     ]);
     log(
       `config loaded: other_apps=${config.keys.otherApps.raw} current_app=${config.keys.currentApp.raw} ` +
-        `everything=${config.keys.everything.raw} hold_threshold_ms=${config.behavior.holdThresholdMs}`,
+        `everything=${config.keys.everything.raw} hold_threshold_ms=${config.behavior.holdThresholdMs} ` +
+        `virtual_monitors=${config.virtualMonitors.enabled} ratio=${config.virtualMonitors.ratio}`,
     );
   }
 }

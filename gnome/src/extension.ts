@@ -10,6 +10,7 @@ import { Mode } from "./model.js";
 import { OverlayView } from "./overlay.js";
 import { Switcher } from "./switcher.js";
 import { logError } from "./util.js";
+import { VirtualMonitorLayout, VirtualMonitorManager } from "./vmonitors.js";
 import { WindowSnapshotService } from "./windows.js";
 
 export default class ZenTabExtension extends Extension {
@@ -18,6 +19,7 @@ export default class ZenTabExtension extends Extension {
   private _overlay: OverlayView | null = null;
   private _switcher: Switcher | null = null;
   private _keybindings: KeybindingController | null = null;
+  private _virtualMonitors: VirtualMonitorManager | null = null;
 
   // Creation order: config -> windows -> overlay -> switcher -> keybindings. Each later stage
   // depends on the ones before it (Switcher needs both the live window snapshot and the
@@ -27,9 +29,19 @@ export default class ZenTabExtension extends Extension {
     try {
       const settings = this.getSettings();
 
+      // Virtual monitors (config.toml [virtual_monitors]) follow live config edits, so turning
+      // the split on/off is a save of the file, no Shell restart.
+      const layout = new VirtualMonitorLayout();
       const configManager = new ConfigManager(settings);
-      configManager.start();
       this._configManager = configManager;
+      const initial = configManager.start((config) => {
+        layout.configure(config.virtualMonitors.enabled, config.virtualMonitors.ratio);
+        this._virtualMonitors?.sync();
+      });
+      layout.configure(initial.virtualMonitors.enabled, initial.virtualMonitors.ratio);
+      const virtualMonitors = new VirtualMonitorManager(layout);
+      this._virtualMonitors = virtualMonitors;
+      virtualMonitors.sync();
 
       // Assigned to `this._windows` *before* `.start()` runs (not after) so that if `.start()`
       // itself throws, the catch block's `this.disable()` can still reach this
@@ -37,7 +49,7 @@ export default class ZenTabExtension extends Extension {
       // its own internal guards, but should it ever throw outside those, we must not discard a
       // reference that may already hold real signal connections. Same reasoning applies to
       // `keybindings` below.
-      const windows = new WindowSnapshotService();
+      const windows = new WindowSnapshotService(layout);
       this._windows = windows;
       windows.start();
 
@@ -53,7 +65,7 @@ export default class ZenTabExtension extends Extension {
         onTileClicked: (entry) => switcher?.commit(entry),
         onClickOutside: () => switcher?.cancel(),
         onAction: (entry, action) => switcher?.performAction(entry, action),
-      });
+      }, layout);
       this._overlay = overlay;
 
       switcher = new Switcher(windows, overlay, () => configManager.current);
@@ -91,6 +103,9 @@ export default class ZenTabExtension extends Extension {
 
     this._windows?.destroy();
     this._windows = null;
+
+    this._virtualMonitors?.destroy();
+    this._virtualMonitors = null;
 
     this._configManager?.destroy();
     this._configManager = null;

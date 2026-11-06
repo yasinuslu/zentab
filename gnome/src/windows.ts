@@ -16,6 +16,7 @@ import Shell from "gi://Shell";
 
 import { Mode, WindowEntry } from "./model.js";
 import { Disposable, SignalBag, log, logError } from "./util.js";
+import type { VirtualMonitorLayout } from "./vmonitors.js";
 
 let nextFirstSeenSeq = 0;
 
@@ -50,6 +51,12 @@ export class WindowSnapshotService implements Disposable {
   /** Re-entrancy guard for `_notifyChanged`: a listener may re-query the service (`getEntries` ->
    * `_reconcile` -> `_track`) and re-enter notification. One level of dispatch is enough. */
   private _notifying = false;
+  /** "Current monitor" is a virtual monitor: half of a split ultrawide, else the real one. */
+  private readonly _layout: VirtualMonitorLayout;
+
+  constructor(layout: VirtualMonitorLayout) {
+    this._layout = layout;
+  }
 
   /** Primes the cache from the windows already on screen (the one and only cold walk this
    * service ever does), then wires signals to stay current. Call once from enable(). */
@@ -258,11 +265,14 @@ export class WindowSnapshotService implements Disposable {
    * `_NET_WM_STATE_FULLSCREEN` alongside `_NET_WM_STATE_HIDDEN`), so this reliably readmits
    * exactly the self-minimizing-game case and nothing else. */
   private _everydaySwitch(): WindowEntry[] {
-    const monitor = global.display.get_current_monitor();
+    // With virtual monitors on, "this monitor" is the half under the pointer: a window belongs
+    // to the half holding its centre (vmonitors.ts), so Alt+Tab on the left half never lists the
+    // right half's windows.
+    const monitor = this._layout.current().key;
     const workspace = global.workspace_manager.get_active_workspace();
     return this._buildFromCache(
       (win) =>
-        win.get_monitor() === monitor &&
+        this._layout.forWindow(win).key === monitor &&
         win.get_workspace() === workspace &&
         (!win.minimized || win.is_fullscreen()),
     );

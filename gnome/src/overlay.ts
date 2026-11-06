@@ -24,6 +24,7 @@ import {
   TILE,
 } from "./theme.js";
 import { Disposable, SignalBag, logError } from "./util.js";
+import type { VirtualMonitorLayout } from "./vmonitors.js";
 
 const MODE_LABEL: Record<Mode, string> = {
   [Mode.EverydaySwitch]: "Switch",
@@ -247,8 +248,11 @@ export class OverlayView implements Disposable {
   private _selectedId: number | null = null;
   private _visible = false;
 
-  constructor(callbacks: OverlayCallbacks) {
+  private readonly _layout: VirtualMonitorLayout | null;
+
+  constructor(callbacks: OverlayCallbacks, layout: VirtualMonitorLayout | null = null) {
     this._callbacks = callbacks;
+    this._layout = layout;
   }
 
   get isVisible(): boolean {
@@ -503,8 +507,9 @@ export class OverlayView implements Disposable {
   private _positionOnMonitorUnderCursor(): void {
     if (!this._scrim) return;
     try {
-      const monitorIndex = global.display.get_current_monitor();
-      const geometry = Main.layoutManager.monitors[monitorIndex] ?? Main.layoutManager.primaryMonitor;
+      // The virtual monitor under the cursor (half of a split ultrawide, else the real one), so
+      // the card centres on the half whose windows it lists.
+      const geometry = this._layout?.current().geometry ?? Main.layoutManager.primaryMonitor;
       if (!geometry) return;
       this._scrim.set_position(geometry.x, geometry.y);
       this._scrim.set_size(geometry.width, geometry.height);

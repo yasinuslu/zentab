@@ -67,6 +67,14 @@ export interface Config {
      * tap-and-release commits instantly with no overlay. Default 150. */
     readonly holdThresholdMs: number;
   };
+  /** [virtual_monitors] (GNOME only): split every ultrawide monitor (wider than 2:1) into two
+   * halves that each act like a monitor — Alt+Tab, maximize, new windows, Super+Shift+Arrow. */
+  readonly virtualMonitors: {
+    /** [virtual_monitors].enabled. Default false. */
+    readonly enabled: boolean;
+    /** [virtual_monitors].ratio: share of the width the left half gets, 0.2..0.8. Default 0.5. */
+    readonly ratio: number;
+  };
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -77,6 +85,10 @@ export const DEFAULT_CONFIG: Config = {
   },
   behavior: {
     holdThresholdMs: 150,
+  },
+  virtualMonitors: {
+    enabled: false,
+    ratio: 0.5,
   },
 };
 

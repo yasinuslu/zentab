@@ -96,6 +96,12 @@ edge case.
       persistent-grab-actor and `KeyController` now living for `Switcher`'s whole lifetime
       instead of being recreated per session — confirm that reuse doesn't leak state across
       disable/enable cycles.
+      **Seen 2026-11-06 in a headless shell** (`gnome-shell --headless`, sandboxed dconf with
+      `switch-windows = ['<Alt>Tab']`, `switch-applications = ['<Super>Tab']`): after the
+      extension is disabled and a fresh copy enabled, Alt+Tab fires the `switch-applications`
+      override (mask = Alt only), so it opens the **Everything** mode instead of the everyday
+      switch. Same on the `main` build, so not caused by virtual monitors. Check whether a plain
+      disable/enable (or lock/unlock) in a real session does the same.
 - [ ] **Close the selected window from outside ZenTab while a session is open** (e.g. hold the
       chord to reveal the overlay, then from a terminal `wmctrl -c` or otherwise kill the
       currently-highlighted window while still holding the modifier) — confirm release-to-commit

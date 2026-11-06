@@ -175,6 +175,10 @@ everything  = "ctrl+alt+tab"   # the "I lost something" escape hatch
 [behavior]
 hold_threshold_ms = 150        # hold past this to reveal the overlay; a quicker tap-and-
                                # release switches invisibly
+
+[virtual_monitors]             # GNOME only, see "Virtual monitors" below
+enabled = false                # split every ultrawide (wider than 2:1) into two monitors
+ratio = 0.5                    # share of the width the left half gets (0.2 to 0.8)
 ```
 
 This mirrors [`../windows/zentab.toml`](../windows/zentab.toml)'s schema exactly. GJS ships no
@@ -185,6 +189,42 @@ VISION's "delete the knob" principle. Chord strings are parsed into GNOME accele
 (schema `org.gnome.shell.extensions.zentab`) so `Main.wm.addKeybinding` has a GSettings-backed
 key to read; `Gio.FileMonitor` live-reloads the file on every save, no restart needed. There is
 no prefs dialog and no other knob.
+
+## Virtual monitors
+
+One ultrawide, two monitors. With `[virtual_monitors] enabled = true`, every monitor wider
+than 2:1 (21:9, 32:9) is split at `ratio` and each half behaves like its own monitor:
+
+| You do | With the split on |
+| --- | --- |
+| **Alt+Tab** | lists only the windows of the half under the pointer; the overlay dims and centres on that half |
+| **Maximize** (Super+Up, double-click, maximize button, drag to the top edge) | fills the window's half; do it again (or Super+Down) to restore |
+| **Open a window** | it opens in the half under the pointer, not across the split |
+| **Super+Shift+Left/Right** | moves the window to the other half (then on to the next real monitor), keeping it maximized or tiled |
+| **Super+Left/Right** | tiles to the left/right half *of the half*; the same key again restores |
+| **Drag** a window across the split | it belongs to the half holding its centre, so it joins that half's Alt+Tab |
+
+Turn it on or off by saving `config.toml`; it applies live, and survives a Shell restart or
+re-login because the file is the source of truth. Turning it off re-maximizes the windows that
+were maximized into a half.
+
+**How:** Mutter on Wayland cannot split one output into two logical monitors (X11's
+`xrandr --setmonitor` has no Wayland counterpart), and faking `Main.layoutManager.monitors` only
+fools the Shell's own chrome while breaking backgrounds and the overview. So `vmonitors.ts`
+applies the split at the places where "which monitor" changes behavior: ZenTab's own window
+scope, Mutter's maximize state (a maximize becomes a vertical maximize at half width), the
+initial `configure` of a new window, and the `move-to-monitor-*` / `toggle-tiled-*` bindings.
+
+**What still differs from a real second monitor:**
+
+- **Fullscreen** (a video, a game, F11) covers the whole physical monitor.
+- **Apps don't know they are maximized**: Mutter reports a vertical tile, so the maximize button
+  keeps its "maximize" icon and CSD corners stay rounded.
+- **Top bar, overview, notifications and OSDs** still span the whole monitor; the overview shows
+  both halves' windows together.
+- **Edge snapping at the split line** doesn't exist (it doesn't between two real monitors either).
+- GNOME's own app switcher is unaffected; only ZenTab's Alt+Tab is split. ZenTab supersedes it,
+  so this matters only with ZenTab's switch modes remapped away.
 
 ## How it works
 
@@ -235,6 +275,7 @@ no prefs dialog and no other knob.
 - `src/util.ts` — `log`/`logError`, `SignalBag` (tracked-connection teardown), `assert`
 - `src/config.ts` — TOML parsing, chord → accelerator resolution, `ConfigManager`
 - `src/windows.ts` — `WindowSnapshotService`, the pre-warmed window model
+- `src/vmonitors.ts` — virtual monitors: the split layout and the behaviors that make each half a monitor
 - `src/theme.ts` — brand tokens transcribed from `BRANDING.md`
 - `src/overlay.ts` — `OverlayView`, the scrim + card + tile actor tree
 - `src/switcher.ts` — `Switcher`, the tap/hold/grab/commit state machine

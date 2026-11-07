@@ -4,7 +4,7 @@
 // file watcher's reload then agrees), so the choice survives a re-login. Shown only while some
 // monitor is wide enough to be split.
 //
-// The same switch has a fixed shortcut, Super+\ (the key reads as a divider), so flipping
+// The same switch has a fixed shortcut, Super+X (left hand, next to Super), so flipping
 // between one wide screen and two halves is a key press away; an on-screen notice says which
 // way it went. Fixed on purpose (VISION: no settings), held in the private gschema only because
 // Mutter keybindings need a GSettings key.
@@ -53,7 +53,7 @@ export class SplitToggle implements Disposable {
       );
       this._keybindingAdded = action !== Meta.KeyBindingAction.NONE;
     } catch (error) {
-      logError(error, "SplitToggle: could not add the Super+\\ binding");
+      logError(error, "SplitToggle: could not add the Super+X binding");
     }
   }
 

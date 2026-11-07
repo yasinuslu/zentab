@@ -41,7 +41,7 @@
       </description>
     </key>
     <key name="toggle-split-keybinding" type="as">
-      <default>["&lt;Super&gt;backslash"]</default>
+      <default>["&lt;Super&gt;x"]</default>
       <summary>Split screen on/off</summary>
       <description>
         Flips virtual monitors (the Split screen button). Fixed, not read from config.toml;

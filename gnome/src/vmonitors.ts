@@ -263,7 +263,7 @@ export class VirtualMonitorManager implements Disposable {
   private _divider: { t: Tracked; physical: number; part: number } | null = null;
   private _reflowPending = false;
   /** The half each window filled when the split was last turned off, so turning it back on
-   * (Super+\\, the button) puts every window back where it was instead of all on one side. */
+   * (Super+X, the button) puts every window back where it was instead of all on one side. */
   private readonly _lastHalf = new Map<number, string>();
   private _syncedRatio: number;
   private readonly _onRatioChanged: (ratio: number) => void;

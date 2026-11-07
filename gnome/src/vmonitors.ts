@@ -14,9 +14,11 @@
 //   - Super+Shift+Left/Right moves a window to the neighbouring half (then to the next real
 //     monitor), keeping its maximized/tiled state, like moving between real monitors.
 //   - Super+Left/Right tiles to the left/right half *of the half*, like on a real monitor.
-//   - Poor man's tiling: a window you switch to (or drop after a drag) fills its half at once,
-//     and dragging the inner edge of a half-filling window moves the divider itself; the
+//   - Dragging the inner edge of a window maximized or tiled into a half moves the divider; the
 //     windows on the other side follow live, and the new ratio is saved to config.toml.
+//
+// Window sizes are the user's: ZenTab never resizes a window on its own (open, focus, drop).
+// Only an explicit maximize/tile/move request or a divider drag changes geometry.
 //
 // Workspaces stay shared (Mutter still sees one monitor). Fullscreen, the top bar, the overview
 // and notifications still span the whole physical monitor — see README "Virtual monitors".
@@ -323,7 +325,7 @@ export class VirtualMonitorManager implements Disposable {
     );
     this._bag.track(
       global.display,
-      global.display.connect("grab-op-end", (_d: Meta.Display, win: Meta.Window | null) => {
+      global.display.connect("grab-op-end", () => {
         this._grabbing = false;
         const divider = this._divider;
         this._divider = null;
@@ -340,16 +342,7 @@ export class VirtualMonitorManager implements Disposable {
             if (this._tracked.get(t.win.get_id()) !== t) continue;
             if (maxFlags(t.win) === Meta.MaximizeFlags.BOTH) this._place(t, this._layout.current(), "max");
           }
-          // A window dropped after a drag fills the half it was dropped in.
-          if (win && !divider && !pending.some((t) => t.win === win)) this._fit(win, this._layout.current());
         });
-      }),
-    );
-    this._bag.track(
-      global.display,
-      global.display.connect("notify::focus-window", () => {
-        const win = global.display.get_focus_window();
-        if (win && !this._grabbing) this._later(() => this._fit(win, null));
       }),
     );
 
@@ -476,8 +469,9 @@ export class VirtualMonitorManager implements Disposable {
 
   // New window: Mutter centres it on the physical monitor, i.e. right on the split line. Open
   // it in the half under the pointer instead, the way a new window opens on the monitor you're
-  // looking at. A window that already sits wholly inside one half (an app restoring its own
-  // position) is left alone. Done on the first `shown`, which Mutter emits while mapping, before
+  // looking at. Only moved, never resized: a window wider than the half stays where it is, and
+  // one that already sits wholly inside one half (an app restoring its own position, a
+  // picture-in-picture popup) is left alone. Done on the first `shown`, which Mutter emits while mapping, before
   // the first frame is painted. (Mutter's `configure` signal would be earlier, but its
   // MetaWindowConfig getters are not usable from GJS: get_rect() comes back null and
   // get_position()/get_size() lack out-annotations.)
@@ -491,10 +485,9 @@ export class VirtualMonitorManager implements Disposable {
     }
     const rect = rectOf(t.win);
     const target = this._initialTarget(rect);
-    if (target) this._moveResize(t.win, centeredIn(rect, this._layout.workArea(target)));
-    // Poor man's tiling: a new resizable window fills its half right away, like on focus (a new
-    // window is not always focused on map, so this doesn't wait for that).
-    if (t.win.allows_resize()) this._later(() => this._fit(t.win, target));
+    if (!target) return;
+    const area = this._layout.workArea(target);
+    if (rect.width <= area.width && rect.height <= area.height) this._moveResize(t.win, centeredIn(rect, area));
   }
 
   /** The half a new window at `rect` should open in, or null to leave it where it is. */
@@ -551,27 +544,6 @@ export class VirtualMonitorManager implements Disposable {
         this._later(() => this._moveResize(win, this._fitInto(floating, vm)));
       }
     }
-  }
-
-  /** Poor man's tiling: `win` fills its half (`vm`, else the half holding its centre). A window
-   * already tiled to a quarter keeps that tile, just re-fitted. Left alone: dialogs, fixed-size
-   * windows, fullscreen, and anything on an unsplit monitor. */
-  private _fit(win: Meta.Window, vm: VirtualMonitor | null): void {
-    const t = this._tracked.get(win.get_id());
-    if (!t || !this._isPlaceable(win) || !win.allows_resize() || win.is_fullscreen() || win.minimized) return;
-    if (!this._layout.isSplit(win.get_monitor())) return;
-    const target = vm && vm.physical === win.get_monitor() ? vm : this._layout.forWindow(win);
-    const placement = t.placement ?? "max";
-    const want = this._targetRect(target, placement);
-    const have = rectOf(win);
-    const inPlace =
-      t.placement === placement &&
-      t.placedOn === target.key &&
-      have.x === want.x &&
-      have.y === want.y &&
-      have.width === want.width &&
-      have.height === want.height;
-    if (!inPlace) this._place(t, target, placement);
   }
 
   /** A grab that starts on the inner edge (the one on the split) of a window filling its half
